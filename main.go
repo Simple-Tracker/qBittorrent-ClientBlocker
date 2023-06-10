@@ -1,10 +1,12 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"time"
 	"strings"
 	"strconv"
+	"reflect"
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
@@ -21,27 +23,59 @@ type MainDataStruct struct {
 	FullUpdate bool `json:"full_update"`
 	Torrents map[string]TorrentStruct `json:"torrents"`
 }
+type ConfigStruct struct {
+	Debug bool
+	QBURL string
+}
 
 var blockClientMap = make(map[string]BlockClientInfoStruct)
 var lastMaindataRid int64 = 0
-var qBURL string = "http://127.0.0.1:990"
 var httpClient = http.Client {
     Timeout: 8 * time.Second,
 }
-var debug bool = true
+var config = ConfigStruct{ Debug: false, QBURL: "http://127.0.0.1:990" }
+var configFilename = "config.json"
+var configLastMod int64 = 0;
 
 func Log(module string, str string, args ...interface{}) {
-	if !debug && strings.HasPrefix(module, "Debug") {
+	if !config.Debug && strings.HasPrefix(module, "Debug") {
 		return
 	}
 	logStr := fmt.Sprintf("[" + module + "] " + str + ".\n", args...)
 	fmt.Print(logStr)
 }
+func LoadConfig() bool {
+	configFileStat, err := os.Stat(configFilename)
+	if err != nil {
+		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: " + err.Error())
+	}
+	tmpConfigLastMod := configFileStat.ModTime().Unix()
+	if tmpConfigLastMod <= configLastMod {
+		return true
+	}
+	if configLastMod != 0 {
+		Log("Debug-LoadConfig", "发现配置文件更改, 正在进行热重载")
+	}
+	configLastMod = tmpConfigLastMod
+	configFile, err := ioutil.ReadFile(configFilename)
+	if err != nil {
+		Log("LoadConfig", "读取配置文件时发生了错误: " + err.Error())
+		return false
+	}
+	json.Unmarshal(configFile, &config)
+	Log("LoadConfig", "读取配置文件成功")
+	t := reflect.TypeOf(config)
+	v := reflect.ValueOf(config)
+	for k := 0; k < t.NumField(); k++ {
+		Log("LoadConfig-Current", "%v: %v", t.Field(k).Name, v.Field(k).Interface())
+	}
+	return true
+}
 func AddBlockClient(clientIP string, clientPeerID string) {
 	blockClientMap[strings.ToLower(clientIP)] = BlockClientInfoStruct{ Timestamp: time.Now().Unix(), PeerID: clientPeerID }
 }
 func FetchMaindata(rid int64) *MainDataStruct {
-	maindataResponse, err := httpClient.Get(qBURL + "/api/v2/sync/maindata?rid=" + strconv.FormatInt(rid, 10))
+	maindataResponse, err := httpClient.Get(config.QBURL + "/api/v2/sync/maindata?rid=" + strconv.FormatInt(rid, 10))
 	if err != nil {
 		Log("Maindata", "请求时发生了错误: " + err.Error())
 		return nil
@@ -59,8 +93,8 @@ func FetchMaindata(rid int64) *MainDataStruct {
 
 	return &mainDataResult
 }
-func FetchTorrentPeers(rid int64, infoHash string) {
-
+func FetchTorrentPeers(rid int64, infoHash string) string {
+	return ""
 }
 func Task() {
 	cleanCount := 0
@@ -78,17 +112,18 @@ func Task() {
 	if metadata == nil {
 		return
 	}
-	var lastTorrentRid int64 = 0
+	//var lastTorrentRid int64 = 0
 	for infoHash, _ := range metadata.Torrents {
-		Log("Debug", "%s", infoHash)
-		if infoHash != nil {
-			torrentPeers := FetchTorrentPeers(lastTorrentRid, infoHash)
+		Log("Debug-Task", "%s", infoHash)
+		if infoHash != "" {
+			//torrentPeers := FetchTorrentPeers(lastTorrentRid, infoHash)
 		}
 	}
 }
 func main() {
 	Log("Main", "程序已启动")
 	for range time.Tick(2 * time.Second) {
+		LoadConfig()
 		Task()
 	}
 }
