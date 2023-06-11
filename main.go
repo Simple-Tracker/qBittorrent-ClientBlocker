@@ -60,7 +60,7 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 	if !config.Debug && strings.HasPrefix(module, "Debug") {
 		return
 	}
-	logStr := fmt.Sprintf("[" + module + "] " + str + ".\n", args...)
+	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
 	if logToFile && config.LogToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", "无法写入日志", false)
