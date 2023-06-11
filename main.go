@@ -94,6 +94,7 @@ func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
 		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: " + err.Error(), false)
+		return false
 	}
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
 	if tmpConfigLastMod <= configLastMod {
