@@ -1,3 +1,5 @@
 {
-	"debug": true
+	"debug": false,
+	"qBURL": "http://127.0.0.1:990",
+	"blockList": ["-(XL|SD|XF|QD|BN|DL)(\\d+)-", "((^(xunlei?).?\\d+.\\d+.\\d+.\\d+)|cacao_torrent)", "-(UW\\w{4}|SP(([0-2]\\d{3})|(3[0-5]\\d{2})))-", "StellarPlayer"]
 }
