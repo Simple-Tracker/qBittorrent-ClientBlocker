@@ -37,6 +37,7 @@ type TorrentPeersStruct struct {
 }
 type ConfigStruct struct {
 	Debug bool
+	Timeout int
 	LogToFile bool
 	QBURL string
 	BlockList []string
@@ -49,9 +50,9 @@ var lastTorrentPeersRid int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
 var httpClient = http.Client {
-    Timeout: 8 * time.Second,
+    Timeout: 30 * time.Second,
 }
-var config = ConfigStruct{ Debug: false, LogToFile: true, QBURL: "http://127.0.0.1:990", BlockList: []string {} }
+var config = ConfigStruct{ Debug: false, Timeout: 30, LogToFile: true, QBURL: "http://127.0.0.1:990", BlockList: []string {} }
 var configFilename = "config.json"
 var configLastMod int64 = 0;
 var logFile *os.File
@@ -115,6 +116,11 @@ func LoadConfig() bool {
 		ReloadLog()
 	}
 	Log("LoadConfig", "读取配置文件成功", true)
+	if config.Timeout != 30 {
+		httpClient = http.Client {
+		    Timeout: time.Duration(config.Timeout) * time.Second,
+		}
+	}
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
 	for k := 0; k < t.NumField(); k++ {
