@@ -281,6 +281,7 @@ func Task() {
 }
 func main() {
 	LoadConfig()
+	SubmitBlockPeers("")
 	Log("Main", "程序已启动", true)
 	for range time.Tick(2 * time.Second) {
 		currentTimestamp = time.Now().Unix()
