@@ -20,7 +20,6 @@ type BlockPeerInfoStruct struct {
 	Name string
 }
 type MainDataStruct struct {
-	Rid int64 `json:"rid"`
 	FullUpdate bool `json:"full_update"`
 	Torrents map[string]TorrentStruct `json:"torrents"`
 }
@@ -31,7 +30,6 @@ type PeerStruct struct {
 	Client string
 }
 type TorrentPeersStruct struct {
-	Rid int64 `json:"rid"`
 	FullUpdate bool `json:"full_update"`
 	Peers map[string]PeerStruct `json:"peers"`
 }
@@ -45,8 +43,6 @@ type ConfigStruct struct {
 
 var todayStr = ""
 var currentTimestamp int64 = 0
-var lastMaindataRid int64 = 0
-var lastTorrentPeersRid int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
 var httpClient = http.Client {
@@ -193,8 +189,8 @@ func Submit(url string, postdata string) []byte {
 
 	return responseBody
 }
-func FetchMaindata(rid int64) *MainDataStruct {
-	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=" + strconv.FormatInt(rid, 10))
+func FetchMaindata() *MainDataStruct {
+	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0")
 	if maindataResponseBody == nil {
 		Log("FetchMaindata", "发生错误", false)
 		return nil
@@ -206,13 +202,12 @@ func FetchMaindata(rid int64) *MainDataStruct {
 		return nil
 	}
 
-	lastMaindataRid = mainDataResult.Rid
-	Log("Debug-FetchMaindata", "rid: %d, 完整更新: %s", false, lastMaindataRid, strconv.FormatBool(mainDataResult.FullUpdate))
+	Log("Debug-FetchMaindata", "完整更新: %s", false, strconv.FormatBool(mainDataResult.FullUpdate))
 
 	return &mainDataResult
 }
-func FetchTorrentPeers(rid int64, infoHash string) *TorrentPeersStruct {
-	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=" + strconv.FormatInt(rid, 10) + "&hash=" + infoHash)
+func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
+	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", "发生错误", false)
 		return nil
@@ -224,8 +219,7 @@ func FetchTorrentPeers(rid int64, infoHash string) *TorrentPeersStruct {
 		return nil
 	}
 
-	lastTorrentPeersRid = torrentPeersResult.Rid
-	Log("Debug-FetchTorrentPeers", "rid: %d, 完整更新: %s", false, lastTorrentPeersRid, strconv.FormatBool(torrentPeersResult.FullUpdate))
+	Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
 
 	return &torrentPeersResult
 }
@@ -248,7 +242,7 @@ func Task() {
 		Log("Task", "已清理过期客户端: %d 个", true, cleanCount)
 	}
 
-	metadata := FetchMaindata(lastMaindataRid)
+	metadata := FetchMaindata()
 	if metadata == nil {
 		return
 	}
@@ -259,7 +253,7 @@ func Task() {
 		if infoHash == "" {
 			continue
 		}
-		torrentPeers := FetchTorrentPeers(lastTorrentPeersRid, infoHash)
+		torrentPeers := FetchTorrentPeers(infoHash)
 		for _, peerInfo := range torrentPeers.Peers {
 			if peerInfo.IP == "" || peerInfo.Client == "" || CheckPrivateIP(peerInfo.IP) {
 				continue
