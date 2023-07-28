@@ -1,43 +1,46 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"net"
-	"time"
-	"regexp"
-	"strings"
-	"strconv"
-	"reflect"
-	"net/url"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type BlockPeerInfoStruct struct {
 	Timestamp int64
-	Name string
+	Name      string
 }
 type MainDataStruct struct {
-	FullUpdate bool `json:"full_update"`
-	Torrents map[string]TorrentStruct `json:"torrents"`
+	FullUpdate bool                     `json:"full_update"`
+	Torrents   map[string]TorrentStruct `json:"torrents"`
 }
 type TorrentStruct struct {
 }
 type PeerStruct struct {
-	IP string
+	IP     string
 	Client string
 }
 type TorrentPeersStruct struct {
-	FullUpdate bool `json:"full_update"`
-	Peers map[string]PeerStruct `json:"peers"`
+	FullUpdate bool                  `json:"full_update"`
+	Peers      map[string]PeerStruct `json:"peers"`
 }
 type ConfigStruct struct {
-	Debug bool
-	Timeout int
+	Debug     bool
+	Timeout   int
 	LogToFile bool
-	QBURL string
+	QBURL     string
+	UserName  string
+	PassWord  string
 	BlockList []string
 }
 
@@ -45,19 +48,21 @@ var todayStr = ""
 var currentTimestamp int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
-var httpClient = http.Client {
-    Timeout: 30 * time.Second,
+var cookieJar, _ = cookiejar.New(nil)
+var httpClient = http.Client{
+	Timeout: 30 * time.Second,
+	Jar:     cookieJar,
 }
-var config = ConfigStruct{ Debug: false, Timeout: 30, LogToFile: true, QBURL: "http://127.0.0.1:990", BlockList: []string {} }
+var config = ConfigStruct{Debug: false, Timeout: 30, LogToFile: true, QBURL: "http://127.0.0.1:990", UserName: "admin", PassWord: "adminadmin", BlockList: []string{}}
 var configFilename = "config.json"
-var configLastMod int64 = 0;
+var configLastMod int64 = 0
 var logFile *os.File
 
 func Log(module string, str string, logToFile bool, args ...interface{}) {
 	if !config.Debug && strings.HasPrefix(module, "Debug") {
 		return
 	}
-	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
+	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
 	if logToFile && config.LogToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", "无法写入日志", false)
@@ -78,7 +83,7 @@ func ReloadLog() {
 		todayStr = tmpTodayStr
 		logFile.Close()
 
-		tLogFile, err := os.OpenFile("logs/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		tLogFile, err := os.OpenFile("logs/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			tLogFile.Close()
 			tLogFile = nil
@@ -90,7 +95,7 @@ func ReloadLog() {
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
-		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: " + err.Error(), false)
+		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: "+err.Error(), false)
 		return false
 	}
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
@@ -102,7 +107,7 @@ func LoadConfig() bool {
 	}
 	configFile, err := ioutil.ReadFile(configFilename)
 	if err != nil {
-		Log("LoadConfig", "读取配置文件时发生了错误: " + err.Error(), false)
+		Log("LoadConfig", "读取配置文件时发生了错误: "+err.Error(), false)
 		return false
 	}
 	configLastMod = tmpConfigLastMod
@@ -113,8 +118,9 @@ func LoadConfig() bool {
 	}
 	Log("LoadConfig", "读取配置文件成功", true)
 	if config.Timeout != 30 {
-		httpClient = http.Client {
-		    Timeout: time.Duration(config.Timeout) * time.Second,
+		httpClient = http.Client{
+			Timeout: time.Duration(config.Timeout) * time.Second,
+			Jar:     cookieJar,
 		}
 	}
 	t := reflect.TypeOf(config)
@@ -135,11 +141,11 @@ func LoadConfig() bool {
 	return true
 }
 func CheckPrivateIP(ip string) bool {
-    ipParsed := net.ParseIP(ip)
-    return ipParsed.IsPrivate()
+	ipParsed := net.ParseIP(ip)
+	return ipParsed.IsPrivate()
 }
 func AddBlockPeer(clientIP string, clientName string) {
-	blockPeerMap[strings.ToLower(clientIP)] = BlockPeerInfoStruct{ Timestamp: currentTimestamp, Name: clientName }
+	blockPeerMap[strings.ToLower(clientIP)] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Name: clientName}
 }
 func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[clientIP]; exist {
@@ -157,10 +163,41 @@ func GenBlockPeersStr() string {
 	}
 	return ips
 }
+func Login() bool {
+	URL := config.QBURL + "/api/v2/auth/login"
+	params := url.Values{}
+	params.Set("username", config.UserName)
+	params.Set("password", config.PassWord)
+	response, err := httpClient.Post(URL, "application/x-www-form-urlencoded", strings.NewReader(params.Encode()))
+	if err != nil {
+		Log("Login", "登录时发生了错误: "+err.Error(), false)
+		return false
+	}
+	responseBody, _ := ioutil.ReadAll(response.Body)
+	if string(responseBody) == "Ok." {
+		Log("Login", "登陆成功", false)
+	} else {
+		if string(responseBody) == "Fails." {
+			Log("login", "登录失败: 账号或密码错误", false)
+		} else {
+			Log("login", "登录失败: "+string(responseBody), false)
+		}
+		return false
+	}
+	return true
+}
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
+		Log("Fetch", "请求时发生了错误: "+err.Error(), false)
+		return nil
+	}
+	if response.StatusCode == 403 {
+		Login()
+	}
+	response, err = httpClient.Get(url)
+	if err != nil {
+		Log("Fetch", "请求时发生了错误: "+err.Error(), false)
 		return nil
 	}
 	defer response.Body.Close()
@@ -176,7 +213,15 @@ func Fetch(url string) []byte {
 func Submit(url string, postdata string) []byte {
 	response, err := httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: " + err.Error(), false)
+		Log("Submit", "请求时发生了错误: "+err.Error(), false)
+		return nil
+	}
+	if response.StatusCode == 403 {
+		Login()
+	}
+	response, err = httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
+	if err != nil {
+		Log("Submit", "请求时发生了错误: "+err.Error(), false)
 		return nil
 	}
 	defer response.Body.Close()
@@ -195,7 +240,7 @@ func FetchMaindata() *MainDataStruct {
 		Log("FetchMaindata", "发生错误", false)
 		return nil
 	}
-	
+
 	var mainDataResult MainDataStruct
 	if err := json.Unmarshal(maindataResponseBody, &mainDataResult); err != nil {
 		Log("FetchMaindata", "解析时发生了错误", false)
@@ -225,7 +270,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 }
 func SubmitBlockPeers(banIPsStr string) {
 	banIPsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPsStr + "\"}")
-	banResponseBody := Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPsStr)
+	banResponseBody := Submit(config.QBURL+"/api/v2/app/setPreferences", "json="+banIPsStr)
 	if banResponseBody == nil {
 		Log("SubmitBlockPeers", "发生错误", false)
 	}
@@ -233,7 +278,7 @@ func SubmitBlockPeers(banIPsStr string) {
 func Task() {
 	cleanCount := 0
 	for clientIP, clientInfo := range blockPeerMap {
-		if clientInfo.Timestamp + 86400 < currentTimestamp {
+		if clientInfo.Timestamp+86400 < currentTimestamp {
 			cleanCount++
 			delete(blockPeerMap, clientIP)
 		}
@@ -282,6 +327,11 @@ func Task() {
 }
 func main() {
 	LoadConfig()
+	if !Login() {
+		fmt.Println("按任意键退出")
+		fmt.Scanln()
+		return
+	}
 	SubmitBlockPeers("")
 	Log("Main", "程序已启动", true)
 	for range time.Tick(2 * time.Second) {
