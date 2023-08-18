@@ -39,8 +39,8 @@ type ConfigStruct struct {
 	Timeout   int
 	LogToFile bool
 	QBURL     string
-	UserName  string
-	PassWord  string
+	Username  string
+	Password  string
 	BlockList []string
 }
 
@@ -53,16 +53,24 @@ var httpClient = http.Client{
 	Timeout: 30 * time.Second,
 	Jar:     cookieJar,
 }
-var config = ConfigStruct{Debug: false, Timeout: 30, LogToFile: true, QBURL: "http://127.0.0.1:990", UserName: "admin", PassWord: "adminadmin", BlockList: []string{}}
+var config = ConfigStruct {
+	Debug:     false,
+	Timeout:   30,
+	LogToFile: true,
+	QBURL:     "http://127.0.0.1:990",
+	Username:  "",
+	Password:  "",
+	BlockList: []string {},
+}
 var configFilename = "config.json"
 var configLastMod int64 = 0
 var logFile *os.File
 
-func Log(module string, str string, logToFile bool, args ...interface{}) {
+func Log(module string, str string, logToFile bool, args ...interface {}) {
 	if !config.Debug && strings.HasPrefix(module, "Debug") {
 		return
 	}
-	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
+	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
 	if logToFile && config.LogToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", "无法写入日志", false)
@@ -83,7 +91,7 @@ func ReloadLog() {
 		todayStr = tmpTodayStr
 		logFile.Close()
 
-		tLogFile, err := os.OpenFile("logs/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		tLogFile, err := os.OpenFile("logs/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			tLogFile.Close()
 			tLogFile = nil
@@ -95,7 +103,7 @@ func ReloadLog() {
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
-		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: "+err.Error(), false)
+		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: " + err.Error(), false)
 		return false
 	}
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
@@ -107,7 +115,7 @@ func LoadConfig() bool {
 	}
 	configFile, err := ioutil.ReadFile(configFilename)
 	if err != nil {
-		Log("LoadConfig", "读取配置文件时发生了错误: "+err.Error(), false)
+		Log("LoadConfig", "读取配置文件时发生了错误: " + err.Error(), false)
 		return false
 	}
 	configLastMod = tmpConfigLastMod
@@ -145,7 +153,7 @@ func CheckPrivateIP(ip string) bool {
 	return ipParsed.IsPrivate()
 }
 func AddBlockPeer(clientIP string, clientName string) {
-	blockPeerMap[strings.ToLower(clientIP)] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Name: clientName}
+	blockPeerMap[strings.ToLower(clientIP)] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Name: clientName }
 }
 func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[clientIP]; exist {
@@ -164,23 +172,26 @@ func GenBlockPeersStr() string {
 	return ips
 }
 func Login() bool {
+	if config.Username == "" {
+		return true
+	}
 	URL := config.QBURL + "/api/v2/auth/login"
-	params := url.Values{}
-	params.Set("username", config.UserName)
-	params.Set("password", config.PassWord)
+	params := url.Values {}
+	params.Set("username", config.Username)
+	params.Set("password", config.Password)
 	response, err := httpClient.Post(URL, "application/x-www-form-urlencoded", strings.NewReader(params.Encode()))
 	if err != nil {
-		Log("Login", "登录时发生了错误: "+err.Error(), false)
+		Log("Login", "登录时发生了错误: " + err.Error(), true)
 		return false
 	}
 	responseBody, _ := ioutil.ReadAll(response.Body)
 	if string(responseBody) == "Ok." {
-		Log("Login", "登陆成功", false)
+		Log("Login", "登录成功", true)
 	} else {
 		if string(responseBody) == "Fails." {
-			Log("login", "登录失败: 账号或密码错误", false)
+			Log("Login", "登录失败: 账号或密码错误", true)
 		} else {
-			Log("login", "登录失败: "+string(responseBody), false)
+			Log("Login", "登录失败: " + string(responseBody), true)
 		}
 		return false
 	}
@@ -189,15 +200,16 @@ func Login() bool {
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: "+err.Error(), false)
+		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
 		return nil
 	}
-	if response.StatusCode == 403 {
-		Login()
+	if response.StatusCode == 403 && !Login() {
+		Log("Fetch", "请求时发生了错误: 认证失败", false)
+		return nil
 	}
 	response, err = httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: "+err.Error(), false)
+		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
 		return nil
 	}
 	defer response.Body.Close()
@@ -213,15 +225,16 @@ func Fetch(url string) []byte {
 func Submit(url string, postdata string) []byte {
 	response, err := httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: "+err.Error(), false)
+		Log("Submit", "请求时发生了错误: " + err.Error(), false)
 		return nil
 	}
-	if response.StatusCode == 403 {
-		Login()
+	if response.StatusCode == 403 && !Login() {
+		Log("Submit", "请求时发生了错误: 认证失败", false)
+		return nil
 	}
 	response, err = httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: "+err.Error(), false)
+		Log("Submit", "请求时发生了错误: " + err.Error(), false)
 		return nil
 	}
 	defer response.Body.Close()
@@ -270,7 +283,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 }
 func SubmitBlockPeers(banIPsStr string) {
 	banIPsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPsStr + "\"}")
-	banResponseBody := Submit(config.QBURL+"/api/v2/app/setPreferences", "json="+banIPsStr)
+	banResponseBody := Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPsStr)
 	if banResponseBody == nil {
 		Log("SubmitBlockPeers", "发生错误", false)
 	}
@@ -278,7 +291,7 @@ func SubmitBlockPeers(banIPsStr string) {
 func Task() {
 	cleanCount := 0
 	for clientIP, clientInfo := range blockPeerMap {
-		if clientInfo.Timestamp+86400 < currentTimestamp {
+		if clientInfo.Timestamp + 86400 < currentTimestamp {
 			cleanCount++
 			delete(blockPeerMap, clientIP)
 		}
@@ -328,8 +341,7 @@ func Task() {
 func main() {
 	LoadConfig()
 	if !Login() {
-		fmt.Println("按任意键退出")
-		fmt.Scanln()
+		Log("Main", "认证失败", true)
 		return
 	}
 	SubmitBlockPeers("")
