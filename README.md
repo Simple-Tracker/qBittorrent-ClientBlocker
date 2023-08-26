@@ -7,4 +7,6 @@
 
 ~~暂不支持客户端认证, 请打开 "对本地主机上的客户端跳过身份验证".~~
 
+![Preview](Preview.png)
+
 部分参考 https://github.com/jinliming2/qbittorrent-ban-xunlei.
