@@ -46,6 +46,7 @@ type ConfigStruct struct {
 
 var todayStr = ""
 var currentTimestamp int64 = 0
+var lastCleanTimestamp int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
@@ -85,7 +86,7 @@ func GetDateTime(withTime bool) string {
 	}
 	return time.Now().Format(formatStr)
 }
-func ReloadLog() {
+func LoadLog() {
 	tmpTodayStr := GetDateTime(false)
 	if todayStr != tmpTodayStr {
 		todayStr = tmpTodayStr
@@ -95,7 +96,7 @@ func ReloadLog() {
 		if err != nil {
 			tLogFile.Close()
 			tLogFile = nil
-			Log("ReloadLog", "无法访问日志", false)
+			Log("LoadLog", "无法访问日志", false)
 		}
 		logFile = tLogFile
 	}
@@ -122,7 +123,7 @@ func LoadConfig() bool {
 	json.Unmarshal(configFile, &config)
 	if config.LogToFile {
 		os.Mkdir("logs", os.ModePerm)
-		ReloadLog()
+		LoadLog()
 	}
 	Log("LoadConfig", "读取配置文件成功", true)
 	if config.Timeout != 30 {
@@ -290,14 +291,17 @@ func SubmitBlockPeers(banIPsStr string) {
 }
 func Task() {
 	cleanCount := 0
-	for clientIP, clientInfo := range blockPeerMap {
-		if clientInfo.Timestamp + 86400 < currentTimestamp {
-			cleanCount++
-			delete(blockPeerMap, clientIP)
+	if lastCleanTimestamp + 3600 < currentTimestamp {
+		for clientIP, clientInfo := range blockPeerMap {
+			if clientInfo.Timestamp + 86400 < currentTimestamp {
+				cleanCount++
+				delete(blockPeerMap, clientIP)
+			}
 		}
-	}
-	if cleanCount != 0 {
-		Log("Task", "已清理过期客户端: %d 个", true, cleanCount)
+		if cleanCount != 0 {
+			lastCleanTimestamp = currentTimestamp
+			Log("Task", "已清理过期客户端: %d 个", true, cleanCount)
+		}
 	}
 
 	metadata := FetchMaindata()
