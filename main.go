@@ -176,27 +176,25 @@ func Login() bool {
 	if config.Username == "" {
 		return true
 	}
-	URL := config.QBURL + "/api/v2/auth/login"
-	params := url.Values {}
-	params.Set("username", config.Username)
-	params.Set("password", config.Password)
-	response, err := httpClient.Post(URL, "application/x-www-form-urlencoded", strings.NewReader(params.Encode()))
-	if err != nil {
-		Log("Login", "登录时发生了错误: " + err.Error(), true)
+	loginParams := url.Values {}
+	loginParams.Set("username", config.Username)
+	loginParams.Set("password", config.Password)
+	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
+	if loginResponseBody == nil {
+		Log("Login", "登录时发生了错误", true)
 		return false
 	}
-	responseBody, _ := ioutil.ReadAll(response.Body)
-	if string(responseBody) == "Ok." {
+
+	loginResponseBodyStr := strings.TrimSpace(string(loginResponseBody))
+	if loginResponseBodyStr == "Ok." {
 		Log("Login", "登录成功", true)
+		return true
+	} else if loginResponseBodyStr == "Fails." {
+		Log("Login", "登录失败: 账号或密码错误", true)
 	} else {
-		if string(responseBody) == "Fails." {
-			Log("Login", "登录失败: 账号或密码错误", true)
-		} else {
-			Log("Login", "登录失败: " + string(responseBody), true)
-		}
-		return false
+		Log("Login", "登录失败: " + loginResponseBodyStr, true)
 	}
-	return true
+	return false
 }
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
