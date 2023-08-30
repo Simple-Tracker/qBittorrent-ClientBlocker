@@ -341,7 +341,10 @@ func Task() {
 	}
 }
 func main() {
-	LoadConfig()
+	if !LoadConfig() {
+		Log("Main", "读取配置文件失败", true)
+		return
+	}
 	if !Login() {
 		Log("Main", "认证失败", true)
 		return
@@ -350,7 +353,8 @@ func main() {
 	Log("Main", "程序已启动", true)
 	for range time.Tick(2 * time.Second) {
 		currentTimestamp = time.Now().Unix()
-		LoadConfig()
-		Task()
+		if LoadConfig() {
+			Task()
+		}
 	}
 }
