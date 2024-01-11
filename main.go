@@ -120,7 +120,10 @@ func LoadConfig() bool {
 		return false
 	}
 	configLastMod = tmpConfigLastMod
-	json.Unmarshal(configFile, &config)
+	if err := json.Unmarshal(configFile, &config); err != nil {
+		Log("LoadConfig", "解析配置文件时发生了错误: " + err.Error(), false)
+		return false
+	}
 	if config.LogToFile {
 		os.Mkdir("logs", os.ModePerm)
 		LoadLog()
@@ -314,6 +317,9 @@ func Task() {
 			continue
 		}
 		torrentPeers := FetchTorrentPeers(infoHash)
+		if torrentPeers == nil {
+			continue
+		}
 		for _, peerInfo := range torrentPeers.Peers {
 			if peerInfo.IP == "" || peerInfo.Client == "" || CheckPrivateIP(peerInfo.IP) {
 				continue
