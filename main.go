@@ -36,6 +36,8 @@ type TorrentPeersStruct struct {
 }
 type ConfigStruct struct {
 	Debug     bool
+	Interval  int
+	SleepTime int
 	Timeout   int
 	LogToFile bool
 	QBURL     string
@@ -64,6 +66,8 @@ var httpClient = http.Client {
 }
 var config = ConfigStruct {
 	Debug:     false,
+	Interval:  2,
+	SleepTime: 100,
 	Timeout:   30,
 	LogToFile: true,
 	QBURL:     "http://127.0.0.1:990",
@@ -135,6 +139,12 @@ func LoadConfig() bool {
 	if config.LogToFile {
 		os.Mkdir("logs", os.ModePerm)
 		LoadLog()
+	}
+	if config.Interval < 1 {
+		config.Interval = 1
+	}
+	if config.Timeout < 1 {
+		config.Timeout = 1
 	}
 	Log("LoadConfig", "读取配置文件成功", true)
 	if config.Timeout != 30 {
@@ -347,6 +357,9 @@ func Task() {
 				}
 			}
 		}
+		if config.SleepTime != 0 {
+			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
+		}
 	}
 	if cleanCount != 0 || blockCount != 0 {
 		peersStr := GenBlockPeersStr()
@@ -366,7 +379,7 @@ func main() {
 	}
 	SubmitBlockPeers("")
 	Log("Main", "程序已启动", true)
-	for range time.Tick(2 * time.Second) {
+	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
 		if LoadConfig() {
 			Task()

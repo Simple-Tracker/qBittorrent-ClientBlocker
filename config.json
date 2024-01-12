@@ -1,6 +1,8 @@
 {
 	"debug": false,
-	"timeout": 30,
+	"interval": 2, // Task 间隔, 单位: 秒 (最小: 1).
+	"sleepTime": 100, // CheckHash 间隔, 单位: 毫秒 (无间隔: 0).
+	"timeout": 30,  // qBURL 请求超时, 单位: 秒 (最小: 1).
 	"logToFile": true,
 	"qBURL": "http://127.0.0.1:990",
 	"username": "",
