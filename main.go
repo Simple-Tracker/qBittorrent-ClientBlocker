@@ -50,9 +50,17 @@ var lastCleanTimestamp int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
-var httpClient = http.Client{
-	Timeout: 30 * time.Second,
-	Jar:     cookieJar,
+var httpTransport = &http.Transport {
+	DisableKeepAlives:   false,
+	ForceAttemptHTTP2:   false,
+	MaxConnsPerHost:     32,
+	MaxIdleConns:        32,
+	MaxIdleConnsPerHost: 32,
+}
+var httpClient = http.Client {
+	Timeout:   30 * time.Second,
+	Jar:       cookieJar,
+	Transport: httpTransport,
 }
 var config = ConfigStruct {
 	Debug:     false,
@@ -131,8 +139,9 @@ func LoadConfig() bool {
 	Log("LoadConfig", "读取配置文件成功", true)
 	if config.Timeout != 30 {
 		httpClient = http.Client{
-			Timeout: time.Duration(config.Timeout) * time.Second,
-			Jar:     cookieJar,
+			Timeout:   time.Duration(config.Timeout) * time.Second,
+			Jar:       cookieJar,
+			Transport: httpTransport,
 		}
 	}
 	t := reflect.TypeOf(config)
