@@ -25,6 +25,7 @@ type MainDataStruct struct {
 	Torrents   map[string]TorrentStruct `json:"torrents"`
 }
 type TorrentStruct struct {
+	NumLeechs int64
 }
 type PeerStruct struct {
 	IP     string
@@ -330,7 +331,11 @@ func Task() {
 	}
 
 	blockCount := 0
-	for infoHash, _ := range metadata.Torrents {
+	for infoHash, infoArr := range metadata.Torrents {
+		if infoArr.NumLeechs < 1 {
+			Log("Debug-Task_IgnoreHash (No Leechers)", "%s", false, infoHash)
+			continue;
+		}
 		Log("Debug-Task_CheckHash", "%s", false, infoHash)
 		if infoHash == "" {
 			continue
@@ -344,7 +349,7 @@ func Task() {
 				continue
 			}
 			if IsBlockedPeer(peerInfo.IP, true) {
-				Log("Debug-Task_IgnorePeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
+				Log("Debug-Task_IgnorePeer (Blocked)", "%s %s", false, peerInfo.IP, peerInfo.Client)
 				continue
 			}
 			Log("Debug-Task_CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
