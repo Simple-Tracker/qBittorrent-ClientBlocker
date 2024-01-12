@@ -331,21 +331,27 @@ func Task() {
 	}
 
 	blockCount := 0
+	emptyHashCount := 0
+	noLeechersCount := 0
+	badPeerInfoCount := 0
 	for infoHash, infoArr := range metadata.Torrents {
 		if infoArr.NumLeechs < 1 {
-			Log("Debug-Task_IgnoreHash (No Leechers)", "%s", false, infoHash)
+			noLeechersCount++
 			continue;
 		}
 		Log("Debug-Task_CheckHash", "%s", false, infoHash)
 		if infoHash == "" {
+			emptyHashCount++
 			continue
 		}
 		torrentPeers := FetchTorrentPeers(infoHash)
 		if torrentPeers == nil {
+			badPeerInfoCount++
 			continue
 		}
 		for _, peerInfo := range torrentPeers.Peers {
 			if peerInfo.IP == "" || peerInfo.Client == "" || CheckPrivateIP(peerInfo.IP) {
+				badPeerInfoCount++
 				continue
 			}
 			if IsBlockedPeer(peerInfo.IP, true) {
@@ -366,6 +372,9 @@ func Task() {
 			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
 		}
 	}
+	Log("Debug-Task_IgnoreEmptyHashCount", "%d", false, emptyHashCount)
+	Log("Debug-Task_IgnoreNoLeechersCount", "%d", false, noLeechersCount)
+	Log("Debug-Task_IgnoreBadPeerInfoCount", "%d", false, badPeerInfoCount)
 	if cleanCount != 0 || blockCount != 0 {
 		peersStr := GenBlockPeersStr()
 		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
