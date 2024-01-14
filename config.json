@@ -1,8 +1,11 @@
 {
 	"debug": false,
 	"interval": 2,
+	"cleanInterval": 3600,
+	"banTime": 86400,
 	"sleepTime": 100,
 	"timeout": 6,
+	"longConnection": true,
 	"logToFile": true,
 	"qBURL": "http://127.0.0.1:990",
 	"username": "",

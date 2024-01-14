@@ -36,15 +36,18 @@ type TorrentPeersStruct struct {
 	Peers      map[string]PeerStruct `json:"peers"`
 }
 type ConfigStruct struct {
-	Debug     bool
-	Interval  int
-	SleepTime int
-	Timeout   int
-	LogToFile bool
-	QBURL     string
-	Username  string
-	Password  string
-	BlockList []string
+	Debug          bool
+	Interval       int
+	CleanInterval  int
+	BanTime        int
+	SleepTime      int
+	Timeout        int
+	LongConnection bool
+	LogToFile      bool
+	QBURL          string
+	Username       string
+	Password       string
+	BlockList      []string
 }
 
 var todayStr = ""
@@ -66,15 +69,18 @@ var httpClient = http.Client {
 	Transport: httpTransport,
 }
 var config = ConfigStruct {
-	Debug:     false,
-	Interval:  2,
-	SleepTime: 100,
-	Timeout:   30,
-	LogToFile: true,
-	QBURL:     "http://127.0.0.1:990",
-	Username:  "",
-	Password:  "",
-	BlockList: []string {},
+	Debug:          false,
+	Interval:       2,
+	CleanInterval:  3600,
+	BanTime:        86400,
+	SleepTime:      100,
+	Timeout:        30,
+	LongConnection: true,
+	LogToFile:      true,
+	QBURL:          "http://127.0.0.1:990",
+	Username:       "",
+	Password:       "",
+	BlockList:      []string {},
 }
 var configFilename = "config.json"
 var configLastMod int64 = 0
@@ -147,9 +153,20 @@ func LoadConfig() bool {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
+	if config.BanTime < config.CleanInterval {
+		config.BanTime = config.CleanInterval
+	}
+	if config.BanTime < 1 {
+		config.BanTime = 1
+	}
 	Log("LoadConfig", "读取配置文件成功", true)
-	if config.Timeout != 30 {
-		httpClient = http.Client{
+	if !config.LongConnection {
+		httpClient = http.Client {
+			Timeout:   time.Duration(config.Timeout) * time.Second,
+			Jar:       cookieJar,
+		}
+	} else if config.Timeout != 30 {
+		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
 			Transport: httpTransport,
@@ -312,9 +329,9 @@ func SubmitBlockPeers(banIPsStr string) {
 }
 func Task() {
 	cleanCount := 0
-	if lastCleanTimestamp + 3600 < currentTimestamp {
+	if config.CleanInterval <= 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
 		for clientIP, clientInfo := range blockPeerMap {
-			if clientInfo.Timestamp + 86400 < currentTimestamp {
+			if clientInfo.Timestamp + int64(config.BanTime) < currentTimestamp {
 				cleanCount++
 				delete(blockPeerMap, clientIP)
 			}
