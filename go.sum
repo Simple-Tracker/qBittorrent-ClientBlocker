@@ -1,0 +1,6 @@
+github.com/lxn/win v0.0.0-20210218163916-a377121e959e h1:H+t6A/QJMbhCSEH5rAuRxh+CtW96g0Or0Fxa9IKr4uc=
+github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
+golang.design/x/hotkey v0.4.1 h1:zLP/2Pztl4WjyxURdW84GoZ5LUrr6hr69CzJFJ5U1go=
+golang.design/x/hotkey v0.4.1/go.mod h1:M8SGcwFYHnKRa83FpTFQoZvPO5vVT+kWPztFqTQKmXA=
+golang.org/x/sys v0.0.0-20201018230417-eeed37f84f13 h1:5jaG59Zhd+8ZXe8C+lgiAGqkOaZBruqrWclLkgAww34=
+golang.org/x/sys v0.0.0-20201018230417-eeed37f84f13/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
