@@ -40,14 +40,14 @@ type TorrentPeersStruct struct {
 }
 type ConfigStruct struct {
 	Debug                 bool
-	Interval              int
-	CleanInterval         int
-	BanTime               int
-	SleepTime             int
-	Timeout               int
+	Interval              uint32
+	CleanInterval         uint32
+	BanTime               uint32
+	SleepTime             uint32
+	Timeout               uint32
 	BanByProgressUploaded bool
-	BanByPUStartPrecent   int
-	BanByPUAntiErrorRatio int
+	BanByPUStartPrecent   uint32
+	BanByPUAntiErrorRatio uint32
 	LongConnection        bool
 	LogToFile             bool
 	QBURL                 string
@@ -215,7 +215,7 @@ func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 	return false
 }
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
-	if config.BanByProgressUploaded {
+	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress > 0 && clientUploaded > 0 {
 		/*
 		条件 1. 若客户端上传已大于等于 Torrnet 大小的 2%;
 		条件 2. 但 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小;
@@ -366,7 +366,7 @@ func SubmitBlockPeers(banIPsStr string) {
 }
 func Task() {
 	cleanCount := 0
-	if config.CleanInterval <= 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
+	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
 		for clientIP, clientInfo := range blockPeerMap {
 			if clientInfo.Timestamp + int64(config.BanTime) < currentTimestamp {
 				cleanCount++
