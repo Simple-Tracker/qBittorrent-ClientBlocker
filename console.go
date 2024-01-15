@@ -31,7 +31,7 @@ type TorrentStruct struct {
 type PeerStruct struct {
 	IP       string
 	Client   string
-	Progress int
+	Progress float64
 	Uploaded int64
 }
 type TorrentPeersStruct struct {
@@ -210,10 +210,10 @@ func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 	}
 	return false
 }
-func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress int, clientUploaded int64, updateTimestamp bool) bool {
+func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64, updateTimestamp bool) bool {
 	if config.BanByPU {
-		// 若 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小, 则认为 Peer 是有问题的. (e.g.: 客户端从 100GB 的 Torrent 中下载 1% 即 1GB, 防误判倍率为 5, 但客户端已经上传了 6GB, 即 1GB * 5 < 6GB)
-		if (torrentTotalSize * (int64(clientProgress) / 100) * 5) < clientUploaded {
+		// 若客户端上传已大于 Torrnet 大小的 1%, 但 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小, 则认为 Peer 是有问题的. (e.g.: 客户端从 100GB 的 Torrent 中下载 1% 即 1GB, 防误判倍率为 5, 但客户端已经上传了 6GB, 即 1GB * 5 < 6GB)
+		if float64(clientUploaded) > (float64(torrentTotalSize) * 0.02) && (float64(torrentTotalSize) * clientProgress * 5) < float64(clientUploaded) {
 			return true
 		}
 	}
