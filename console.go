@@ -26,10 +26,13 @@ type MainDataStruct struct {
 }
 type TorrentStruct struct {
 	NumLeechs int64 `json:"num_leechs"`
+	TotalSize int64 `json:"total_size"`
 }
 type PeerStruct struct {
-	IP     string
-	Client string
+	IP       string
+	Client   string
+	Progress int
+	Uploaded int64
 }
 type TorrentPeersStruct struct {
 	FullUpdate bool                  `json:"full_update"`
@@ -42,6 +45,7 @@ type ConfigStruct struct {
 	BanTime        int
 	SleepTime      int
 	Timeout        int
+	BanByPU        bool
 	LongConnection bool
 	LogToFile      bool
 	QBURL          string
@@ -75,6 +79,7 @@ var config = ConfigStruct {
 	BanTime:        86400,
 	SleepTime:      100,
 	Timeout:        30,
+	BanByPU:        false,
 	LongConnection: true,
 	LogToFile:      true,
 	QBURL:          "http://127.0.0.1:990",
@@ -202,6 +207,15 @@ func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 			blockPeer.Timestamp = currentTimestamp
 		}
 		return true
+	}
+	return false
+}
+func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress int, clientUploaded int64, updateTimestamp bool) bool {
+	if config.BanByPU {
+		// 若 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小, 则认为 Peer 是有问题的. (e.g.: 客户端从 100GB 的 Torrent 中下载 1% 即 1GB, 防误判倍率为 5, 但客户端已经上传了 6GB, 即 1GB * 5 < 6GB)
+		if (torrentTotalSize * (int64(clientProgress) / 100) * 5) < clientUploaded {
+			return true
+		}
 	}
 	return false
 }
@@ -355,17 +369,17 @@ func Task() {
 	emptyHashCount := 0
 	noLeechersCount := 0
 	badPeerInfoCount := 0
-	for infoHash, infoArr := range metadata.Torrents {
-		if infoArr.NumLeechs < 1 {
+	for torrentInfoHash, torrentInfoArr := range metadata.Torrents {
+		if torrentInfoArr.NumLeechs < 1 {
 			noLeechersCount++
 			continue;
 		}
-		Log("Debug-Task_CheckHash", "%s", false, infoHash)
-		if infoHash == "" {
+		Log("Debug-Task_CheckHash", "%s", false, torrentInfoHash)
+		if torrentInfoHash == "" {
 			emptyHashCount++
 			continue
 		}
-		torrentPeers := FetchTorrentPeers(infoHash)
+		torrentPeers := FetchTorrentPeers(torrentInfoHash)
 		if torrentPeers == nil {
 			badPeerInfoCount++
 			continue
@@ -380,10 +394,15 @@ func Task() {
 				continue
 			}
 			Log("Debug-Task_CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
+			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded, true) {
+				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %d, Uploaded: %d)", false, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded)
+				AddBlockPeer(peerInfo.IP, peerInfo.Client)
+				break
+			}
 			for _, v := range blockListCompiled {
 				if v.MatchString(peerInfo.Client) {
 					blockCount++
-					Log("Task_AddBlockPeer", "%s %s", true, peerInfo.IP, peerInfo.Client)
+					Log("Task_AddBlockPeer (Bad-Client)", "%s %s", true, peerInfo.IP, peerInfo.Client)
 					AddBlockPeer(peerInfo.IP, peerInfo.Client)
 					break
 				}
