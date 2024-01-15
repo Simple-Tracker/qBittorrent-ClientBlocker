@@ -46,6 +46,7 @@ type ConfigStruct struct {
 	SleepTime             uint32
 	Timeout               uint32
 	BanByProgressUploaded bool
+	BanByPUStartMB        uint32
 	BanByPUStartPrecent   uint32
 	BanByPUAntiErrorRatio uint32
 	LongConnection        bool
@@ -82,6 +83,7 @@ var config = ConfigStruct {
 	SleepTime:             100,
 	Timeout:               30,
 	BanByProgressUploaded: false,
+	BanByPUStartMB:        2,
 	BanByPUStartPrecent:   2,
 	BanByPUAntiErrorRatio: 5,
 	LongConnection:        true,
@@ -232,7 +234,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		*/
 		startUploaded := (float64(torrentTotalSize) * float64(config.BanByPUStartPrecent / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
-		if float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
+		if (clientUploaded / 1024 / 1024) >= config.BanByPUStartMB && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
 		}
 	}
