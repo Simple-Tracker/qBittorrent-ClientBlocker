@@ -98,7 +98,7 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
 	if logToFile && config.LogToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
-			Log("Log", "无法写入日志", false)
+			Log("Log", "写入日志时发生了错误: %s", false, err.Error())
 		}
 	}
 	fmt.Print(logStr)
@@ -120,7 +120,7 @@ func LoadLog() {
 		if err != nil {
 			tLogFile.Close()
 			tLogFile = nil
-			Log("LoadLog", "无法访问日志", false)
+			Log("LoadLog", "访问日志时发生了错误: %s", false, err.Error())
 		}
 		logFile = tLogFile
 	}
@@ -128,7 +128,7 @@ func LoadLog() {
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
-		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: " + err.Error(), false)
+		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
 		return false
 	}
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
@@ -140,12 +140,12 @@ func LoadConfig() bool {
 	}
 	configFile, err := ioutil.ReadFile(configFilename)
 	if err != nil {
-		Log("LoadConfig", "读取配置文件时发生了错误: " + err.Error(), false)
+		Log("LoadConfig", "读取配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
 	configLastMod = tmpConfigLastMod
 	if err := json.Unmarshal(configFile, &config); err != nil {
-		Log("LoadConfig", "解析配置文件时发生了错误: " + err.Error(), false)
+		Log("LoadConfig", "解析配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
 	if config.LogToFile {
@@ -253,7 +253,7 @@ func Login() bool {
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
+		Log("Fetch", "请求时发生了错误: %s", false, err.Error())
 		return nil
 	}
 	if response.StatusCode == 403 && !Login() {
@@ -266,14 +266,14 @@ func Fetch(url string) []byte {
 	}
 	response, err = httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
+		Log("Fetch", "请求时发生了错误: %s", false, err.Error())
 		return nil
 	}
 	defer response.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		Log("Fetch", "读取时发生了错误", false)
+		Log("Fetch", "读取时发生了错误: %s", false, err.Error())
 		return nil
 	}
 
@@ -282,7 +282,7 @@ func Fetch(url string) []byte {
 func Submit(url string, postdata string) []byte {
 	response, err := httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: " + err.Error(), false)
+		Log("Submit", "请求时发生了错误: %s", false, err.Error())
 		return nil
 	}
 	if response.StatusCode == 403 && !Login() {
@@ -291,7 +291,7 @@ func Submit(url string, postdata string) []byte {
 	}
 	response, err = httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: " + err.Error(), false)
+		Log("Submit", "请求时发生了错误: %s", false, err.Error())
 		return nil
 	}
 	defer response.Body.Close()
@@ -313,7 +313,7 @@ func FetchMaindata() *MainDataStruct {
 
 	var mainDataResult MainDataStruct
 	if err := json.Unmarshal(maindataResponseBody, &mainDataResult); err != nil {
-		Log("FetchMaindata", "解析时发生了错误", false)
+		Log("FetchMaindata", "解析时发生了错误: %s", false, err.Error())
 		return nil
 	}
 
@@ -330,7 +330,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 
 	var torrentPeersResult TorrentPeersStruct
 	if err := json.Unmarshal(torrentPeersResponseBody, &torrentPeersResult); err != nil {
-		Log("FetchTorrentPeers", "解析时发生了错误", false)
+		Log("FetchTorrentPeers", "解析时发生了错误: %s", false, err.Error())
 		return nil
 	}
 
