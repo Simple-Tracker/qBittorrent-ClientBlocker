@@ -443,8 +443,7 @@ func Task() {
 }
 func RunConsole() {
 	if !LoadConfig() {
-		Log("Main", "读取配置文件失败", true)
-		return
+		Log("Main", "读取配置文件失败或不完整", true)
 	}
 	if !Login() {
 		Log("Main", "认证失败", true)
