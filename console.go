@@ -52,8 +52,8 @@ type ConfigStruct struct {
 	LongConnection        bool
 	LogToFile             bool
 	QBURL                 string
-	Username              string
-	Password              string
+	QBUsername            string
+	QBPassword            string
 	BlockList             []string
 }
 
@@ -89,8 +89,8 @@ var config = ConfigStruct {
 	LongConnection:        true,
 	LogToFile:             true,
 	QBURL:                 "http://127.0.0.1:990",
-	Username:              "",
-	Password:              "",
+	QBUsername:            "",
+	QBPassword:            "",
 	BlockList:             []string {},
 }
 var configFilename = "config.json"
@@ -248,12 +248,12 @@ func GenBlockPeersStr() string {
 	return ips
 }
 func Login() bool {
-	if config.Username == "" {
+	if config.QBUsername == "" {
 		return true
 	}
 	loginParams := url.Values {}
-	loginParams.Set("username", config.Username)
-	loginParams.Set("password", config.Password)
+	loginParams.Set("QBUsername", config.QBUsername)
+	loginParams.Set("QBPassword", config.QBPassword)
 	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
 	if loginResponseBody == nil {
 		Log("Login", "登录时发生了错误", true)
