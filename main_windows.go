@@ -23,7 +23,7 @@ func RegHotKey() {
 	qBCBHotkey := hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
 	err := qBCBHotkey.Register()
 	if err != nil {
-		Log("RegHotKey", "无法注册窗口热键: %v", false, err)
+		Log("RegHotKey", "无法注册窗口热键: %v", false, err.Error())
 		return
 	}
 	Log("RegHotKey", "已注册窗口热键: CTRL+ALT+B", false)

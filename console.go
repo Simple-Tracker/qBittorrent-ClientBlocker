@@ -246,6 +246,10 @@ func Fetch(url string) []byte {
 		Log("Fetch", "请求时发生了错误: 认证失败", false)
 		return nil
 	}
+	if response.StatusCode == 404 {
+		Log("Fetch", "请求时发生了错误: 资源不存在", false)
+		return nil
+	}
 	response, err = httpClient.Get(url)
 	if err != nil {
 		Log("Fetch", "请求时发生了错误: " + err.Error(), false)
