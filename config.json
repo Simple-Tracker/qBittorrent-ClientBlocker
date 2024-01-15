@@ -5,7 +5,6 @@
 	"banTime": 86400,
 	"sleepTime": 100,
 	"timeout": 6,
-	"banByPU": false,
 	"longConnection": true,
 	"logToFile": true,
 	"qBURL": "http://127.0.0.1:990",

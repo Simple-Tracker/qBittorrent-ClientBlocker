@@ -39,19 +39,21 @@ type TorrentPeersStruct struct {
 	Peers      map[string]PeerStruct `json:"peers"`
 }
 type ConfigStruct struct {
-	Debug          bool
-	Interval       int
-	CleanInterval  int
-	BanTime        int
-	SleepTime      int
-	Timeout        int
-	BanByPU        bool
-	LongConnection bool
-	LogToFile      bool
-	QBURL          string
-	Username       string
-	Password       string
-	BlockList      []string
+	Debug                 bool
+	Interval              int
+	CleanInterval         int
+	BanTime               int
+	SleepTime             int
+	Timeout               int
+	BanByProgressUploaded bool
+	BanByPUStartPrecent   int
+	BanByPUAntiErrorRatio int
+	LongConnection        bool
+	LogToFile             bool
+	QBURL                 string
+	Username              string
+	Password              string
+	BlockList             []string
 }
 
 var todayStr = ""
@@ -73,19 +75,21 @@ var httpClient = http.Client {
 	Transport: httpTransport,
 }
 var config = ConfigStruct {
-	Debug:          false,
-	Interval:       2,
-	CleanInterval:  3600,
-	BanTime:        86400,
-	SleepTime:      100,
-	Timeout:        30,
-	BanByPU:        false,
-	LongConnection: true,
-	LogToFile:      true,
-	QBURL:          "http://127.0.0.1:990",
-	Username:       "",
-	Password:       "",
-	BlockList:      []string {},
+	Debug:                 false,
+	Interval:              2,
+	CleanInterval:         3600,
+	BanTime:               86400,
+	SleepTime:             100,
+	Timeout:               30,
+	BanByProgressUploaded: false,
+	BanByPUStartPrecent:   2,
+	BanByPUAntiErrorRatio: 5,
+	LongConnection:        true,
+	LogToFile:             true,
+	QBURL:                 "http://127.0.0.1:990",
+	Username:              "",
+	Password:              "",
+	BlockList:             []string {},
 }
 var configFilename = "config.json"
 var configLastMod int64 = 0
@@ -210,10 +214,25 @@ func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
 	}
 	return false
 }
-func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64, updateTimestamp bool) bool {
-	if config.BanByPU {
-		// 若客户端上传已大于 Torrnet 大小的 1%, 但 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小, 则认为 Peer 是有问题的. (e.g.: 客户端从 100GB 的 Torrent 中下载 1% 即 1GB, 防误判倍率为 5, 但客户端已经上传了 6GB, 即 1GB * 5 < 6GB)
-		if float64(clientUploaded) > (float64(torrentTotalSize) * 0.02) && (float64(torrentTotalSize) * clientProgress * 5) < float64(clientUploaded) {
+func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
+	if config.BanByProgressUploaded {
+		/*
+		条件 1. 若客户端上传已大于等于 Torrnet 大小的 2%;
+		条件 2. 但 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小;
+		若满足以上条件, 则认为 Peer 是有问题的.
+		e.g.:
+		若 torrentTotalSize: 100GB, clientProgress: 1% (0.01), clientUploaded: 6GB, config.BanByPUStartPrecent: 2 (0.02), config.BanByPUAntiErrorRatio: 5;
+		判断条件 1:
+		torrentTotalSize * config.BanByPUStartPrecent = 100GB * 0.02 = 2GB, clientUploaded = 6GB >= 2GB
+		满足此条件;
+		判断条件 2:
+		torrentTotalSize * clientProgress * config.BanByPUAntiErrorRatio = 100GB * 0.01 * 5 = 5GB, 5GB < clientUploaded = 6GB
+		满足此条件;
+		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
+		*/
+		startUploaded := (float64(torrentTotalSize) * float64(config.BanByPUStartPrecent / 100))
+		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
+		if float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
 		}
 	}
@@ -394,7 +413,7 @@ func Task() {
 				continue
 			}
 			Log("Debug-Task_CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
-			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded, true) {
+			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded) {
 				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %d, Uploaded: %d)", false, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded)
 				AddBlockPeer(peerInfo.IP, peerInfo.Client)
 				break
