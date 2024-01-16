@@ -23,7 +23,8 @@
 | BanByPUStartPrecent | 2% | 增强自动屏蔽/起始进度. 若客户端上传达到起始进度, 则允许屏蔽 Peer |
 | BanByPUAntiErrorRatio | 5X | 增强自动屏蔽/滞后防误判倍率. 若 Peer 报告下载进度与倍率之乘积得到之下载量 比 客户端上传量 还低, 则允许屏蔽 Peer |
 | longConnection | 启用 | 长连接. 启用可降低资源消耗 |
-| logToFile | 启用 | 记录日志到文件. 启用后可用于分析及统计用途, 但不会记录调试模式的信息 |
+| logToFile | 启用 | 记录普通日志到文件. 启用后可用于一般的分析及统计用途 |
+| logDebug | 禁用 | 记录调试日志到文件 (须先启用 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
 | qBURL | http://127.0.0.1:990 | qBittorrent Web UI 地址. 正确填入是使用客户端屏蔽器的前提条件 |
 | qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
 | qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |

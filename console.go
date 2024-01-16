@@ -51,6 +51,7 @@ type ConfigStruct struct {
 	BanByPUAntiErrorRatio uint32
 	LongConnection        bool
 	LogToFile             bool
+	LogDebug              bool
 	QBURL                 string
 	QBUsername            string
 	QBPassword            string
@@ -88,6 +89,7 @@ var config = ConfigStruct {
 	BanByPUAntiErrorRatio: 5,
 	LongConnection:        true,
 	LogToFile:             true,
+	LogDebug:              false,
 	QBURL:                 "http://127.0.0.1:990",
 	QBUsername:            "",
 	QBPassword:            "",
@@ -98,11 +100,15 @@ var configLastMod int64 = 0
 var logFile *os.File
 
 func Log(module string, str string, logToFile bool, args ...interface {}) {
-	if !config.Debug && strings.HasPrefix(module, "Debug") {
-		return
+	if strings.HasPrefix(module, "Debug") {
+		if !config.Debug {
+			return
+		} else if config.LogDebug {
+			logToFile = true
+		}
 	}
 	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
-	if logToFile && config.LogToFile && logFile != nil {
+	if config.LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", "写入日志时发生了错误: %s", false, err.Error())
 		}
@@ -157,6 +163,9 @@ func LoadConfig() bool {
 	if config.LogToFile {
 		os.Mkdir("logs", os.ModePerm)
 		LoadLog()
+	} else if logFile != nil {
+		logFile.Close()
+		logFile = nil
 	}
 	if config.Interval < 1 {
 		config.Interval = 1
@@ -274,27 +283,27 @@ func Login() bool {
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: %s", false, err.Error())
+		Log("Fetch", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
 	if response.StatusCode == 403 && !Login() {
-		Log("Fetch", "请求时发生了错误: 认证失败", false)
+		Log("Fetch", "请求时发生了错误: 认证失败", true)
 		return nil
 	}
 	if response.StatusCode == 404 {
-		Log("Fetch", "请求时发生了错误: 资源不存在", false)
+		Log("Fetch", "请求时发生了错误: 资源不存在", true)
 		return nil
 	}
 	response, err = httpClient.Get(url)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: %s", false, err.Error())
+		Log("Fetch", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
 	defer response.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		Log("Fetch", "读取时发生了错误: %s", false, err.Error())
+		Log("Fetch", "读取时发生了错误: %s", true, err.Error())
 		return nil
 	}
 
@@ -303,23 +312,23 @@ func Fetch(url string) []byte {
 func Submit(url string, postdata string) []byte {
 	response, err := httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: %s", false, err.Error())
+		Log("Submit", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
 	if response.StatusCode == 403 && !Login() {
-		Log("Submit", "请求时发生了错误: 认证失败", false)
+		Log("Submit", "请求时发生了错误: 认证失败", true)
 		return nil
 	}
 	response, err = httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
-		Log("Submit", "请求时发生了错误: %s", false, err.Error())
+		Log("Submit", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
 	defer response.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		Log("Submit", "读取时发生了错误", false)
+		Log("Submit", "读取时发生了错误", true)
 		return nil
 	}
 
@@ -328,13 +337,13 @@ func Submit(url string, postdata string) []byte {
 func FetchMaindata() *MainDataStruct {
 	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0")
 	if maindataResponseBody == nil {
-		Log("FetchMaindata", "发生错误", false)
+		Log("FetchMaindata", "发生错误", true)
 		return nil
 	}
 
 	var mainDataResult MainDataStruct
 	if err := json.Unmarshal(maindataResponseBody, &mainDataResult); err != nil {
-		Log("FetchMaindata", "解析时发生了错误: %s", false, err.Error())
+		Log("FetchMaindata", "解析时发生了错误: %s", true, err.Error())
 		return nil
 	}
 
@@ -345,13 +354,13 @@ func FetchMaindata() *MainDataStruct {
 func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash)
 	if torrentPeersResponseBody == nil {
-		Log("FetchTorrentPeers", "发生错误", false)
+		Log("FetchTorrentPeers", "发生错误", true)
 		return nil
 	}
 
 	var torrentPeersResult TorrentPeersStruct
 	if err := json.Unmarshal(torrentPeersResponseBody, &torrentPeersResult); err != nil {
-		Log("FetchTorrentPeers", "解析时发生了错误: %s", false, err.Error())
+		Log("FetchTorrentPeers", "解析时发生了错误: %s", true, err.Error())
 		return nil
 	}
 
@@ -363,7 +372,7 @@ func SubmitBlockPeers(banIPsStr string) {
 	banIPsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPsStr + "\"}")
 	banResponseBody := Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPsStr)
 	if banResponseBody == nil {
-		Log("SubmitBlockPeers", "发生错误", false)
+		Log("SubmitBlockPeers", "发生错误", true)
 	}
 }
 func Task() {
@@ -416,9 +425,10 @@ func Task() {
 			}
 			Log("Debug-Task_CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
 			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded) {
-				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %d, Uploaded: %d)", false, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded)
+				blockCount++
+				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %.2f%%, Uploaded: %d)", true, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, (peerInfo.Progress * 100), peerInfo.Uploaded)
 				AddBlockPeer(peerInfo.IP, peerInfo.Client)
-				break
+				continue
 			}
 			for _, v := range blockListCompiled {
 				if v.MatchString(peerInfo.Client) {
@@ -445,7 +455,7 @@ func Task() {
 }
 func RunConsole() {
 	if !LoadConfig() {
-		Log("Main", "读取配置文件失败或不完整", true)
+		Log("Main", "读取配置文件失败或不完整", false)
 	}
 	if !Login() {
 		Log("Main", "认证失败", true)
