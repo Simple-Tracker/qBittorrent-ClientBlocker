@@ -173,12 +173,6 @@ func LoadConfig() bool {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
-	if config.BanTime < config.CleanInterval {
-		config.BanTime = config.CleanInterval
-	}
-	if config.BanTime < 1 {
-		config.BanTime = 1
-	}
 	Log("LoadConfig", "读取配置文件成功", true)
 	if !config.LongConnection {
 		httpClient = http.Client {
