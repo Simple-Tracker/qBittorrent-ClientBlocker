@@ -3,7 +3,7 @@
 	"interval": 2,
 	"cleanInterval": 3600,
 	"banTime": 86400,
-	"sleepTime": 100,
+	"sleepTime": 20,
 	"timeout": 6,
 	"longConnection": true,
 	"logToFile": true,

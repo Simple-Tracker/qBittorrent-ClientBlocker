@@ -71,7 +71,7 @@ var httpTransport = &http.Transport {
 	MaxIdleConnsPerHost: 32,
 }
 var httpClient = http.Client {
-	Timeout:   30 * time.Second,
+	Timeout:   6 * time.Second,
 	Jar:       cookieJar,
 	Transport: httpTransport,
 }
@@ -80,10 +80,10 @@ var config = ConfigStruct {
 	Interval:              2,
 	CleanInterval:         3600,
 	BanTime:               86400,
-	SleepTime:             100,
-	Timeout:               30,
+	SleepTime:             20,
+	Timeout:               6,
 	BanByProgressUploaded: false,
-	BanByPUStartMB:        2,
+	BanByPUStartMB:        10,
 	BanByPUStartPrecent:   2,
 	BanByPUAntiErrorRatio: 5,
 	LongConnection:        true,
@@ -176,7 +176,7 @@ func LoadConfig() bool {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
 		}
-	} else if config.Timeout != 30 {
+	} else if config.Timeout != 6 {
 		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
@@ -234,7 +234,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		*/
 		startUploaded := (float64(torrentTotalSize) * float64(config.BanByPUStartPrecent / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
-		if (clientUploaded / 1024 / 1024) >= config.BanByPUStartMB && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
+		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
 		}
 	}
