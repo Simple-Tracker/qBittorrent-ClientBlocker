@@ -21,7 +21,7 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-        goversion: 1.19
+        goversion: 1.21.6
         md5sum: false
         sha256sum: false
         binary_name: "qBittorrent-ClientBlocker"
