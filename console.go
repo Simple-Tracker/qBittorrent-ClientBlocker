@@ -19,6 +19,7 @@ import (
 type BlockPeerInfoStruct struct {
 	Timestamp int64
 	Name      string
+	Port      map[int]bool
 }
 type MainDataStruct struct {
 	FullUpdate bool                     `json:"full_update"`
@@ -30,6 +31,7 @@ type TorrentStruct struct {
 }
 type PeerStruct struct {
 	IP       string
+	Port     int
 	Client   string
 	Progress float64
 	Uploaded int64
@@ -58,6 +60,7 @@ type ConfigStruct struct {
 	BlockList             []string
 }
 
+var useNewBanPeersMethod = false
 var todayStr = ""
 var currentTimestamp int64 = 0
 var lastCleanTimestamp int64 = 0
@@ -207,11 +210,28 @@ func CheckPrivateIP(ip string) bool {
 	ipParsed := net.ParseIP(ip)
 	return ipParsed.IsPrivate()
 }
-func AddBlockPeer(clientIP string, clientName string) {
-	blockPeerMap[strings.ToLower(clientIP)] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Name: clientName }
+func AddBlockPeer(clientIP string, clientPort int, clientName string) {
+	clientIP = strings.ToLower(clientIP)
+	var clientPortMap map[int]bool
+	if useNewBanPeersMethod {
+		if blockPeer, exist := blockPeerMap[clientIP]; !exist {
+			clientPortMap = make(map[int]bool)
+		} else {
+			clientPortMap = blockPeer.Port
+		}
+		clientPortMap[clientPort] = true
+	} else {
+		clientPortMap = nil
+	}
+	blockPeerMap[clientIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Name: clientName, Port: clientPortMap }
 }
-func IsBlockedPeer(clientIP string, updateTimestamp bool) bool {
+func IsBlockedPeer(clientIP string, clientPort int, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[clientIP]; exist {
+		if useNewBanPeersMethod {
+			if _, exist := blockPeer.Port[clientPort]; !exist {
+				return false
+			}
+		}
 		if updateTimestamp {
 			blockPeer.Timestamp = currentTimestamp
 		}
@@ -244,11 +264,20 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 	return false
 }
 func GenBlockPeersStr() string {
-	ips := ""
-	for k := range blockPeerMap {
-		ips += k + "\n"
+	ip_ports := ""
+	if useNewBanPeersMethod {
+		for peerIP, peerInfo := range blockPeerMap {
+			for peerPort, _ := range peerInfo.Port {
+				ip_ports += peerIP + ":" + strconv.Itoa(peerPort) + "|"
+			}
+		}
+		ip_ports = strings.TrimRight(ip_ports, "|")
+	} else {
+		for peerIP := range blockPeerMap {
+			ip_ports += peerIP + "\n"
+		}
 	}
-	return ips
+	return ip_ports
 }
 func Login() bool {
 	if config.QBUsername == "" {
@@ -362,9 +391,15 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 
 	return &torrentPeersResult
 }
-func SubmitBlockPeers(banIPsStr string) {
-	banIPsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPsStr + "\"}")
-	banResponseBody := Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPsStr)
+func SubmitBlockPeers(banIPPortsStr string) {
+	var banResponseBody []byte
+	if useNewBanPeersMethod {
+		banIPPortsStr = url.QueryEscape(banIPPortsStr)
+		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr)
+	} else {
+		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
+		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr)
+	}
 	if banResponseBody == nil {
 		Log("SubmitBlockPeers", "发生错误", true)
 	}
@@ -413,7 +448,7 @@ func Task() {
 				badPeerInfoCount++
 				continue
 			}
-			if IsBlockedPeer(peerInfo.IP, true) {
+			if IsBlockedPeer(peerInfo.IP, peerInfo.Port, true) {
 				Log("Debug-Task_IgnorePeer (Blocked)", "%s %s", false, peerInfo.IP, peerInfo.Client)
 				continue
 			}
@@ -421,14 +456,14 @@ func Task() {
 			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded) {
 				blockCount++
 				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %.2f%%, Uploaded: %d)", true, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, (peerInfo.Progress * 100), peerInfo.Uploaded)
-				AddBlockPeer(peerInfo.IP, peerInfo.Client)
+				AddBlockPeer(peerInfo.IP, peerInfo.Port, peerInfo.Client)
 				continue
 			}
 			for _, v := range blockListCompiled {
 				if v.MatchString(peerInfo.Client) {
 					blockCount++
 					Log("Task_AddBlockPeer (Bad-Client)", "%s %s", true, peerInfo.IP, peerInfo.Client)
-					AddBlockPeer(peerInfo.IP, peerInfo.Client)
+					AddBlockPeer(peerInfo.IP, peerInfo.Port, peerInfo.Client)
 					break
 				}
 			}
