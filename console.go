@@ -255,7 +255,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		满足此条件;
 		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
 		*/
-		startUploaded := (float64(torrentTotalSize) * float64(config.BanByPUStartPrecent / 100))
+		startUploaded := (float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
 		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
@@ -455,7 +455,7 @@ func Task() {
 			Log("Debug-Task_CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
 			if IsProgressNotMatchUploaded(torrentInfoArr.TotalSize, peerInfo.Progress, peerInfo.Uploaded) {
 				blockCount++
-				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %d, Progress: %.2f%%, Uploaded: %d)", true, peerInfo.IP, peerInfo.Client, torrentInfoArr.TotalSize, (peerInfo.Progress * 100), peerInfo.Uploaded)
+				Log("Task_AddBlockPeer (Bad-Progess_Uploaded)", "%s %s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerInfo.IP, peerInfo.Client, (float64(torrentInfoArr.TotalSize) / 1024 / 1024), (peerInfo.Progress * 100), (float64(peerInfo.Uploaded) / 1024 / 1024))
 				AddBlockPeer(peerInfo.IP, peerInfo.Port, peerInfo.Client)
 				continue
 			}
