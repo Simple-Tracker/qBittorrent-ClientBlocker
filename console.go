@@ -491,7 +491,7 @@ func CheckPeer(peerInfo PeerStruct, torrentInfoHash string, torrentTotalSize int
 	}
 	Log("Debug-CheckPeer", "%s %s", false, peerInfo.IP, peerInfo.Client)
 	if IsProgressNotMatchUploaded(torrentTotalSize, peerInfo.Progress, peerInfo.Uploaded) {
-		Log("CheckPeer_AddBlockPeer (Bad-Progess_Uploaded)", "%s:%d %s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerInfo.IP, peerInfo.Port, peerInfo.Client, (float64(torrentTotalSize) / 1024 / 1024), (peerInfo.Progress * 100), (float64(peerInfo.Uploaded) / 1024 / 1024))
+		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerInfo.IP, peerInfo.Port, peerInfo.Client, (float64(torrentTotalSize) / 1024 / 1024), (peerInfo.Progress * 100), (float64(peerInfo.Uploaded) / 1024 / 1024))
 		AddBlockPeer(peerInfo.IP, peerInfo.Port)
 		return 1
 	}
