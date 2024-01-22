@@ -280,7 +280,7 @@ func IsBlockedPeer(clientIP string, clientPort int, updateTimestamp bool) bool {
 	return false
 }
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
-	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress > 0 && clientUploaded > 0 {
+	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
 		/*
 		条件 1. 若客户端上传已大于等于 Torrnet 大小的 2%;
 		条件 2. 但 Peer 实际进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小;
