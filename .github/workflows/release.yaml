@@ -16,21 +16,38 @@ jobs:
           - goos: linux
             goarch: 'mips'
             pre_command: 'export GOMIPS=softfloat'
+            no_upx_compression: true
           - goos: linux
             goarch: 'mipsle'
             pre_command: 'export GOMIPS=softfloat'
+            no_upx_compression: true
           - goos: linux
             goarch: 'mips64'
             pre_command: 'export GOMIPS64=softfloat'
+            no_upx_compression: true
           - goos: linux
             goarch: 'mips64le'
             pre_command: 'export GOMIPS64=softfloat'
+            no_upx_compression: true
+          - goos: linux
+            goarch: 'riscv64'
+            no_upx_compression: true
           - goos: linux
             goarch: 'ppc64'
           - goos: linux
             goarch: 'ppc64le'
-          - goos: linux
-            goarch: 'riscv64'
+          - goos: windows
+            goarch: 'arm'
+            no_upx_compression: true
+          - goos: windows
+            goarch: 'arm64'
+            no_upx_compression: true
+          - goos: netbsd
+            no_upx_compression: true
+          - goos: openbsd
+            no_upx_compression: true
+          - goos: freebsd
+            no_upx_compression: true
           - goos: solaris
             goarch: 'amd64'
         exclude:
@@ -39,12 +56,31 @@ jobs:
           - goos: darwin
             goarch: 'arm'
     steps:
-    - uses: 'actions/checkout@v3'
-    - uses: 'wangyoucao577/go-release-action@v1'
+    - name: 'Checkout'
+      uses: 'actions/checkout@v4'
+    - name: 'Build with UPX compression'
+      uses: 'wangyoucao577/go-release-action@v1'
+      if: ${{ matrix.no_upx_compression != true }}
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
+        ldflags: '-w'
+        pre_command: ${{ matrix.pre_command }}
+        executable_compression: 'upx -v -9'
+        goversion: 1.21.6
+        md5sum: false
+        sha256sum: false
+        binary_name: 'qBittorrent-ClientBlocker'
+        extra_files: 'LICENSE README.md config.json'
+    - name: 'Build without UPX compression'
+      uses: 'wangyoucao577/go-release-action@v1'
+      if: ${{ matrix.no_upx_compression == true }}
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
+        ldflags: '-w'
         pre_command: ${{ matrix.pre_command }}
         goversion: 1.21.6
         md5sum: false
