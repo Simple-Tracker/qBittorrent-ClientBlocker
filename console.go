@@ -379,7 +379,7 @@ func Login() bool {
 	} else if loginResponseBodyStr == "Fails." {
 		Log("Login", "登录失败: 账号或密码错误", true)
 	} else {
-		Log("Login", "登录失败: " + loginResponseBodyStr, true)
+		Log("Login", "登录失败: %s", true, loginResponseBodyStr)
 	}
 	return false
 }
@@ -473,7 +473,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 }
 func SubmitBlockPeers(banIPPortsStr string) {
 	var banResponseBody []byte
-	if useNewBanPeersMethod {
+	if useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
 		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr)
 	} else {
@@ -644,6 +644,7 @@ func Task() {
 			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
 		}
 	}
+
 	currentIPBlockCount := CheckAllIP(lastIPMap)
 	ipBlockCount += currentIPBlockCount
 	blockCount += CheckAllPeer(lastPeerMap)
