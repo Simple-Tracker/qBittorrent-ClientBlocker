@@ -1,28 +1,53 @@
-name: Release-Go-Binary
+name: 'Release-Go-Binary'
 
 on:
   release:
-    types: [created]
+    types: ['created']
 
 jobs:
   Release-Go-Binary:
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-latest'
     strategy:
+      fail-fast: false
       matrix:
-        goos: [linux, windows, darwin]
-        goarch: ["386", amd64, arm64]
+        goos: [darwin, linux, windows, netbsd, openbsd, freebsd]
+        goarch: ['386', 'amd64', 'arm', 'arm64']
+        include:
+          - goos: linux
+            goarch: 'mips'
+            pre_command: 'export GOMIPS=softfloat'
+          - goos: linux
+            goarch: 'mipsle'
+            pre_command: 'export GOMIPS=softfloat'
+          - goos: linux
+            goarch: 'mips64'
+            pre_command: 'export GOMIPS64=softfloat'
+          - goos: linux
+            goarch: 'mips64le'
+            pre_command: 'export GOMIPS64=softfloat'
+          - goos: linux
+            goarch: 'ppc64'
+          - goos: linux
+            goarch: 'ppc64le'
+          - goos: linux
+            goarch: 'riscv64'
+          - goos: solaris
+            goarch: 'amd64'
         exclude:
-          - goarch: "386"
-            goos: darwin
+          - goos: darwin
+            goarch: '386'
+          - goos: darwin
+            goarch: 'arm'
     steps:
-    - uses: actions/checkout@v3
-    - uses: wangyoucao577/go-release-action@v1
+    - uses: 'actions/checkout@v3'
+    - uses: 'wangyoucao577/go-release-action@v1'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
+        pre_command: ${{ matrix.pre_command }}
         goversion: 1.21.6
         md5sum: false
         sha256sum: false
-        binary_name: "qBittorrent-ClientBlocker"
-        extra_files: LICENSE README.md config.json
+        binary_name: 'qBittorrent-ClientBlocker'
+        extra_files: 'LICENSE README.md config.json'

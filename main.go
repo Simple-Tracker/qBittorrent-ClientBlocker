@@ -1,4 +1,4 @@
-//go:build (!windows) || (windows && arm64)
+//go:build (!windows) || (windows && (arm || arm64))
 package main
 
 func main() {
