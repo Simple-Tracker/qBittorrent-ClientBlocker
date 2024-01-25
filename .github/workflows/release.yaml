@@ -68,7 +68,7 @@ jobs:
         ldflags: '-w'
         pre_command: ${{ matrix.pre_command }}
         executable_compression: 'upx -v -9'
-        goversion: 1.21.6
+        goversion: 1.20.13
         md5sum: false
         sha256sum: false
         binary_name: 'qBittorrent-ClientBlocker'
@@ -82,7 +82,7 @@ jobs:
         goarch: ${{ matrix.goarch }}
         ldflags: '-w'
         pre_command: ${{ matrix.pre_command }}
-        goversion: 1.21.6
+        goversion: 1.20.13
         md5sum: false
         sha256sum: false
         binary_name: 'qBittorrent-ClientBlocker'

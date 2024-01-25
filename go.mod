@@ -1,6 +1,6 @@
 module github.com/Simple-Tracker/qBittorrent-ClientBlocker
 
-go 1.21
+go 1.20
 
 require (
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
