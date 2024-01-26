@@ -1,19 +1,19 @@
 package main
 
 import (
-	"encoding/json"
+	"os"
 	"fmt"
-	"io/ioutil"
+	"time"
+	"regexp"
+	"reflect"
+	"strings"
+	"strconv"
 	"net"
+	"net/url"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
-	"os"
-	"reflect"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
+	"io/ioutil"
+	"encoding/json"
 )
 
 type IPInfoStruct struct {
@@ -132,6 +132,13 @@ var configFilename = "config.json"
 var configLastMod int64 = 0
 var logFile *os.File
 
+func GetDateTime(withTime bool) string {
+	formatStr := "2006-01-02"
+	if withTime {
+		formatStr += " 15:04:05"
+	}
+	return time.Now().Format(formatStr)
+}
 func Log(module string, str string, logToFile bool, args ...interface {}) {
 	if strings.HasPrefix(module, "Debug") {
 		if !config.Debug {
@@ -147,13 +154,6 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 		}
 	}
 	fmt.Print(logStr)
-}
-func GetDateTime(withTime bool) string {
-	formatStr := "2006-01-02"
-	if withTime {
-		formatStr += " 15:04:05"
-	}
-	return time.Now().Format(formatStr)
 }
 func LoadLog() {
 	tmpTodayStr := GetDateTime(false)
@@ -240,21 +240,6 @@ func CheckPrivateIP(ip string) bool {
 	ipParsed := net.ParseIP(ip)
 	return ipParsed.IsPrivate()
 }
-func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) float64 {
-	var totalUploaded int64 = 0
-	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
-			totalUploaded += torrentUploaded
-		} else {
-			totalUploaded += (torrentUploaded - lastTorrentUploaded)
-		}
-	}
-	var totalUploadedMB float64 = (float64(totalUploaded) / 1024 / 1024)
-	if totalUploadedMB > float64(config.IPUpCheckIncrementMB) {
-		return totalUploadedMB
-	}
-	return 0
-}
 func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
 	if !config.IPUploadedCheck {
 		return
@@ -295,6 +280,21 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 		}
 	}
 	return false
+}
+func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) float64 {
+	var totalUploaded int64 = 0
+	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
+		if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
+			totalUploaded += torrentUploaded
+		} else {
+			totalUploaded += (torrentUploaded - lastTorrentUploaded)
+		}
+	}
+	var totalUploadedMB float64 = (float64(totalUploaded) / 1024 / 1024)
+	if totalUploadedMB > float64(config.IPUpCheckIncrementMB) {
+		return totalUploadedMB
+	}
+	return 0
 }
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
 	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
@@ -338,50 +338,6 @@ func IsProgressNotMatchUploaded_Relative(peerInfo PeerInfoStruct, lastPeerInfo P
 		}
 	}
 	return 0
-}
-func GenBlockPeersStr() string {
-	ip_ports := ""
-	if useNewBanPeersMethod {
-		for peerIP, peerInfo := range blockPeerMap {
-			if peerInfo.Port == -1 {
-				for port := 0; port <= 65535; port++ {
-					ip_ports += peerIP + ":" + strconv.Itoa(port) + "|"
-				}
-			} else {
-				ip_ports += peerIP + ":" + strconv.Itoa(peerInfo.Port) + "|"
-			}
-		}
-		ip_ports = strings.TrimRight(ip_ports, "|")
-	} else {
-		for peerIP := range blockPeerMap {
-			ip_ports += peerIP + "\n"
-		}
-	}
-	return ip_ports
-}
-func Login() bool {
-	if config.QBUsername == "" {
-		return true
-	}
-	loginParams := url.Values {}
-	loginParams.Set("username", config.QBUsername)
-	loginParams.Set("password", config.QBPassword)
-	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
-	if loginResponseBody == nil {
-		Log("Login", "登录时发生了错误", true)
-		return false
-	}
-
-	loginResponseBodyStr := strings.TrimSpace(string(loginResponseBody))
-	if loginResponseBodyStr == "Ok." {
-		Log("Login", "登录成功", true)
-		return true
-	} else if loginResponseBodyStr == "Fails." {
-		Log("Login", "登录失败: 账号或密码错误", true)
-	} else {
-		Log("Login", "登录失败: %s", true, loginResponseBodyStr)
-	}
-	return false
 }
 func Fetch(url string) []byte {
 	response, err := httpClient.Get(url)
@@ -437,6 +393,30 @@ func Submit(url string, postdata string) []byte {
 
 	return responseBody
 }
+func Login() bool {
+	if config.QBUsername == "" {
+		return true
+	}
+	loginParams := url.Values {}
+	loginParams.Set("username", config.QBUsername)
+	loginParams.Set("password", config.QBPassword)
+	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
+	if loginResponseBody == nil {
+		Log("Login", "登录时发生了错误", true)
+		return false
+	}
+
+	loginResponseBodyStr := strings.TrimSpace(string(loginResponseBody))
+	if loginResponseBodyStr == "Ok." {
+		Log("Login", "登录成功", true)
+		return true
+	} else if loginResponseBodyStr == "Fails." {
+		Log("Login", "登录失败: 账号或密码错误", true)
+	} else {
+		Log("Login", "登录失败: %s", true, loginResponseBodyStr)
+	}
+	return false
+}
 func FetchMaindata() *MainDataStruct {
 	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0")
 	if maindataResponseBody == nil {
@@ -471,7 +451,27 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 
 	return &torrentPeersResult
 }
-func SubmitBlockPeers(banIPPortsStr string) {
+func GenBlockPeersStr() string {
+	ip_ports := ""
+	if useNewBanPeersMethod {
+		for peerIP, peerInfo := range blockPeerMap {
+			if peerInfo.Port == -1 {
+				for port := 0; port <= 65535; port++ {
+					ip_ports += peerIP + ":" + strconv.Itoa(port) + "|"
+				}
+			} else {
+				ip_ports += peerIP + ":" + strconv.Itoa(peerInfo.Port) + "|"
+			}
+		}
+		ip_ports = strings.TrimRight(ip_ports, "|")
+	} else {
+		for peerIP := range blockPeerMap {
+			ip_ports += peerIP + "\n"
+		}
+	}
+	return ip_ports
+}
+func SubmitBlockPeer(banIPPortsStr string) {
 	var banResponseBody []byte
 	if useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
@@ -481,7 +481,7 @@ func SubmitBlockPeers(banIPPortsStr string) {
 		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr)
 	}
 	if banResponseBody == nil {
-		Log("SubmitBlockPeers", "发生错误", true)
+		Log("SubmitBlockPeer", "发生错误", true)
 	}
 }
 func ClearBlockPeer() int {
@@ -656,7 +656,7 @@ func Task() {
 	if cleanCount != 0 || blockCount != 0 {
 		peersStr := GenBlockPeersStr()
 		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
-		SubmitBlockPeers(peersStr)
+		SubmitBlockPeer(peersStr)
 		Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个, 此次封禁 IP 地址: %d 个, 当前封禁 IP 地址: %d 个", true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
 	}
 }
@@ -668,7 +668,7 @@ func RunConsole() {
 		Log("Main", "认证失败", true)
 		return
 	}
-	SubmitBlockPeers("")
+	SubmitBlockPeer("")
 	Log("Main", "程序已启动", true)
 	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
