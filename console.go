@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"fmt"
+	"flag"
 	"time"
 	"regexp"
 	"reflect"
@@ -128,7 +129,7 @@ var config = ConfigStruct {
 	QBPassword:                    "",
 	BlockList:                     []string {},
 }
-var configFilename = "config.json"
+var configFilename string
 var configLastMod int64 = 0
 var logFile *os.File
 
@@ -661,6 +662,8 @@ func Task() {
 	}
 }
 func RunConsole() {
+	flag.StringVar(&configFilename, "c", "config.json", "Config file location")
+	flag.Parse()
 	if !LoadConfig() {
 		Log("Main", "读取配置文件失败或不完整", false)
 	}
