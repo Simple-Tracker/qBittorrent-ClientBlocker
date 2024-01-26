@@ -11,6 +11,11 @@
 
 Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker
 
+## 参数 Flag
+| 设置项 | 默认值 | 配置说明 |
+| ----- | ----- | ----- |
+| -c | config.json | 配置文件路径 |
+
 ## 配置 Config
 Docker 版本通过与 Config 相同名称的环境变量配置.
 | 设置项 | 默认值 | 配置说明 |
