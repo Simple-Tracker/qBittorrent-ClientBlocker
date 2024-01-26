@@ -364,8 +364,8 @@ func Login() bool {
 		return true
 	}
 	loginParams := url.Values {}
-	loginParams.Set("QBUsername", config.QBUsername)
-	loginParams.Set("QBPassword", config.QBPassword)
+	loginParams.Set("username", config.QBUsername)
+	loginParams.Set("password", config.QBPassword)
 	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
 	if loginResponseBody == nil {
 		Log("Login", "登录时发生了错误", true)
