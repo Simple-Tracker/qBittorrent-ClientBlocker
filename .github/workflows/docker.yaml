@@ -1,0 +1,30 @@
+name: 'Release-Docker-Image'
+
+on:
+  release:
+    types: ['created']
+
+jobs:
+  Release-Docker-Image:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+      - name: 'Login to Docker Hub'
+        uses: 'docker/login-action@v3'
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 'Extract metadata (tags, labels) for Docker'
+        id: 'meta'
+        uses: 'docker/metadata-action@v5'
+        with:
+          images: 'simpletracker/qbittorrent-clientblocker'
+      - name: 'Build and Push Docker image'
+        uses: 'docker/build-push-action@v5'
+        with:
+          context: '.'
+          file: './Dockerfile'
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
