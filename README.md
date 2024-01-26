@@ -9,6 +9,8 @@
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
 * 在 Windows (除 ARM64) 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
 
+Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker
+
 ## 配置 Config
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
