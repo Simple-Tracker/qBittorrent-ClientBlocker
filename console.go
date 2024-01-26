@@ -665,18 +665,18 @@ func Task() {
 	}
 }
 func RunConsole() {
-	flag.StringVar(&configFilename, "c", "config.json", "Config file location")
+	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
 	flag.Parse()
 	if !LoadConfig() {
-		Log("Main", "读取配置文件失败或不完整", false)
+		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
 	if !Login() {
-		Log("Main", "认证失败", true)
+		Log("RunConsole", "认证失败", true)
 		return
 	}
 	SubmitBlockPeer("")
-	Log("Main", "程序已启动", true)
+	Log("RunConsole", "程序已启动", true)
 	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
 		if LoadConfig() {
