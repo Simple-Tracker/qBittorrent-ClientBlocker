@@ -7,11 +7,12 @@
 * 支持自定义 Ban List (不区分大小写, 支持正则表达式)
 * 支持客户端认证 (Thanks [@ravizhan](https://github.com/ravizhan))
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
-* 在 Windows (除 ARM64) 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
+* 在 Windows (除 ARM 及 ARM64) 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
 
 Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker
 
 ## 配置 Config
+Docker 版本通过与 Config 相同名称的环境变量配置.
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
