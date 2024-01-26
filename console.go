@@ -194,6 +194,11 @@ func LoadConfig() bool {
 		Log("LoadConfig", "解析配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
+	Log("LoadConfig", "读取配置文件成功", true)
+	InitConfig()
+	return true
+}
+func InitConfig() {
 	if config.LogToFile {
 		os.Mkdir("logs", os.ModePerm)
 		LoadLog()
@@ -207,7 +212,6 @@ func LoadConfig() bool {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
-	Log("LoadConfig", "读取配置文件成功", true)
 	if !config.LongConnection {
 		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
@@ -235,7 +239,6 @@ func LoadConfig() bool {
 		}
 		blockListCompiled[k] = reg
 	}
-	return true
 }
 func CheckPrivateIP(ip string) bool {
 	ipParsed := net.ParseIP(ip)
@@ -666,6 +669,7 @@ func RunConsole() {
 	flag.Parse()
 	if !LoadConfig() {
 		Log("Main", "读取配置文件失败或不完整", false)
+		InitConfig()
 	}
 	if !Login() {
 		Log("Main", "认证失败", true)
