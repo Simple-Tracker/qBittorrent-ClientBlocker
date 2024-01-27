@@ -6,6 +6,7 @@
 	"sleepTime": 20,
 	"timeout": 6,
 	"longConnection": true,
+	"logPath": "logs",
 	"logToFile": true,
 	"logDebug": false,
 	"qBURL": "",

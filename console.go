@@ -70,6 +70,7 @@ type ConfigStruct struct {
 	BanByRelativePUStartPrecent   uint32
 	BanByRelativePUAntiErrorRatio uint32
 	LongConnection                bool
+	LogPath                       string
 	LogToFile                     bool
 	LogDebug                      bool
 	QBURL                         string
@@ -79,6 +80,7 @@ type ConfigStruct struct {
 }
 
 var useNewBanPeersMethod = false
+var lastLogPath = ""
 var lastQBURL = ""
 var todayStr = ""
 var currentTimestamp int64 = 0
@@ -123,6 +125,7 @@ var config = ConfigStruct {
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 5,
 	LongConnection:                true,
+	LogPath:                       "logs",
 	LogToFile:                     true,
 	LogDebug:                      false,
 	QBURL:                         "",
@@ -161,20 +164,43 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 	}
 	fmt.Print(logStr)
 }
-func LoadLog() {
-	tmpTodayStr := GetDateTime(false)
-	if todayStr != tmpTodayStr {
-		todayStr = tmpTodayStr
-		logFile.Close()
-
-		tLogFile, err := os.OpenFile("logs/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			tLogFile.Close()
-			tLogFile = nil
-			Log("LoadLog", "访问日志时发生了错误: %s", false, err.Error())
-		}
-		logFile = tLogFile
+func LoadLog() bool {
+	if config.LogPath == "" {
+		return false
 	}
+	if err := os.Mkdir(config.LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
+		Log("LoadLog", "创建日志目录时发生了错误: %s", false, err.Error())
+		return false
+	}
+
+	tmpTodayStr := GetDateTime(false)
+	newDay := (todayStr != tmpTodayStr)
+	newLogPath := (lastLogPath != config.LogPath)
+
+	if !newDay && !newLogPath {
+		return true
+	}
+	if newDay {
+		todayStr = tmpTodayStr
+	}
+	if newLogPath {
+		if lastLogPath != "" {
+			Log("LoadLog", "发现日志目录更改, 正在进行热重载 (%s)", false, config.LogPath)
+		}
+		lastLogPath = config.LogPath
+	}
+
+	tLogFile, err := os.OpenFile(config.LogPath + "/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		tLogFile.Close()
+		tLogFile = nil
+		Log("LoadLog", "访问日志时发生了错误: %s", false, err.Error())
+		return false
+	}
+	logFile.Close()
+	logFile = tLogFile
+
+	return true
 }
 func GetQBConfigPath() string {
 	var qBConfigFilename string
@@ -317,7 +343,6 @@ func LoadConfig(firstLoad bool) bool {
 }
 func InitConfig() {
 	if config.LogToFile {
-		os.Mkdir("logs", os.ModePerm)
 		LoadLog()
 	} else if logFile != nil {
 		logFile.Close()
