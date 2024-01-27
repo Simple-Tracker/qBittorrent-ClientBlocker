@@ -1,20 +1,20 @@
 package main
 
 import (
-	"os"
-	"fmt"
+	"encoding/json"
 	"flag"
-	"time"
-	"regexp"
-	"reflect"
-	"strings"
-	"strconv"
+	"fmt"
+	"io/ioutil"
 	"net"
-	"net/url"
 	"net/http"
 	"net/http/cookiejar"
-	"io/ioutil"
-	"encoding/json"
+	"net/url"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type IPInfoStruct struct {
@@ -71,6 +71,7 @@ type ConfigStruct struct {
 	BanByRelativePUAntiErrorRatio uint32
 	LongConnection                bool
 	LogToFile                     bool
+	LogPath                       string
 	LogDebug                      bool
 	QBURL                         string
 	QBUsername                    string
@@ -89,19 +90,19 @@ var peerMap = make(map[string]PeerInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
-var httpTransport = &http.Transport {
+var httpTransport = &http.Transport{
 	DisableKeepAlives:   false,
 	ForceAttemptHTTP2:   false,
 	MaxConnsPerHost:     32,
 	MaxIdleConns:        32,
 	MaxIdleConnsPerHost: 32,
 }
-var httpClient = http.Client {
+var httpClient = http.Client{
 	Timeout:   6 * time.Second,
 	Jar:       cookieJar,
 	Transport: httpTransport,
 }
-var config = ConfigStruct {
+var config = ConfigStruct{
 	Debug:                         false,
 	Interval:                      2,
 	CleanInterval:                 3600,
@@ -125,9 +126,10 @@ var config = ConfigStruct {
 	LogToFile:                     true,
 	LogDebug:                      false,
 	QBURL:                         "http://127.0.0.1:990",
+	LogPath:                       "logs",
 	QBUsername:                    "",
 	QBPassword:                    "",
-	BlockList:                     []string {},
+	BlockList:                     []string{},
 }
 var configFilename string
 var configLastMod int64 = 0
@@ -141,7 +143,7 @@ func GetDateTime(withTime bool) string {
 	}
 	return time.Now().Format(formatStr)
 }
-func Log(module string, str string, logToFile bool, args ...interface {}) {
+func Log(module string, str string, logToFile bool, args ...interface{}) {
 	if strings.HasPrefix(module, "Debug") {
 		if !config.Debug {
 			return
@@ -149,7 +151,7 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 			logToFile = true
 		}
 	}
-	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
+	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
 	if config.LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", "写入日志时发生了错误: %s", false, err.Error())
@@ -163,7 +165,8 @@ func LoadLog() {
 		todayStr = tmpTodayStr
 		logFile.Close()
 
-		tLogFile, err := os.OpenFile("logs/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		tLogFile, err := os.OpenFile(config.LogPath+"/"+todayStr+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		fmt.Println(tLogFile.Name())
 		if err != nil {
 			tLogFile.Close()
 			tLogFile = nil
@@ -175,25 +178,25 @@ func LoadLog() {
 func GetQBConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
-    if err != nil {
+	if err != nil {
 		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
 		return ""
-    }
-    if !strings.Contains(userHomeDir, "\\") {
-    	qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
-    } else {
-	    userConfigDir, err := os.UserConfigDir()
-	    if err != nil {
+	}
+	if !strings.Contains(userHomeDir, "\\") {
+		qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
+	} else {
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil {
 			Log("Debug-GetQBConfigPath", "获取 User Config 目录时发生了错误: %s", false, err.Error())
 			return ""
-	    }
-    	qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
-    }
-    return qBConfigFilename
+		}
+		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
+	}
+	return qBConfigFilename
 }
 func LoadConfigFromQB(qBConfigFilename string) bool {
-    if qBConfigFilename == "" {
-    	qBConfigFilename = GetQBConfigPath()
+	if qBConfigFilename == "" {
+		qBConfigFilename = GetQBConfigPath()
 	}
 	qBConfigFileStat, err := os.Stat(qBConfigFilename)
 	if err != nil {
@@ -215,7 +218,8 @@ func LoadConfigFromQB(qBConfigFilename string) bool {
 	qBConfigLastMod = tmpQBConfigLastMod
 	// 有待解析并找到 Web UI 相关信息.
 	Log("LoadConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
-	return true
+
+	return string(qBConfigFile) != "" // true
 }
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
@@ -259,12 +263,12 @@ func InitConfig() {
 		config.Timeout = 1
 	}
 	if !config.LongConnection {
-		httpClient = http.Client {
-			Timeout:   time.Duration(config.Timeout) * time.Second,
-			Jar:       cookieJar,
+		httpClient = http.Client{
+			Timeout: time.Duration(config.Timeout) * time.Second,
+			Jar:     cookieJar,
 		}
 	} else if config.Timeout != 6 {
-		httpClient = http.Client {
+		httpClient = http.Client{
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
 			Transport: httpTransport,
@@ -301,7 +305,7 @@ func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
 		clientTorrentUploadedMap = info.TorrentUploaded
 	}
 	clientTorrentUploadedMap[torrentInfoHash] = clientUploaded
-	ipMap[clientIP] = IPInfoStruct { TorrentUploaded: clientTorrentUploadedMap }
+	ipMap[clientIP] = IPInfoStruct{TorrentUploaded: clientTorrentUploadedMap}
 }
 func AddPeerInfo(peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
 	if config.MaxIPPortCount <= 0 && !config.BanByRelativeProgressUploaded {
@@ -315,10 +319,10 @@ func AddPeerInfo(peerIP string, peerPort int, peerProgress float64, peerUploaded
 		peerPortMap = peer.Port
 	}
 	peerPortMap[peerPort] = true
-	peerMap[peerIP] = PeerInfoStruct { Timestamp: currentTimestamp, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
+	peerMap[peerIP] = PeerInfoStruct{Timestamp: currentTimestamp, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded}
 }
 func AddBlockPeer(peerIP string, peerPort int) {
-	blockPeerMap[strings.ToLower(peerIP)] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: peerPort }
+	blockPeerMap[strings.ToLower(peerIP)] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Port: peerPort}
 }
 func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[peerIP]; exist {
@@ -349,22 +353,22 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) float64 {
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
 	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
 		/*
-		条件 1. 若客户端对 Peer 上传已大于等于 Torrnet 大小的 2%;
-		条件 2. 但 Peer 报告进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小;
-		若满足以上条件, 则认为 Peer 是有问题的.
-		e.g.:
-		若 torrentTotalSize: 100GB, clientProgress: 1% (0.01), clientUploaded: 6GB, config.BanByPUStartPrecent: 2 (0.02), config.BanByPUAntiErrorRatio: 5;
-		判断条件 1:
-		torrentTotalSize * config.BanByPUStartPrecent = 100GB * 0.02 = 2GB, clientUploaded = 6GB >= 2GB
-		满足此条件;
-		判断条件 2:
-		torrentTotalSize * clientProgress * config.BanByPUAntiErrorRatio = 100GB * 0.01 * 5 = 5GB, 5GB < clientUploaded = 6GB
-		满足此条件;
-		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
+			条件 1. 若客户端对 Peer 上传已大于等于 Torrnet 大小的 2%;
+			条件 2. 但 Peer 报告进度乘以下载量再乘以一定防误判倍率, 却比客户端上传量还小;
+			若满足以上条件, 则认为 Peer 是有问题的.
+			e.g.:
+			若 torrentTotalSize: 100GB, clientProgress: 1% (0.01), clientUploaded: 6GB, config.BanByPUStartPrecent: 2 (0.02), config.BanByPUAntiErrorRatio: 5;
+			判断条件 1:
+			torrentTotalSize * config.BanByPUStartPrecent = 100GB * 0.02 = 2GB, clientUploaded = 6GB >= 2GB
+			满足此条件;
+			判断条件 2:
+			torrentTotalSize * clientProgress * config.BanByPUAntiErrorRatio = 100GB * 0.01 * 5 = 5GB, 5GB < clientUploaded = 6GB
+			满足此条件;
+			则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
 		*/
 		startUploaded := (float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
-		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
-		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
+		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
+		if (clientUploaded/1024/1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded*float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
 		}
 	}
@@ -372,7 +376,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 }
 func IsProgressNotMatchUploaded_Relative(peerInfo PeerInfoStruct, lastPeerInfo PeerInfoStruct) float64 {
 	// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
-	var relativeUploaded float64 = (float64(peerInfo.Uploaded - lastPeerInfo.Uploaded) / 1024 / 1024)
+	var relativeUploaded float64 = (float64(peerInfo.Uploaded-lastPeerInfo.Uploaded) / 1024 / 1024)
 	if peerInfo.Uploaded > 0 && relativeUploaded > float64(config.BanByRelativePUStartMB) {
 		relativeUploadedPrecent := (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded))
 		// 若相对上传百分比大于起始百分比, 则继续判断.
@@ -447,10 +451,10 @@ func Login() bool {
 	if config.QBUsername == "" {
 		return true
 	}
-	loginParams := url.Values {}
+	loginParams := url.Values{}
 	loginParams.Set("username", config.QBUsername)
 	loginParams.Set("password", config.QBPassword)
-	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
+	loginResponseBody := Submit(config.QBURL+"/api/v2/auth/login", loginParams.Encode())
 	if loginResponseBody == nil {
 		Log("Login", "登录时发生了错误", true)
 		return false
@@ -525,10 +529,10 @@ func SubmitBlockPeer(banIPPortsStr string) {
 	var banResponseBody []byte
 	if useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr)
+		banResponseBody = Submit(config.QBURL+"/api/v2/transfer/banPeers", banIPPortsStr)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr)
+		banResponseBody = Submit(config.QBURL+"/api/v2/app/setPreferences", "json="+banIPPortsStr)
 	}
 	if banResponseBody == nil {
 		Log("SubmitBlockPeer", "发生错误", true)
@@ -536,7 +540,7 @@ func SubmitBlockPeer(banIPPortsStr string) {
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
-	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
+	if config.CleanInterval == 0 || (lastCleanTimestamp+int64(config.CleanInterval) < currentTimestamp) {
 		for clientIP, clientInfo := range blockPeerMap {
 			if currentTimestamp > (clientInfo.Timestamp + int64(config.BanTime)) {
 				cleanCount++
@@ -596,7 +600,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	return 0
 }
 func CheckAllIP(lastIPMap map[string]IPInfoStruct) int {
-	if config.IPUploadedCheck && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
+	if config.IPUploadedCheck && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(config.IPUpCheckInterval)) {
 		blockCount := 0
 		for ip, ipInfo := range ipMap {
 			if IsBlockedPeer(ip, -1, false) {
@@ -617,9 +621,9 @@ func CheckAllIP(lastIPMap map[string]IPInfoStruct) int {
 	return 0
 }
 func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
-	if (config.MaxIPPortCount > 0 || config.BanByRelativeProgressUploaded) && len(lastPeerMap) > 0 && currentTimestamp > (lastPeerCleanTimestamp + int64(config.PeerMapCleanInterval)) {
+	if (config.MaxIPPortCount > 0 || config.BanByRelativeProgressUploaded) && len(lastPeerMap) > 0 && currentTimestamp > (lastPeerCleanTimestamp+int64(config.PeerMapCleanInterval)) {
 		blockCount := 0
-		peerMapLoop:
+	peerMapLoop:
 		for ip, peerInfo := range peerMap {
 			if IsBlockedPeer(ip, -1, false) || IsBlockedPeer(ip, -2, false) {
 				continue
@@ -671,24 +675,24 @@ func Task() {
 	for torrentInfoHash, torrentInfo := range metadata.Torrents {
 		torrentStatus, torrentPeers := CheckTorrent(torrentInfoHash, torrentInfo)
 		switch torrentStatus {
-			case -1:
-				emptyHashCount++
-			case -2:
-				noLeechersCount++
-			case -3:
-				badTorrentInfoCount++
-			case 0:
-				for _, peers := range torrentPeers.Peers {
-					peerStatus := CheckPeer(peers, torrentInfoHash, torrentInfo.TotalSize)
-					switch peerStatus {
-						case 3:
-							ipBlockCount++
-						case 1:
-							blockCount++
-						case -1:
-							badPeersCount++
-					}
+		case -1:
+			emptyHashCount++
+		case -2:
+			noLeechersCount++
+		case -3:
+			badTorrentInfoCount++
+		case 0:
+			for _, peers := range torrentPeers.Peers {
+				peerStatus := CheckPeer(peers, torrentInfoHash, torrentInfo.TotalSize)
+				switch peerStatus {
+				case 3:
+					ipBlockCount++
+				case 1:
+					blockCount++
+				case -1:
+					badPeersCount++
 				}
+			}
 		}
 		if config.SleepTime != 0 {
 			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
@@ -715,7 +719,6 @@ func RunConsole() {
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.Parse()
 	LoadConfigFromQB("")
-	return
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()

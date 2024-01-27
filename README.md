@@ -42,6 +42,7 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 将自动转换
 | banByRelativePUAntiErrorRatio | 5 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 | longConnection | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
+| logPath | logs | 表示日志保存的位置,默认为当前的 logs 目录下
 | logDebug | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
 | qBURL | http://127.0.0.1:990 | qBittorrent Web UI 地址. 正确填入是使用客户端屏蔽器的前提条件 |
 | qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
