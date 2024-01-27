@@ -337,7 +337,7 @@ func IsProgressNotMatchUploaded_Relative(peerInfo PeerInfoStruct, lastPeerInfo P
 				peerReportProgress = (lastPeerInfo.Progress / peerInfo.Progress)
 			}
 			if relativeUploadedPrecent > (peerReportProgress * float64(config.BanByRelativePUAntiErrorRatio)) {
-				return relativeUploaded;
+				return relativeUploaded
 			}
 		}
 	}
