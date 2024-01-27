@@ -15,9 +15,10 @@ Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | -c | config.json | 配置文件路径 |
+| -debug | false | 调试模式. 加载配置文件前生效 |
 
 ## 配置 Config
-Docker 版本通过与 Config 相同名称的环境变量配置.
+Docker 版本通过与 Config 相同名称的环境变量配置, 将自动转换环境变量为配置文件.
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |

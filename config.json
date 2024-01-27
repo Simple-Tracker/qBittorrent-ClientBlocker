@@ -1,5 +1,4 @@
 {
-	"debug": false,
 	"interval": 2,
 	"cleanInterval": 3600,
 	"banTime": 86400,

@@ -131,6 +131,7 @@ var config = ConfigStruct {
 }
 var configFilename string
 var configLastMod int64 = 0
+var qBConfigLastMod int64 = 0
 var logFile *os.File
 
 func GetDateTime(withTime bool) string {
@@ -170,6 +171,51 @@ func LoadLog() {
 		}
 		logFile = tLogFile
 	}
+}
+func GetQBConfigPath() string {
+	var qBConfigFilename string
+	userHomeDir, err := os.UserHomeDir()
+    if err != nil {
+		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
+		return ""
+    }
+    if !strings.Contains(userHomeDir, "\\") {
+    	qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
+    } else {
+	    userConfigDir, err := os.UserConfigDir()
+	    if err != nil {
+			Log("Debug-GetQBConfigPath", "获取 User Config 目录时发生了错误: %s", false, err.Error())
+			return ""
+	    }
+    	qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
+    }
+    return qBConfigFilename
+}
+func LoadConfigFromQB(qBConfigFilename string) bool {
+    if qBConfigFilename == "" {
+    	qBConfigFilename = GetQBConfigPath()
+	}
+	qBConfigFileStat, err := os.Stat(qBConfigFilename)
+	if err != nil {
+		Log("Debug-LoadConfigFromQB", "读取 qBittorrent 配置文件元数据时发生了错误: %s", false, err.Error())
+		return false
+	}
+	tmpQBConfigLastMod := qBConfigFileStat.ModTime().Unix()
+	if tmpQBConfigLastMod <= qBConfigLastMod {
+		return true
+	}
+	if qBConfigLastMod != 0 {
+		Log("Debug-LoadConfigFromQB", "发现 qBittorrent 配置文件更改, 正在进行热重载", false)
+	}
+	qBConfigFile, err := ioutil.ReadFile(qBConfigFilename)
+	if err != nil {
+		Log("LoadConfigFromQB", "读取 qBittorrent 配置文件时发生了错误: %s", false, err.Error())
+		return false
+	}
+	qBConfigLastMod = tmpQBConfigLastMod
+	// 有待解析并找到 Web UI 相关信息.
+	Log("LoadConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
+	return true
 }
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
@@ -666,7 +712,10 @@ func Task() {
 }
 func RunConsole() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
+	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.Parse()
+	LoadConfigFromQB("")
+	return
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
