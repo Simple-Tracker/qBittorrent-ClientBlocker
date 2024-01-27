@@ -9,4 +9,4 @@ RUN apk update && apk add --no-cache jq
 RUN go mod download
 RUN go build -o qBittorrent-ClientBlocker
 
-CMD ((jq -n 'env|to_entries[]|{(.key): (.value|tonumber? // .)}' | jq -s add) > /app/config.json) && /app/qBittorrent-ClientBlocker
+CMD ((jq -n 'env|to_entries[]|{(.key): (.value|tonumber? // .|(if . == "true" then true elif . == "false" then false else . end))}' | jq -s add) > /app/config.json) && /app/qBittorrent-ClientBlocker
