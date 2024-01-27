@@ -273,7 +273,7 @@ func InitConfig() {
 		blockListCompiled[k] = reg
 	}
 }
-func RegisterFlag() {
+func RegFlag() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.Parse()

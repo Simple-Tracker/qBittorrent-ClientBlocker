@@ -313,7 +313,7 @@ func Task() {
 	}
 }
 func RunConsole() {
-	RegisterFlag()
+	RegFlag()
 	if !LoadConfig(true) {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
