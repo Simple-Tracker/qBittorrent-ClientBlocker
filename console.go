@@ -9,12 +9,12 @@ import (
 	"reflect"
 	"strings"
 	"strconv"
+	"io/ioutil"
+	"encoding/json"
 	"net"
 	"net/url"
 	"net/http"
 	"net/http/cookiejar"
-	"io/ioutil"
-	"encoding/json"
 )
 
 type IPInfoStruct struct {
@@ -79,6 +79,7 @@ type ConfigStruct struct {
 }
 
 var useNewBanPeersMethod = false
+var lastQBURL = ""
 var todayStr = ""
 var currentTimestamp int64 = 0
 var lastCleanTimestamp int64 = 0
@@ -124,15 +125,19 @@ var config = ConfigStruct {
 	LongConnection:                true,
 	LogToFile:                     true,
 	LogDebug:                      false,
-	QBURL:                         "http://127.0.0.1:990",
+	QBURL:                         "",
 	QBUsername:                    "",
 	QBPassword:                    "",
 	BlockList:                     []string {},
 }
 var configFilename string
 var configLastMod int64 = 0
+var qBConfigLastMod int64 = 0
 var logFile *os.File
 
+func StrTrim(str string) string {
+	return strings.Trim(str, " \n\r")
+}
 func GetDateTime(withTime bool) string {
 	formatStr := "2006-01-02"
 	if withTime {
@@ -171,7 +176,119 @@ func LoadLog() {
 		logFile = tLogFile
 	}
 }
-func LoadConfig() bool {
+func GetQBConfigPath() string {
+	var qBConfigFilename string
+	userHomeDir, err := os.UserHomeDir()
+    if err != nil {
+		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
+		return ""
+    }
+    if !strings.Contains(userHomeDir, "\\") {
+    	qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
+    } else {
+	    userConfigDir, err := os.UserConfigDir()
+	    if err != nil {
+			Log("Debug-GetQBConfigPath", "获取 User Config 目录时发生了错误: %s", false, err.Error())
+			return ""
+	    }
+    	qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
+    }
+    return qBConfigFilename
+}
+func GetConfigFromQB() []byte {
+    qBConfigFilename := GetQBConfigPath()
+    if qBConfigFilename == "" {
+    	return []byte {}
+    }
+	qBConfigFileStat, err := os.Stat(qBConfigFilename)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
+			Log("GetConfigFromQB", "读取 qBittorrent 配置文件元数据时发生了错误: %s", false, err.Error())
+		}
+		return []byte {}
+	}
+	Log("GetConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
+	tmpQBConfigLastMod := qBConfigFileStat.ModTime().Unix()
+	if tmpQBConfigLastMod <= qBConfigLastMod {
+		return []byte {}
+	}
+	if qBConfigLastMod != 0 {
+		Log("Debug-GetConfigFromQB", "发现 qBittorrent 配置文件更改, 正在进行热重载", false)
+	}
+	qBConfigFile, err := ioutil.ReadFile(qBConfigFilename)
+	if err != nil {
+		Log("GetConfigFromQB", "读取 qBittorrent 配置文件时发生了错误: %s", false, err.Error())
+		return []byte {}
+	}
+	qBConfigLastMod = tmpQBConfigLastMod
+	return qBConfigFile
+}
+func SetQBURLFromQB() bool {
+	qBConfigFile := GetConfigFromQB()
+	if len(qBConfigFile) < 1 {
+		return false
+	}
+	qBConfigFileArr := strings.Split(string(qBConfigFile), "\n")
+	qBWebUIEnabled := false
+	qBHTTPSEnabled := false
+	qBAddress := ""
+	qBPort := 8080
+	qBUsername := ""
+	for _, qbConfigLine := range qBConfigFileArr {
+		qbConfigLineArr := strings.SplitN(qbConfigLine, "=", 2)
+		if len(qbConfigLineArr) < 2 || qbConfigLineArr[1] == "" {
+			continue
+		}
+		qbConfigLineArr[0] = strings.ToLower(StrTrim(qbConfigLineArr[0]))
+		qbConfigLineArr[1] = strings.ToLower(StrTrim(qbConfigLineArr[1]))
+		switch qbConfigLineArr[0] {
+			case "webui\\enabled":
+				if qbConfigLineArr[1] == "true" {
+					qBWebUIEnabled = true
+				}
+			case "webui\\https\\enabled":
+				if qbConfigLineArr[1] == "true" {
+					qBHTTPSEnabled = true
+				}
+			case "webui\\address":
+				if qbConfigLineArr[1] == "*" {
+					qBAddress = "127.0.0.1"
+				} else {
+					qBAddress = qbConfigLineArr[1]
+				}
+			case "webui\\port":
+				tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
+				if err == nil {
+					qBPort = tmpQBPort
+				}
+			case "webui\\username":
+				qBUsername = qbConfigLineArr[1]
+		}
+	}
+	if !qBWebUIEnabled || qBAddress == "" {
+		Log("Debug-SetQBURLFromQB", "放弃读取 qBittorrent 配置文件 (qBWebUIEnabled: %t, qBAddress: %s)", false, qBWebUIEnabled, qBAddress)
+		return false
+	}
+	if qBHTTPSEnabled {
+		config.QBURL = "https://" + qBAddress
+		if qBPort != 443 {
+			config.QBURL += ":" + strconv.Itoa(qBPort)
+		}
+	} else {
+		config.QBURL = "http://" + qBAddress
+		if qBPort != 80 {
+			config.QBURL += ":" + strconv.Itoa(qBPort)
+		}
+	}
+	config.QBUsername = qBUsername
+	Log("SetQBURLFromQB", "读取 qBittorrent 配置文件成功 (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)", false, qBWebUIEnabled, config.QBURL, config.QBUsername)
+	return true
+}
+func LoadConfig(firstLoad bool) bool {
+	if !firstLoad && config.QBURL == "" {
+		SetQBURLFromQB()
+	}
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
 		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
@@ -317,7 +434,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
 		*/
 		startUploaded := (float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
-		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress);
+		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
 		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
 			return true
 		}
@@ -410,7 +527,7 @@ func Login() bool {
 		return false
 	}
 
-	loginResponseBodyStr := strings.TrimSpace(string(loginResponseBody))
+	loginResponseBodyStr := StrTrim(string(loginResponseBody))
 	if loginResponseBodyStr == "Ok." {
 		Log("Login", "登录成功", true)
 		return true
@@ -607,6 +724,15 @@ func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
 	return 0
 }
 func Task() {
+	if config.QBURL == "" {
+		Log("Task", "检测到 config.QBURL 为空", false)
+		return
+	}
+	if lastQBURL != config.QBURL {
+		SubmitBlockPeer("")
+		lastQBURL = config.QBURL
+	}
+
 	metadata := FetchMaindata()
 	if metadata == nil {
 		return
@@ -666,8 +792,9 @@ func Task() {
 }
 func RunConsole() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
+	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.Parse()
-	if !LoadConfig() {
+	if !LoadConfig(true) {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
@@ -675,12 +802,12 @@ func RunConsole() {
 		Log("RunConsole", "认证失败", true)
 		return
 	}
-	SubmitBlockPeer("")
 	Log("RunConsole", "程序已启动", true)
 	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
-		if LoadConfig() {
-			Task()
+		if !LoadConfig(false) {
+			InitConfig()
 		}
+		Task()
 	}
 }
