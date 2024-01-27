@@ -250,7 +250,7 @@ func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
 }
 func Task() {
 	if config.QBURL == "" {
-		Log("Task", "检测到 QBURL 为空, 可能是未配置且未能自动读取到 qBittorrent 配置文件", false)
+		Log("Task", "检测到 QBURL 为空, 可能是未配置且未能自动读取 qBittorrent 配置文件", false)
 		return
 	}
 	if lastQBURL != config.QBURL {

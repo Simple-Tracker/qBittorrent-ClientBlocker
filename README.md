@@ -1,5 +1,5 @@
 # qBittorrent-ClientBlocker
-一款适用于 qBittorrent 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端.
+一款适用于 qBittorrent 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端, 支持 qBittorrent 4.1 及以上版本.
 
 * 全平台支持
 * 支持记录日志及热重载配置
@@ -9,7 +9,41 @@
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
 * 在 Windows (除 ARM 及 ARM64) 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
 
-Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker
+## 使用 Usage
+### 版本选择及下载
+#### 常规版本
+| 操作系统 | 处理器架构 | 处理器位数 | 下载版本 | 说明 |
+| ----- | ----- | ----- | ----- | ----- |
+| macOS | ARM64 | 64 位 | darwin-arm64 | 常见于 Apple M 系列 |
+| macOS | AMD64 | 64 位 | darwin-amd64 | 常见于 Intel 系列 |
+| Windows | AMD64 | 64 位 | windows-amd64 | 常见于大部分现代 PC |
+| Windows | i386 | 32 位 | windows-386 | 少见于部分老式 PC |
+| Windows | ARM64 | 64 位 | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件 |
+| Windows | ARMv6 | 32 位 | windows-arm | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等 |
+| Linux | AMD64 | 64 位 | linux-arm64 | 常见于大部分 NAS 及服务器 |
+| Linux | i386 | 32 位 | linux-386 | 少见于部分老式 NAS 及服务器 |
+| Linux | ARM64 | 64 位 | linux-arm64 | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
+| Linux | ARMv6 | 32 位 | linux-arm | 少见于部分老式服务器及开发板 |
+
+其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.  
+
+对于 Windows, 可修改 qBittorrent 快捷方式并放入自己的客户端屏蔽器路径, 以使 qBittorrent 与客户端屏蔽器同时运行: C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start qbittorrent.exe"  
+对于 Linux, 提供一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd) 用于开机自启及后台运行.  
+
+下载地址: [GitHub Release](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases)  
+
+#### Docker 版本
+下载地址: [Docker Hub](https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker)
+
+### 设置配置及使用
+为使客户端屏蔽器正确运行, 需要启用 qBittorrent Web UI 功能, 且必须在配置中设置相关信息 (qBURL/qBUsername/qBPassword), 因此设置配置是必不可少的一环. 在下方查看设置项列表可能有助于帮助设置.  
+(若使用 2.5 及以上版本, 只需确保启用 qBittorrent Web UI 功能及 "跳过本机客户端认证" (及密码为空或手动设置密码), 客户端屏蔽器就会自动读取 qBittorrent 配置文件, 并提取相应信息)  
+
+常规版本: 在下载完成后将压缩包解压至合适位置, 修改随附的配置文件 config.json 来进行设置.  
+Docker 版本: 在 Pull 完 Docker 镜像后, 修改与 Config 相同名称的环境变量来进行设置.  
+在设置完成 qBURL 后, 若未启用 qBittorrent 内 "跳过本机客户端认证", 还应一并填入 qBUsername 和 qBUserPassword.  
+
+若无其它高级需求, 则客户端就已顺利配置完成, 只需运行程序或容器, 并观察信息输出是否正常即可.  
 
 ## 参数 Flag
 | 设置项 | 默认值 | 配置说明 |
@@ -18,7 +52,7 @@ Docker 版本 (未经测试): https://hub.docker.com/r/simpletracker/qbittorrent
 | -debug | false | 调试模式. 加载配置文件前生效 |
 
 ## 配置 Config
-Docker 版本通过与 Config 相同名称的环境变量配置, 将自动转换环境变量为配置文件.
+Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转换环境变量为配置文件实现, 但不支持设置 blockList.
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
@@ -43,8 +77,8 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 将自动转换
 | longConnection | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
 | logDebug | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
-| qBURL | http://127.0.0.1:990 | qBittorrent Web UI 地址. 正确填入是使用客户端屏蔽器的前提条件 |
-| qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
+| qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则需正确填入. |
+| qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空, 可自动读取 qBittorrent 配置文件并设置 |
 | qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
 
