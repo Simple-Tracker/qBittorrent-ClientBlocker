@@ -317,10 +317,7 @@ func Task() {
 }
 func RunConsole() {
 	RegFlag()
-	if !LoadConfig(true) {
-		Log("RunConsole", "读取配置文件失败或不完整", false)
-		InitConfig()
-	}
+	LoadInitConfig()
 	if !Login() {
 		Log("RunConsole", "认证失败", true)
 		return
@@ -328,9 +325,7 @@ func RunConsole() {
 	Log("RunConsole", "程序已启动", true)
 	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
-		if !LoadConfig(false) {
-			InitConfig()
-		}
+		LoadInitConfig()
 		Task()
 	}
 }

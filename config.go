@@ -202,8 +202,8 @@ func SetQBURLFromQB() bool {
 	Log("SetQBURLFromQB", "读取 qBittorrent 配置文件成功 (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)", false, qBWebUIEnabled, config.QBURL, config.QBUsername)
 	return true
 }
-func LoadConfig(firstLoad bool) bool {
-	if !firstLoad && config.QBURL == "" {
+func LoadConfig() bool {
+	if config.QBURL == "" {
 		SetQBURLFromQB()
 	}
 	configFileStat, err := os.Stat(configFilename)
@@ -271,6 +271,12 @@ func InitConfig() {
 			continue
 		}
 		blockListCompiled[k] = reg
+	}
+}
+func LoadInitConfig() {
+	if !LoadConfig() {
+		Log("RunConsole", "读取配置文件失败或不完整", false)
+		InitConfig()
 	}
 }
 func RegFlag() {
