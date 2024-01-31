@@ -178,6 +178,9 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		return 1
 	}
 	for _, v := range blockListCompiled {
+		if v == nil {
+			continue
+		}
 		if v.MatchString(peer.Client) {
 			Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s", true, peer.IP, peer.Port, peer.Client)
 			AddBlockPeer(peer.IP, peer.Port)
