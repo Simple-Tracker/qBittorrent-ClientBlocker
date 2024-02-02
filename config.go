@@ -38,6 +38,7 @@ type ConfigStruct struct {
 	LogPath                       string
 	LogToFile                     bool
 	LogDebug                      bool
+	LogDebug_CheckTorrent         bool
 	QBURL                         string
 	QBUsername                    string
 	QBPassword                    string
@@ -87,6 +88,7 @@ var config = ConfigStruct {
 	LogPath:                       "logs",
 	LogToFile:                     true,
 	LogDebug:                      false,
+	LogDebug_CheckTorrent:         false,
 	QBURL:                         "",
 	QBUsername:                    "",
 	QBPassword:                    "",

@@ -144,7 +144,9 @@ func ClearBlockPeer() int {
 	return cleanCount
 }
 func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *TorrentPeersStruct) {
-	Log("Debug-CheckTorrent", "%s", false, torrentInfoHash)
+	if config.LogDebug_CheckTorrent {
+		Log("Debug-CheckTorrent", "%s", false, torrentInfoHash)
+	}
 	if torrentInfoHash == "" {
 		return -1, nil
 	}
