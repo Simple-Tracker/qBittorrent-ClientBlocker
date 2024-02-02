@@ -1,4 +1,4 @@
-//go:build (windows && !arm && !arm64)
+//go:build windows
 package main
 
 import (

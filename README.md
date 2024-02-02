@@ -7,7 +7,7 @@
 * 支持自定义 Ban List (不区分大小写, 支持正则表达式)
 * 支持客户端认证 (Thanks [@ravizhan](https://github.com/ravizhan))
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
-* 在 Windows (除 ARM 及 ARM64) 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
+* 在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
 
 ## 使用 Usage
 ### 版本选择及下载
