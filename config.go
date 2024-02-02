@@ -48,6 +48,7 @@ type ConfigStruct struct {
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
 
+var lastQBURL = ""
 var configFilename string
 var configLastMod int64 = 0
 var qBConfigLastMod int64 = 0
@@ -127,11 +128,11 @@ func GetConfigFromQB() []byte {
 		}
 		return []byte {}
 	}
-	Log("GetConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
 	tmpQBConfigLastMod := qBConfigFileStat.ModTime().Unix()
-	if tmpQBConfigLastMod <= qBConfigLastMod {
+	if config.QBURL != "" && tmpQBConfigLastMod <= qBConfigLastMod {
 		return []byte {}
 	}
+	Log("GetConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
 	if qBConfigLastMod != 0 {
 		Log("Debug-GetConfigFromQB", "发现 qBittorrent 配置文件更改, 正在进行热重载", false)
 	}
@@ -205,9 +206,6 @@ func SetQBURLFromQB() bool {
 	return true
 }
 func LoadConfig() bool {
-	if config.QBURL == "" {
-		SetQBURLFromQB()
-	}
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
 		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
@@ -276,10 +274,16 @@ func InitConfig() {
 	}
 }
 func LoadInitConfig() {
+	lastQBURL = config.QBURL
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
+	SetQBURLFromQB()
+	if config.QBURL != "" && lastQBURL != config.QBURL {
+		SubmitBlockPeer("")
+	}
+	lastQBURL = config.QBURL
 }
 func RegFlag() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")

@@ -83,7 +83,9 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 		return nil
 	}
 
-	Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
+	if config.LogDebug_CheckTorrent {
+		Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
+	}
 
 	return &torrentPeersResult
 }

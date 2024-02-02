@@ -20,7 +20,6 @@ type BlockPeerInfoStruct struct {
 }
 
 var currentTimestamp int64 = 0
-var lastQBURL = ""
 var lastCleanTimestamp int64 = 0
 var lastIPCleanTimestamp int64 = 0
 var lastPeerCleanTimestamp int64 = 0
@@ -255,11 +254,7 @@ func Task() {
 		Log("Task", "检测到 QBURL 为空, 可能是未配置且未能自动读取 qBittorrent 配置文件", false)
 		return
 	}
-	if lastQBURL != config.QBURL {
-		SubmitBlockPeer("")
-		lastQBURL = config.QBURL
-	}
-
+	
 	metadata := FetchMaindata()
 	if metadata == nil {
 		return
