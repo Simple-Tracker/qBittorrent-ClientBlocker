@@ -95,12 +95,14 @@ func GenBlockPeersStr() string {
 	ip_ports := ""
 	if useNewBanPeersMethod {
 		for peerIP, peerInfo := range blockPeerMap {
-			if peerInfo.Port == -1 {
+			if _, exist := peerInfo.Port[-1]; exist {
 				for port := 0; port <= 65535; port++ {
 					ip_ports += peerIP + ":" + strconv.Itoa(port) + "|"
 				}
-			} else {
-				ip_ports += peerIP + ":" + strconv.Itoa(peerInfo.Port) + "|"
+				continue
+			}
+			for port, _ := range peerInfo.Port {
+				ip_ports += peerIP + ":" + strconv.Itoa(port) + "|"
 			}
 		}
 		ip_ports = strings.TrimRight(ip_ports, "|")

@@ -16,7 +16,7 @@ type PeerInfoStruct struct {
 }
 type BlockPeerInfoStruct struct {
 	Timestamp int64
-	Port      int
+	Port      map[int]bool
 }
 
 var currentTimestamp int64 = 0
@@ -55,17 +55,32 @@ func AddPeerInfo(peerIP string, peerPort int, peerProgress float64, peerUploaded
 	peerMap[peerIP] = PeerInfoStruct { Timestamp: currentTimestamp, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
 }
 func AddBlockPeer(peerIP string, peerPort int) {
-	blockPeerMap[strings.ToLower(peerIP)] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: peerPort }
+	peerIP = strings.ToLower(peerIP)
+	var blockPeerPortMap map[int]bool
+	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
+		blockPeerPortMap = make(map[int]bool)
+	} else {
+		blockPeerPortMap = blockPeer.Port
+	}
+	blockPeerPortMap[peerPort] = true
+	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap }
 }
 func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[peerIP]; exist {
-		if !useNewBanPeersMethod || blockPeer.Port < 0 || blockPeer.Port == peerPort {
-			if updateTimestamp {
-				blockPeer.Timestamp = currentTimestamp
+		if useNewBanPeersMethod {
+			if _, exist1 := blockPeer.Port[-1]; !exist1 {
+				if _, exist2 := blockPeer.Port[peerPort]; !exist2 {
+					return false
+				}
 			}
-			return true
 		}
+		if updateTimestamp {
+			blockPeer.Timestamp = currentTimestamp
+		}
+
+		return true
 	}
+	
 	return false
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) float64 {
@@ -167,9 +182,11 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	}
 	if IsBlockedPeer(peer.IP, peer.Port, true) {
 		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s", false, peer.IP, peer.Port, peer.Client)
+		/*
 		if peer.Port == -2 {
 			return 4
 		}
+		*/
 		if peer.Port == -1 {
 			return 3
 		}
@@ -220,7 +237,7 @@ func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
 		blockCount := 0
 		peerMapLoop:
 		for ip, peerInfo := range peerMap {
-			if IsBlockedPeer(ip, -1, false) || IsBlockedPeer(ip, -2, false) {
+			if IsBlockedPeer(ip, -1, false) || len(peerInfo.Port) <= 0 {
 				continue
 			}
 			for port := range peerInfo.Port {
@@ -238,9 +255,11 @@ func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
 			if config.BanByRelativeProgressUploaded {
 				if lastPeerInfo, exist := lastPeerMap[ip]; exist {
 					if uploadDuring := IsProgressNotMatchUploaded_Relative(peerInfo, lastPeerInfo); uploadDuring > 0 {
-						Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -2, uploadDuring)
 						blockCount++
-						AddBlockPeer(ip, -2)
+						for port := range peerInfo.Port {
+							Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, port, uploadDuring)
+							AddBlockPeer(ip, port)
+						}
 					}
 				}
 			}
