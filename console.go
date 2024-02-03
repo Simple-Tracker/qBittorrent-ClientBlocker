@@ -314,7 +314,7 @@ func Task() {
 }
 func RunConsole() {
 	RegFlag()
-	LoadInitConfig()
+	LoadInitConfig(true)
 	if !Login() {
 		Log("RunConsole", "认证失败", true)
 		return
@@ -322,7 +322,7 @@ func RunConsole() {
 	Log("RunConsole", "程序已启动", true)
 	for range time.Tick(time.Duration(config.Interval) * time.Second) {
 		currentTimestamp = time.Now().Unix()
-		LoadInitConfig()
+		LoadInitConfig(false)
 		Task()
 	}
 }

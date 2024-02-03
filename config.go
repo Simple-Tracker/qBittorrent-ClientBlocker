@@ -273,13 +273,15 @@ func InitConfig() {
 		blockListCompiled[k] = reg
 	}
 }
-func LoadInitConfig() {
+func LoadInitConfig(firstLoad bool) {
 	lastQBURL = config.QBURL
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
-	SetQBURLFromQB()
+	if (firstLoad) {
+		SetQBURLFromQB()
+	}
 	if config.QBURL != "" && lastQBURL != config.QBURL {
 		SubmitBlockPeer("")
 	}
