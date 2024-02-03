@@ -7,7 +7,7 @@
 * 支持自定义 Ban List (不区分大小写, 支持正则表达式)
 * 支持客户端认证 (Thanks [@ravizhan](https://github.com/ravizhan))
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
-* 在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口
+* 在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
 ## 使用 Usage
 ### 版本选择及下载
