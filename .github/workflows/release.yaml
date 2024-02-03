@@ -1,6 +1,8 @@
 name: 'Release-Go-Binary'
 
 on:
+  workflow_dispatch:
+  pull_request:
   release:
     types: ['created']
 
@@ -59,24 +61,21 @@ jobs:
     - name: 'Checkout'
       uses: 'actions/checkout@v4'
     - name: Set build info
-      if: ${{ github.event_name != 'release' }}
       id: build_info
       run: |
-        echo "ENV_TAG_NAME=$(basename ${GITHUB_REF})" >> "${GITHUB_ENV}"
-        echo "tag_name=${ENV_TAG_NAME}" >> "${GITHUB_OUTPUT}"
-        echo "nightly_build_version=${ENV_TAG_NAME}_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
+        echo "tag_name=$(basename ${GITHUB_REF})" >> "${GITHUB_OUTPUT}"
+        echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
     - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
-      uses: 'wangyoucao577/go-release-action@v1'
-      if: ${{ matrix.no_upx_compression != true }}
+      id: build
+      uses: 'Simple-Tracker/go-release-action@master'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        upload: ${{ github.event_name == 'release' && true || false }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
         ldflags: "-w -X main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_name || steps.build_info.outputs.nightly_build_version }}"
-        pre_command: ${{ matrix.no_upx_compression == true && '' || matrix.pre_command }}
-        ldflags: '-w'
         pre_command: ${{ matrix.pre_command }}
-        executable_compression: 'upx -v -9'
+        executable_compression: ${{ matrix.no_upx_compression != true && 'upx -v -9' || '' }}
         goversion: 1.20.13
         md5sum: false
         sha256sum: false
