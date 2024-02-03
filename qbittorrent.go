@@ -66,7 +66,7 @@ func FetchMaindata() *MainDataStruct {
 		return nil
 	}
 
-	Log("Debug-FetchMaindata", "完整更新: %s", false, strconv.FormatBool(mainDataResult.FullUpdate))
+	//Log("Debug-FetchMaindata", "完整更新: %s", false, strconv.FormatBool(mainDataResult.FullUpdate))
 
 	return &mainDataResult
 }
@@ -83,9 +83,11 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 		return nil
 	}
 
-	if config.LogDebug_CheckTorrent {
+	/*
+	if config.Debug_CheckTorrent {
 		Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
 	}
+	*/
 
 	return &torrentPeersResult
 }

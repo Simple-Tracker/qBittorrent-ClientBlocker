@@ -143,7 +143,7 @@ func ClearBlockPeer() int {
 	return cleanCount
 }
 func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *TorrentPeersStruct) {
-	if config.LogDebug_CheckTorrent {
+	if config.Debug_CheckTorrent {
 		Log("Debug-CheckTorrent", "%s", false, torrentInfoHash)
 	}
 	if torrentInfoHash == "" {
@@ -159,6 +159,9 @@ func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *Torr
 	return 0, torrentPeers
 }
 func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) int {
+	if config.Debug_CheckPeer {
+		Log("Debug-CheckPeer", "%s %s", false, peer.IP, peer.Client)
+	}
 	if peer.IP == "" || peer.Client == "" || CheckPrivateIP(peer.IP) {
 		return -1
 	}
@@ -172,7 +175,6 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		}
 		return 2
 	}
-	Log("Debug-CheckPeer", "%s %s", false, peer.IP, peer.Client)
 	if IsProgressNotMatchUploaded(torrentTotalSize, peer.Progress, peer.Uploaded) {
 		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, peer.Client, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
 		AddBlockPeer(peer.IP, peer.Port)
@@ -272,6 +274,9 @@ func Task() {
 
 	for torrentInfoHash, torrentInfo := range metadata.Torrents {
 		torrentStatus, torrentPeers := CheckTorrent(torrentInfoHash, torrentInfo)
+		if config.Debug_CheckTorrent {
+			Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrentInfoHash, torrentStatus)
+		}
 		switch torrentStatus {
 			case -1:
 				emptyHashCount++
@@ -280,8 +285,11 @@ func Task() {
 			case -3:
 				badTorrentInfoCount++
 			case 0:
-				for _, peers := range torrentPeers.Peers {
-					peerStatus := CheckPeer(peers, torrentInfoHash, torrentInfo.TotalSize)
+				for _, peer := range torrentPeers.Peers {
+					peerStatus := CheckPeer(peer, torrentInfoHash, torrentInfo.TotalSize)
+					if config.Debug_CheckPeer {
+						Log("Debug-CheckPeer", "%s %s (Status: %d)", false, peer.IP, peer.Client, peerStatus)
+					}
 					switch peerStatus {
 						case 3:
 							ipBlockCount++

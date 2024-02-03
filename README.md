@@ -56,6 +56,8 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
+| debug_CheckTorrent | false (禁用) | 调试模式 (CheckTorrent, 须先启动 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
+| debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启动 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
 | interval | 2 (秒) | 屏蔽循环间隔. 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | peerMapCleanInterval | 60 (秒) | Peer Map 清理间隔 (启用 maxIPPortCount/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
@@ -77,7 +79,6 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转
 | longConnection | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
 | logDebug | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
-| logDebug_CheckTorrent | false (禁用) | 记录调试信息到日志 (CheckTorrent, 须先启动 logDebug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
 | qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则须正确填入. |
 | qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空, 可自动读取 qBittorrent 配置文件并设置 |
 | qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
