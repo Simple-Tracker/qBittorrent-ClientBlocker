@@ -176,8 +176,10 @@ func SetQBURLFromQB() bool {
 					qBHTTPSEnabled = true
 				}
 			case "webui\\address":
-				if qbConfigLineArr[1] == "*" {
+				if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
 					qBAddress = "127.0.0.1"
+				} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
+					qBAddress = "[::1]"
 				} else {
 					qBAddress = qbConfigLineArr[1]
 				}
@@ -283,13 +285,18 @@ func LoadInitConfig(firstLoad bool) {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
-	if (firstLoad) {
+	if firstLoad && config.QBURL == "" {
 		SetQBURLFromQB()
 	}
-	if config.QBURL != "" && lastQBURL != config.QBURL {
-		SubmitBlockPeer("")
+	if config.QBURL != ""  {
+		if lastQBURL != config.QBURL {
+			SubmitBlockPeer("")
+		}
+		lastQBURL = config.QBURL
+	} else {
+		// 重置为上次使用的 QBURL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 QBURL.
+		config.QBURL = lastQBURL
 	}
-	lastQBURL = config.QBURL
 }
 func RegFlag() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
