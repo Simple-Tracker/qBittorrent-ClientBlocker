@@ -341,6 +341,7 @@ func Task() {
 }
 func RunConsole() {
 	RegFlag()
+	ShowVersion()
 	LoadInitConfig(true)
 	if !Login() {
 		Log("RunConsole", "认证失败", true)

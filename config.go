@@ -47,6 +47,8 @@ type ConfigStruct struct {
 	BlockList                     []string
 }
 
+var programVersion = "Unknown"
+
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
 
@@ -298,8 +300,19 @@ func LoadInitConfig(firstLoad bool) {
 		config.QBURL = lastQBURL
 	}
 }
+func ShowVersion() {
+	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
+}
+func Flag_ShowVersion(value string) error {
+	ShowVersion()
+	os.Exit(0)
+	return nil
+}
 func RegFlag() {
+	flag.BoolFunc("v", "程序版本", Flag_ShowVersion)
+	flag.BoolFunc("version", "程序版本", Flag_ShowVersion)
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
+	flag.StringVar(&configFilename, "config", "config.json", "配置文件路径")
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.Parse()
 }
