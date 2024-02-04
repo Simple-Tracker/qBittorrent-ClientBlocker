@@ -15,6 +15,8 @@ jobs:
         goos: [darwin, linux, windows, netbsd, openbsd, freebsd]
         goarch: ['386', 'amd64', 'arm', 'arm64']
         include:
+          - goos: darwin
+            no_upx_compression: true
           - goos: linux
             goarch: 'mips'
             pre_command: 'export GOMIPS=softfloat'
