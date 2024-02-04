@@ -48,8 +48,8 @@ type ConfigStruct struct {
 }
 
 var programVersion = "Unknown"
-var shortFlag_ShowVersion = false
-var longFlag_ShowVersion = false
+var shortFlag_ShowVersion bool
+var longFlag_ShowVersion bool
 
 var blockListCompiled []*regexp.Regexp
 var cookieJar, _ = cookiejar.New(nil)
