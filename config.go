@@ -197,7 +197,7 @@ func SetQBURLFromQB() bool {
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
-		Log("Debug-SetQBURLFromQB", "放弃读取 qBittorrent 配置文件 (qBWebUIEnabled: %t, qBAddress: %s)", false, qBWebUIEnabled, qBAddress)
+		Log("SetQBURLFromQB", "放弃读取 qBittorrent 配置文件 (qBWebUIEnabled: %t, qBAddress: %s)", false, qBWebUIEnabled, qBAddress)
 		return false
 	}
 	if qBHTTPSEnabled {
