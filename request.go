@@ -5,13 +5,13 @@ import (
 	"io/ioutil"
 )
 
-func Fetch(url string) []byte {
+func Fetch(url string, tryLogin bool) []byte {
 	response, err := httpClient.Get(url)
 	if err != nil {
 		Log("Fetch", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
-	if response.StatusCode == 403 && !Login() {
+	if response.StatusCode == 403 && (!tryLogin || !Login()) {
 		Log("Fetch", "请求时发生了错误: 认证失败", true)
 		return nil
 	}
@@ -34,13 +34,13 @@ func Fetch(url string) []byte {
 
 	return responseBody
 }
-func Submit(url string, postdata string) []byte {
+func Submit(url string, postdata string, tryLogin bool) []byte {
 	response, err := httpClient.Post(url, "application/x-www-form-urlencoded", strings.NewReader(postdata))
 	if err != nil {
 		Log("Submit", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
-	if response.StatusCode == 403 && !Login() {
+	if response.StatusCode == 403 && (!tryLogin || !Login()) {
 		Log("Submit", "请求时发生了错误: 认证失败", true)
 		return nil
 	}

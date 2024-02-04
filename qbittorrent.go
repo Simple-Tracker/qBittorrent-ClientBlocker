@@ -36,7 +36,7 @@ func Login() bool {
 	loginParams := url.Values {}
 	loginParams.Set("username", config.QBUsername)
 	loginParams.Set("password", config.QBPassword)
-	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode())
+	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode(), false)
 	if loginResponseBody == nil {
 		Log("Login", "登录时发生了错误", true)
 		return false
@@ -54,7 +54,7 @@ func Login() bool {
 	return false
 }
 func FetchMaindata() *MainDataStruct {
-	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0")
+	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0", true)
 	if maindataResponseBody == nil {
 		Log("FetchMaindata", "发生错误", true)
 		return nil
@@ -71,7 +71,7 @@ func FetchMaindata() *MainDataStruct {
 	return &mainDataResult
 }
 func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
-	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash)
+	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", "发生错误", true)
 		return nil
@@ -117,10 +117,10 @@ func SubmitBlockPeer(banIPPortsStr string) {
 	var banResponseBody []byte
 	if useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr)
+		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr, true)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr)
+		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr, true)
 	}
 	if banResponseBody == nil {
 		Log("SubmitBlockPeer", "发生错误", true)

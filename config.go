@@ -293,10 +293,10 @@ func LoadInitConfig(firstLoad bool) {
 		SetQBURLFromQB()
 	}
 	if config.QBURL != ""  {
-		if lastQBURL != config.QBURL {
+		if !firstLoad && lastQBURL != config.QBURL {
 			SubmitBlockPeer("")
+			lastQBURL = config.QBURL
 		}
-		lastQBURL = config.QBURL
 	} else {
 		// 重置为上次使用的 QBURL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 QBURL.
 		config.QBURL = lastQBURL
