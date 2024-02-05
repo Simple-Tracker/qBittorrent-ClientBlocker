@@ -346,6 +346,10 @@ func RunConsole() {
 		return
 	}
 	LoadInitConfig(true)
+	if config.StartDelay > 0 {
+		Log("RunConsole", "启动延迟: %d 秒", true, config.StartDelay)
+		time.Sleep(time.Duration(config.StartDelay) * time.Second)
+	}
 	if !Login() {
 		Log("RunConsole", "认证失败", true)
 		return
