@@ -12,10 +12,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: [darwin, linux, windows, netbsd, openbsd, freebsd]
+        goos: [darwin, windows, linux, netbsd, openbsd, freebsd]
         goarch: ['386', 'amd64', 'arm', 'arm64']
         include:
           - goos: darwin
+            no_upx_compression: true
+          - goos: windows
+            goarch: 'arm'
+            no_upx_compression: true
+          - goos: windows
+            goarch: 'arm64'
             no_upx_compression: true
           - goos: linux
             goarch: 'mips'
@@ -40,12 +46,6 @@ jobs:
             goarch: 'ppc64'
           - goos: linux
             goarch: 'ppc64le'
-          - goos: windows
-            goarch: 'arm'
-            no_upx_compression: true
-          - goos: windows
-            goarch: 'arm64'
-            no_upx_compression: true
           - goos: netbsd
             no_upx_compression: true
           - goos: openbsd
@@ -65,8 +65,9 @@ jobs:
     - name: Set build info
       id: build_info
       run: |
-        echo "tag_name=$(basename ${GITHUB_REF})" >> "${GITHUB_OUTPUT}"
-        echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
+        echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
+        echo "nightly_build_name=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
+        echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
     - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
       id: build
       uses: 'Simple-Tracker/go-release-action@master'
@@ -75,7 +76,7 @@ jobs:
         upload: ${{ github.event_name == 'release' && true || false }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-        ldflags: "-w -X main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_name || steps.build_info.outputs.nightly_build_version }}"
+        ldflags: "-w -X \"main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_version || steps.build_info.outputs.nightly_build_version }}\""
         pre_command: ${{ matrix.pre_command }}
         executable_compression: ${{ matrix.no_upx_compression != true && 'upx -v -9' || '' }}
         goversion: 1.20.13
@@ -87,5 +88,5 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{ github.event_name != 'release' }}
       with:
-        name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+        name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
         path: ${{ steps.build.outputs.release_asset_dir }}
