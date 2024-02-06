@@ -60,33 +60,33 @@ jobs:
           - goos: darwin
             goarch: 'arm'
     steps:
-    - name: 'Checkout'
-      uses: 'actions/checkout@v4'
-    - name: Set build info
-      id: build_info
-      run: |
-        echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
-        echo "nightly_build_name=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
-        echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
-    - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
-      id: build
-      uses: 'Simple-Tracker/go-release-action@master'
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        upload: ${{ github.event_name == 'release' && true || false }}
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
-        ldflags: "-w -X \"main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_version || steps.build_info.outputs.nightly_build_version }}\""
-        pre_command: ${{ matrix.pre_command }}
-        executable_compression: ${{ matrix.no_upx_compression != true && 'upx -v -9' || '' }}
-        goversion: 1.20.13
-        md5sum: false
-        sha256sum: false
-        binary_name: 'qBittorrent-ClientBlocker'
-        extra_files: 'LICENSE README.md config.json'
-    - name: 'Upload GitHub Artifact (Nightly Build)'
-      uses: actions/upload-artifact@v4
-      if: ${{ github.event_name != 'release' }}
-      with:
-        name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
-        path: ${{ steps.build.outputs.release_asset_dir }}
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+      - name: Set build info
+        id: build_info
+        run: |
+          echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
+          echo "nightly_build_name=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
+          echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
+      - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
+        id: build
+        uses: 'wangyoucao577/go-release-action@v1.47'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          upload: ${{ github.event_name == 'release' && true || false }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: "-w -X \"main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_version || steps.build_info.outputs.nightly_build_version }}\""
+          pre_command: ${{ matrix.pre_command }}
+          executable_compression: ${{ matrix.no_upx_compression != true && 'upx -v -9' || '' }}
+          goversion: 1.20.13
+          md5sum: false
+          sha256sum: false
+          binary_name: 'qBittorrent-ClientBlocker'
+          extra_files: 'LICENSE README.md config.json'
+      - name: 'Upload GitHub Artifact (Nightly Build)'
+        uses: actions/upload-artifact@v4
+        if: ${{ github.event_name != 'release' }}
+        with:
+          name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ steps.build.outputs.release_asset_dir }}
