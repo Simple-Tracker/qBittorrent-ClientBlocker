@@ -4,7 +4,7 @@
 * 全平台支持
 * 支持记录日志及热重载配置
 * 支持忽略私有 IP 地址
-* 支持自定义 Ban List (不区分大小写, 支持正则表达式)
+* 支持自定义屏蔽列表 (不区分大小写, 支持正则表达式)
 * 支持客户端认证
 * 支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
 * 在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
@@ -50,8 +50,9 @@ Docker 版本: 在 Pull 完 Docker 镜像后, 修改与 Config 相同名称的�
 ## 参数 Flag
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
-| -c | config.json | 配置文件路径 |
-| -debug | false | 调试模式. 加载配置文件前生效 |
+| -v/--version | false (禁用) | 显示程序版本后退出 |
+| -c/--config | config.json | 配置文件路径 |
+| --debug | false (禁用) | 调试模式. 加载配置文件前生效 |
 
 ## 配置 Config
 Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转换环境变量为配置文件实现, 但不支持设置 blockList.
@@ -90,4 +91,4 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转
 
 ## 致谢 Credit
 1. 我们在客户端屏蔽器的早期开发过程中部分参考了 [jinliming2/qbittorrent-ban-xunlei](https://github.com/jinliming2/qbittorrent-ban-xunlei);
-2. 我们会在每期版本的 Release Note 中感谢当期通过 Pull Request 向客户端屏蔽器贡献功能改进的用户及开发者;
+2. 我们会在每期版本的 Release Note 中感谢当期通过 Pull Request 向客户端屏蔽器贡献代码改进的用户及开发者;
