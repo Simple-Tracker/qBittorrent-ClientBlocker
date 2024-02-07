@@ -1,6 +1,6 @@
 {
 	"debug": false,
-	"interval": 2,
+	"interval": 6,
 	"cleanInterval": 3600,
 	"banTime": 86400,
 	"sleepTime": 20,

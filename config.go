@@ -76,7 +76,7 @@ var config = ConfigStruct {
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,
-	Interval:                      2,
+	Interval:                      6,
 	CleanInterval:                 3600,
 	PeerMapCleanInterval:          60,
 	BanTime:                       86400,
