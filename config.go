@@ -1,17 +1,18 @@
 package main
 
 import (
-	"os"
-	"flag"
-	"time"
-	"regexp"
-	"reflect"
-	"strings"
-	"strconv"
-	"io/ioutil"
+	"crypto/tls"
 	"encoding/json"
+	"flag"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type ConfigStruct struct {
@@ -46,6 +47,7 @@ type ConfigStruct struct {
 	QBUsername                    string
 	QBPassword                    string
 	BlockList                     []string
+	TlsSkipCertVerification       bool
 }
 
 var programVersion = "Unknown"
@@ -60,19 +62,20 @@ var configFilename string
 var configLastMod int64 = 0
 var qBConfigLastMod int64 = 0
 
-var httpTransport = &http.Transport {
+var httpTransport = &http.Transport{
 	DisableKeepAlives:   false,
 	ForceAttemptHTTP2:   false,
 	MaxConnsPerHost:     32,
 	MaxIdleConns:        32,
 	MaxIdleConnsPerHost: 32,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: false},
 }
-var httpClient = http.Client {
+var httpClient = http.Client{
 	Timeout:   6 * time.Second,
 	Jar:       cookieJar,
 	Transport: httpTransport,
 }
-var config = ConfigStruct {
+var config = ConfigStruct{
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,
@@ -103,44 +106,45 @@ var config = ConfigStruct {
 	QBURL:                         "",
 	QBUsername:                    "",
 	QBPassword:                    "",
-	BlockList:                     []string {},
+	BlockList:                     []string{},
+	TlsSkipCertVerification:       false,
 }
 
 func GetQBConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
-    if err != nil {
+	if err != nil {
 		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
 		return ""
-    }
-    if !strings.Contains(userHomeDir, "\\") {
-    	qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
-    } else {
-	    userConfigDir, err := os.UserConfigDir()
-	    if err != nil {
+	}
+	if !strings.Contains(userHomeDir, "\\") {
+		qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
+	} else {
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil {
 			Log("Debug-GetQBConfigPath", "获取 User Config 目录时发生了错误: %s", false, err.Error())
 			return ""
-	    }
-    	qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
-    }
-    return qBConfigFilename
+		}
+		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
+	}
+	return qBConfigFilename
 }
 func GetConfigFromQB() []byte {
-    qBConfigFilename := GetQBConfigPath()
-    if qBConfigFilename == "" {
-    	return []byte {}
-    }
+	qBConfigFilename := GetQBConfigPath()
+	if qBConfigFilename == "" {
+		return []byte{}
+	}
 	qBConfigFileStat, err := os.Stat(qBConfigFilename)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
 			Log("GetConfigFromQB", "读取 qBittorrent 配置文件元数据时发生了错误: %s", false, err.Error())
 		}
-		return []byte {}
+		return []byte{}
 	}
 	tmpQBConfigLastMod := qBConfigFileStat.ModTime().Unix()
 	if config.QBURL != "" && tmpQBConfigLastMod <= qBConfigLastMod {
-		return []byte {}
+		return []byte{}
 	}
 	Log("GetConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
 	if qBConfigLastMod != 0 {
@@ -149,7 +153,7 @@ func GetConfigFromQB() []byte {
 	qBConfigFile, err := ioutil.ReadFile(qBConfigFilename)
 	if err != nil {
 		Log("GetConfigFromQB", "读取 qBittorrent 配置文件时发生了错误: %s", false, err.Error())
-		return []byte {}
+		return []byte{}
 	}
 	qBConfigLastMod = tmpQBConfigLastMod
 	return qBConfigFile
@@ -173,29 +177,29 @@ func SetQBURLFromQB() bool {
 		qbConfigLineArr[0] = strings.ToLower(StrTrim(qbConfigLineArr[0]))
 		qbConfigLineArr[1] = strings.ToLower(StrTrim(qbConfigLineArr[1]))
 		switch qbConfigLineArr[0] {
-			case "webui\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBWebUIEnabled = true
-				}
-			case "webui\\https\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBHTTPSEnabled = true
-				}
-			case "webui\\address":
-				if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
-					qBAddress = "127.0.0.1"
-				} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
-					qBAddress = "[::1]"
-				} else {
-					qBAddress = qbConfigLineArr[1]
-				}
-			case "webui\\port":
-				tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
-				if err == nil {
-					qBPort = tmpQBPort
-				}
-			case "webui\\username":
-				qBUsername = qbConfigLineArr[1]
+		case "webui\\enabled":
+			if qbConfigLineArr[1] == "true" {
+				qBWebUIEnabled = true
+			}
+		case "webui\\https\\enabled":
+			if qbConfigLineArr[1] == "true" {
+				qBHTTPSEnabled = true
+			}
+		case "webui\\address":
+			if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
+				qBAddress = "127.0.0.1"
+			} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
+				qBAddress = "[::1]"
+			} else {
+				qBAddress = qbConfigLineArr[1]
+			}
+		case "webui\\port":
+			tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
+			if err == nil {
+				qBPort = tmpQBPort
+			}
+		case "webui\\username":
+			qBUsername = qbConfigLineArr[1]
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
@@ -257,14 +261,26 @@ func InitConfig() {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
+	if config.TlsSkipCertVerification {
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	} else {
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
+	}
 	if !config.LongConnection {
-		httpClient = http.Client {
+		httpClient = http.Client{
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
+			Transport: httpTransport,
 		}
 	} else if config.Timeout != 6 {
-		httpClient = http.Client {
+		httpClient = http.Client{
 			Timeout:   time.Duration(config.Timeout) * time.Second,
+			Jar:       cookieJar,
+			Transport: httpTransport,
+		}
+	} else {
+		httpClient = http.Client{
+			Timeout:   6 * time.Second,
 			Jar:       cookieJar,
 			Transport: httpTransport,
 		}
@@ -294,7 +310,7 @@ func LoadInitConfig(firstLoad bool) {
 	if firstLoad && config.QBURL == "" {
 		SetQBURLFromQB()
 	}
-	if config.QBURL != ""  {
+	if config.QBURL != "" {
 		if !firstLoad && lastQBURL != config.QBURL {
 			SubmitBlockPeer("")
 			lastQBURL = config.QBURL
