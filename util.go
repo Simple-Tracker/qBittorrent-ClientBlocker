@@ -18,5 +18,8 @@ func GetDateTime(withTime bool) string {
 }
 func CheckPrivateIP(ip string) bool {
 	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		return false
+	}
 	return ipParsed.IsPrivate()
 }
