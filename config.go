@@ -47,7 +47,7 @@ type ConfigStruct struct {
 	QBUsername                    string
 	QBPassword                    string
 	BlockList                     []string
-	TlsSkipCertVerification       bool
+	SkipCertVerification          bool
 }
 
 var programVersion = "Unknown"
@@ -107,7 +107,7 @@ var config = ConfigStruct {
 	QBUsername:                    "",
 	QBPassword:                    "",
 	BlockList:                     []string {},
-	TlsSkipCertVerification:       false,
+	SkipCertVerification:          false,
 }
 
 func GetQBConfigPath() string {
@@ -261,7 +261,7 @@ func InitConfig() {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
-	if config.TlsSkipCertVerification {
+	if config.SkipCertVerification {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: true }
 	} else {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }

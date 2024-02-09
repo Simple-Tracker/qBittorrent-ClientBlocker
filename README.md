@@ -87,8 +87,8 @@ Docker 版本通过与 Config 相同名称的环境变量配置, 通过自动转
 | qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则须正确填入. |
 | qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空, 可自动读取 qBittorrent 配置文件并设置 |
 | qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
+| skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验, 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
-| tlsSkipCertVerification | false | 跳过qBittorrent WebUI证书校验, 适合https+自签证书 |
 
 ## 致谢 Credit
 1. 我们在客户端屏蔽器的早期开发过程中部分参考了 [jinliming2/qbittorrent-ban-xunlei](https://github.com/jinliming2/qbittorrent-ban-xunlei);
