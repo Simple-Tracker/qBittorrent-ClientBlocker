@@ -46,6 +46,7 @@ type ConfigStruct struct {
 	QBUsername                    string
 	QBPassword                    string
 	BlockList                     []string
+	TlsSkipCertVerification       bool
 }
 
 var programVersion = "Unknown"
@@ -66,6 +67,7 @@ var httpTransport = &http.Transport {
 	MaxConnsPerHost:     32,
 	MaxIdleConns:        32,
 	MaxIdleConnsPerHost: 32,
+	TLSClientConfig:     &tls.Config{InsecureSkipVerify: false},
 }
 var httpClient = http.Client {
 	Timeout:   6 * time.Second,
@@ -103,7 +105,8 @@ var config = ConfigStruct {
 	QBURL:                         "",
 	QBUsername:                    "",
 	QBPassword:                    "",
-	BlockList:                     []string {},
+	BlockList:                     []string{},
+	TlsSkipCertVerification:       false,
 }
 
 func GetQBConfigPath() string {
@@ -257,14 +260,26 @@ func InitConfig() {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
+	if config.TlsSkipCertVerification {
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	} else {
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
+	}
 	if !config.LongConnection {
 		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
 			Jar:       cookieJar,
+			Transport: httpTransport,
 		}
 	} else if config.Timeout != 6 {
 		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
+			Jar:       cookieJar,
+			Transport: httpTransport,
+		}
+	} else {
+		httpClient = http.Client{
+			Timeout:   6 * time.Second,
 			Jar:       cookieJar,
 			Transport: httpTransport,
 		}
