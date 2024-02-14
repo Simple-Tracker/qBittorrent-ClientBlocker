@@ -70,7 +70,7 @@ jobs:
           echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
       - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
         id: build
-        uses: 'Simple-Tracker/go-release-action@master'
+        uses: 'wangyoucao577/go-release-action@v1'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           upload: ${{ github.event_name == 'release' && true || false }}
