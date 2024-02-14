@@ -355,7 +355,9 @@ func RunConsole() {
 		return
 	}
 	Log("RunConsole", "程序已启动", true)
-	for range time.Tick(time.Duration(config.Interval) * time.Second) {
+	loopTicker := time.NewTicker(time.Duration(config.Interval) * time.Second)
+	defer loopTicker.Stop()
+	for ; true; <- loopTicker.C {
 		currentTimestamp = time.Now().Unix()
 		LoadInitConfig(false)
 		Task()
