@@ -336,7 +336,11 @@ func Task() {
 		peersStr := GenBlockPeersStr()
 		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
 		SubmitBlockPeer(peersStr)
-		Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个, 此次封禁 IP 地址: %d 个, 当前封禁 IP 地址: %d 个", true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
+		if config.IPUploadedCheck {
+			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个, 此次封禁 IP 地址: %d 个, 当前封禁 IP 地址: %d 个", true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
+		} else {
+			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个", true, blockCount, len(blockPeerMap))
+		}
 	}
 }
 func RunConsole() {
