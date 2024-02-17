@@ -177,29 +177,29 @@ func SetQBURLFromQB() bool {
 		qbConfigLineArr[0] = strings.ToLower(StrTrim(qbConfigLineArr[0]))
 		qbConfigLineArr[1] = strings.ToLower(StrTrim(qbConfigLineArr[1]))
 		switch qbConfigLineArr[0] {
-		case "webui\\enabled":
-			if qbConfigLineArr[1] == "true" {
-				qBWebUIEnabled = true
-			}
-		case "webui\\https\\enabled":
-			if qbConfigLineArr[1] == "true" {
-				qBHTTPSEnabled = true
-			}
-		case "webui\\address":
-			if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
-				qBAddress = "127.0.0.1"
-			} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
-				qBAddress = "[::1]"
-			} else {
-				qBAddress = qbConfigLineArr[1]
-			}
-		case "webui\\port":
-			tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
-			if err == nil {
-				qBPort = tmpQBPort
-			}
-		case "webui\\username":
-			qBUsername = qbConfigLineArr[1]
+			case "webui\\enabled":
+				if qbConfigLineArr[1] == "true" {
+					qBWebUIEnabled = true
+				}
+			case "webui\\https\\enabled":
+				if qbConfigLineArr[1] == "true" {
+					qBHTTPSEnabled = true
+				}
+			case "webui\\address":
+				if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
+					qBAddress = "127.0.0.1"
+				} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
+					qBAddress = "[::1]"
+				} else {
+					qBAddress = qbConfigLineArr[1]
+				}
+			case "webui\\port":
+				tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
+				if err == nil {
+					qBPort = tmpQBPort
+				}
+			case "webui\\username":
+				qBUsername = qbConfigLineArr[1]
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
