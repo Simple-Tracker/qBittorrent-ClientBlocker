@@ -33,6 +33,4 @@ else
     (echo $config | jq -s add) >config.json
 fi
 
-cat config.json
-
-./qBittorrent-ClientBlocker
+exec ./qBittorrent-ClientBlocker
