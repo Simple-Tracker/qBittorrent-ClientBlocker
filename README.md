@@ -16,31 +16,15 @@
 
 ### 1. 准备操作
 
--   必须启用 qBittorrent WebUI 功能
--   安装时必须设置 WebUI 相关信息 (URL/用户名/密码)
+-   必须启用 qBittorrent WebUI 功能, 安装时需设置 URL/用户名/密码
 -   若使用 qBittorrent 2.5 及以上版本, 则须确保启用 qBittorrent Web UI 功能及 "跳过本机客户端认证" (及密码为空或手动设置密码), 客户端屏蔽器就会自动读取 qBittorrent 配置文件, 并提取相应信息.
 
 ### 2. 常规版本安装
 
-1. 从 [**GitHub Release**](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases) 下载系统对应版本并解压
-
-2. 修改随附的配置文件 `config.json`, 填入 `qBURL`, 按需配置其他参数, 配置完成即可运行
-
-    - 若没有启用 qBittorrent 的 "跳过本机客户端认证", 则需填写 `qBUsername` 和 `qBPassword`
-    - 各项参数功能说明见下方 Config 表格
-
-3. 对于 Windows, 可修改 qBittorrent 快捷方式并放入自己的屏蔽器路径, 以使 qBittorrent 与屏蔽器同时运行:
-
-    ```
-    C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start qbittorrent.exe"
-    ```
-
-4. 对于 Linux, 提供一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd) 用于开机自启及后台运行.
-
-5. 下载版本可参考如下表格：
+1. 从 [**GitHub Release**](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases) 下载压缩包并解压
 
     <details>
-    <summary><b>查看 下载版本对照表</b></summary>
+    <summary>查看 系统对应下载版本对照表</summary>
 
     | 操作系统 | 处理器架构 | 处理器位数 | 下载版本      | 说明                                                   |
     | -------- | ---------- | ---------- | ------------- | ------------------------------------------------------ |
@@ -56,49 +40,57 @@
     | Linux    | ARMv6      | 32 位      | linux-arm     | 少见于部分老式服务器及开发板                           |
 
     其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.
-
     </details>
+
+2. 解压后, 修改随附的配置文件 config.json, 填入 `qBURL`, 即可运行
+
+    - 若没有启用 qBittorrent 的 "跳过本机客户端认证", 还需填写 `qBUsername` 和 `qBPassword`
+    - 按需配置其他参数, 参数说明见 [Config 表格](#配置-config)
+
+3. 对于 Windows, 可修改 qBittorrent 快捷方式, 放入自己的屏蔽器路径, 使 qBittorrent 与屏蔽器同时运行:
+
+    ```
+    C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start qbittorrent.exe"
+    ```
+
+4. 对于 Linux, 提供一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd) 用于开机自启及后台运行.
 
 ### 3. Docker 版本安装
 
-1. 从 [**Docker Hub**](https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker) 拉取 Docker 镜像
+-   从 [**Docker Hub**](https://hub.docker.com/r/simpletracker/qbittorrent-clientblocker) 拉取 Docker 镜像
 
     ```
-    docker pull simpletracker/qbittorrent-clientblocker
+    docker pull simpletracker/qbittorrent-clientblocker:latest
     ```
 
-2. 配置方法一：文件映射 (推荐)
+-   配置方法一：文件映射 (推荐)
 
     1. 在本地新建 `config.json` 作为配置文件, 文件内容参考项目中的 [config.json](./config.json)
 
-    2. 填入 `qBURL`, `qBUsername`, `qBPassword` 并按需配置其他参数
+    2. 填入 `qBURL`, `qBUsername`, `qBPassword`
 
         - 若启用了 qBittorrent 的 "IP 子网白名单", 可以不填写 `qBUsername` 和 `qBPassword`
-        - 各项参数功能说明见下方 Config 表格
+        - 按需配置其他参数, 参数说明见 [Config 表格](#配置-config)
 
-    3. 运行 Docker
-
-    其中 `/path/to/config.json` 应替换成你自己配置文件的相对路径或绝对路径
+    3. 运行 Docker, 其中 `/path/to/config.json` 应替换成你自己配置文件的相对/绝对路径
 
     ```
     docker run -d \
-        --name=qbittorrent-clientblocker \
-        --network=bridge \
-        --dns=8.8.8.8 \
-        --restart unless-stopped \
+        --name=qbittorrent-clientblocker --network=bridge --dns=8.8.8.8 --restart unless-stopped \
         -v /path/to/config.json:/app/config.json \
-        simpletracker/qbittorrent-clientblocker
+        simpletracker/qbittorrent-clientblocker:latest
     ```
 
     4. 运行后查看 Docker 日志, 观察信息输出是否正常
 
-3. 配置方法二：使用环境变量 (不推荐)
+-   配置方法二：使用环境变量 (不推荐)
 
-    - 使用环境变量配置参数, 将如下命令中的 URL、用户名、密码 改为你自己的, 按需配置其他项, 运行即可
-    - 由于参数较复杂, 可能出现 blockList 不生效的情况
+    -   使用环境变量配置参数, 将如下命令中的 URL、用户名、密码 改为你自己的, 按需配置其他项, 运行即可
+    -   由于参数较复杂, 可能出现 blockList 不生效的情况
 
-    <details>
-    <summary><b>查看命令</b></summary>
+      <details>
+      <summary>查看命令</summary>
+
     ```
     docker run -d \
         --name=qbittorrent-clientblocker --network=bridge --dns=8.8.8.8 --restart unless-stopped \
@@ -117,9 +109,10 @@
         -e qBURL=你的URL \
         -e qBUsername=你的用户名 \
         -e qBPassword=你的密码 \
-        simpletracker/qbittorrent-clientblocker
+        simpletracker/qbittorrent-clientblocker:latest
     ```
-    </details>
+
+      </details>
 
 ## 参数 Flag
 
@@ -134,7 +127,7 @@
 | 设置项                        | 默认值                   | 配置说明                                                                                                                                                      |
 | ----------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | debug                         | false (禁用)             | 调试模式. 启用可看到更多信息, 但可能扰乱视野                                                                                                                  |
-| debug\*CheckTorrent           | false (禁用)             | 调试模式 (CheckTorrent, 须先启动 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大                                                                  |
+| debug_CheckTorrent            | false (禁用)             | 调试模式 (CheckTorrent, 须先启动 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大                                                                  |
 | debug_CheckPeer               | false (禁用)             | 调试模式 (CheckPeer, 须先启动 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大                                                                     |
 | interval                      | 6 (秒)                   | 屏蔽循环间隔. 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval                 | 3600 (秒)                | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志                                                      |
@@ -152,10 +145,10 @@
 | banByPUStartMB                | 10 (MB)                  | 增强自动屏蔽/起始大小. 若客户端上传量大于起始大小, 则允许屏蔽 Peer                                                                                            |
 | banByPUStartPrecent           | 2 (%)                    | 增强自动屏蔽/起始进度. 若客户端上传进度大于起始进度, 则允许屏蔽 Peer                                                                                          |
 | banByPUAntiErrorRatio         | 5 (X)                    | 增强自动屏蔽/滞后防误判倍率. 若 Peer 报告下载进度与倍率及 Torrent 大小之乘积得到之下载量 比 客户端上传量 还低, 则允许屏蔽 Peer                                |
-| banByRelativeProgressUploaded | false (禁用)             | 增强自动屏蔽*相对 (根据相对进度及相对上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽*相对 条件后, 会自动屏蔽 Peer                                     |
-| banByRelativePUStartMB        | 10 (MB)                  | 增强自动屏蔽\*相对/起始大小. 若客户端相对上传量大于起始大小, 则允许屏蔽 Peer                                                                                  |
-| banByRelativePUStartPrecent   | 2 (%)                    | 增强自动屏蔽\*相对/起始进度. 若客户端相对上传进度大于起始进度, 则允许屏蔽 Peer                                                                                |
-| banByRelativePUAntiErrorRatio | 5 (X)                    | 增强自动屏蔽\*相对/滞后防误判倍率. 若 Peer 报告相对下载进度与倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer                         |
+| banByRelativeProgressUploaded | false (禁用)             | 增强自动屏蔽\_相对 (根据相对进度及相对上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽\_相对 条件后, 会自动屏蔽 Peer                                   |
+| banByRelativePUStartMB        | 10 (MB)                  | 增强自动屏蔽\_相对/起始大小. 若客户端相对上传量大于起始大小, 则允许屏蔽 Peer                                                                                  |
+| banByRelativePUStartPrecent   | 2 (%)                    | 增强自动屏蔽\_相对/起始进度. 若客户端相对上传进度大于起始进度, 则允许屏蔽 Peer                                                                                |
+| banByRelativePUAntiErrorRatio | 5 (X)                    | 增强自动屏蔽\_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer                         |
 | longConnection                | true (启用)              | 长连接. 启用可降低资源消耗                                                                                                                                    |
 | logToFile                     | true (启用)              | 记录普通信息到日志. 启用后可用于一般的分析及统计用途                                                                                                          |
 | logDebug                      | false (禁用)             | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大                                                              |
