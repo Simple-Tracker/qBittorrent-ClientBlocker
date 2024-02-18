@@ -5,19 +5,19 @@ if [ -f "./config.json" ]; then
 else
     echo "config.json not exist, generate config from env"
 
-    # convert $blockList to json array
-    if [ -z "${blockList}" ]; then
-        tempBlockList=$(jq -n --argjson arr "[]" '$arr')
+    # Convert $blockList to json array
+    if [ -z "$blockList" ]; then
+        tmpBlockList=$(jq -n --argjson arr "[]" '$arr')
     else
-        tempBlockList=$(echo $blockList | jq '.')
+        tmpBlockList=$(echo $blockList | jq '.')
     fi
 
-    config=$(jq -n 'env|to_entries[]')
+    envKVPair=$(jq -n 'env|to_entries[]')
 
-    # keep username and password string
-    # keep blockList json array
-    # convert "true" to true, "false" to false, digital string to number
-    config=$(echo $config | jq --argjson tempBlockList "$tempBlockList" '{
+    # Keep username and password string
+    # Keep blockList json array
+    # Convert "true" to true, "false" to false, digital string to number
+    configKVPair=$(echo $envKVPair | jq --argjson tempBlockList "$tmpBlockList" '{
         (.key): (
             if (.key|ascii_downcase) == "qbusername" or (.key|ascii_downcase) == "qbpassword" then .value
             elif (.key|ascii_downcase) == "blocklist" then $tempBlockList
@@ -30,7 +30,7 @@ else
         )
     }')
 
-    (echo $config | jq -s add) >config.json
+    (echo $configKVPair | jq -s add) > config.json
 fi
 
 exec ./qBittorrent-ClientBlocker

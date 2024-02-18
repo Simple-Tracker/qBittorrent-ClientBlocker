@@ -5,7 +5,7 @@ ARG BUILDOS BUILDARCH TARGETOS TARGETARCH
 ENV GOOS=$TARGETOS GOARCH=$TARGETARCH
 RUN echo "Running on $BUILDOS/$BUILDARCH, Building for $TARGETOS/$TARGETARCH."
 
-ADD *LICENSE* *.md *.go go.mod go.sum *.sh ./
+ADD *LICENSE* *.md *.go *.sh go.mod go.sum ./
 
 RUN apk update && apk add --no-cache upx
 RUN go mod download
@@ -15,7 +15,7 @@ RUN upx -v -9 qBittorrent-ClientBlocker
 FROM alpine
 WORKDIR /app
 
-COPY --from=go /app .
+COPY --from=go /app ./
 RUN chmod +x ./entrypoint.sh
 RUN apk update && apk add --no-cache jq
 
