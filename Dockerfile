@@ -5,7 +5,7 @@ ARG BUILDOS BUILDARCH TARGETOS TARGETARCH
 ENV GOOS=$TARGETOS GOARCH=$TARGETARCH
 RUN echo "Running on $BUILDOS/$BUILDARCH, Building for $TARGETOS/$TARGETARCH."
 
-ADD *LICENSE* *.md *.go go.mod go.sum .
+ADD *LICENSE* *.md *.go go.mod go.sum *.sh ./
 
 RUN apk update && apk add --no-cache upx
 RUN go mod download
