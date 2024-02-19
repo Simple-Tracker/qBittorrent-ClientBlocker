@@ -7,7 +7,7 @@
 -   支持忽略私有 IP 地址
 -   支持自定义屏蔽列表 (不区分大小写, 支持正则表达式)
 -   支持客户端认证
--   支持增强自动屏蔽: 根据默认或设定的相关参数自动屏蔽 Peer
+-   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
 -   在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
 ![Preview](Preview.png)
@@ -55,6 +55,8 @@
    C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start     qbittorrent.exe"
    ```
 
+   对于 macOS, 可选使用一基本 [LaunchAgent 用户代理](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#launchagent-macos) 用于开机自启及后台运行;
+
    对于 Linux, 可选使用一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd) 用于开机自启及后台运行;
 
 ### Docker 版本安装
@@ -78,6 +80,8 @@
 
     4. 运行 Docker 并查看日志, 观察信息输出是否正常即可;
 
+       以下命令模版仅作为参考.
+
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
@@ -89,6 +93,7 @@
 
     -   使用环境变量按需配置设置, 具体见 [配置 Config](#配置-config).
     -   若设置较复杂, 则可能出现 blockList 不生效的情况. 因此, 若需要配置此设置, 则使用环境变量是不推荐的.
+    -   以下命令模版仅作为参考.
 
         ```
         docker run -d \
@@ -142,11 +147,13 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | longConnection | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
 | logDebug | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
-| qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则须正确填入. |
+| qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990```. |
 | qBUsername | 空 | qBittorrent Web UI 账号. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空, 可自动读取 qBittorrent 配置文件并设置 |
 | qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
-| skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验, 适合自签及过期证书 |
+| useBasicAuth | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合通过反向代理等方式 增加/换用 认证方式的 qBittorrent Web UI |
+| skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
+| ipBlockList | 空 | 屏蔽 IP 列表. 支持 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
 
 ## 致谢 Credit
 
