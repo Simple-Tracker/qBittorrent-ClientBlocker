@@ -261,6 +261,9 @@ func InitConfig() {
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
+	if config.QBURL != "" {
+		config.QBURL = strings.TrimRight(config.QBURL, "/")
+	}
 	if config.SkipCertVerification {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: true }
 	} else {
