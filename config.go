@@ -46,8 +46,9 @@ type ConfigStruct struct {
 	QBURL                         string
 	QBUsername                    string
 	QBPassword                    string
-	BlockList                     []string
+	UseBasicAuth                  bool
 	SkipCertVerification          bool
+	BlockList                     []string
 }
 
 var programVersion = "Unknown"
@@ -106,8 +107,9 @@ var config = ConfigStruct {
 	QBURL:                         "",
 	QBUsername:                    "",
 	QBPassword:                    "",
-	BlockList:                     []string {},
+	UseBasicAuth:                  false,
 	SkipCertVerification:          false,
+	BlockList:                     []string {},
 }
 
 func GetQBConfigPath() string {
