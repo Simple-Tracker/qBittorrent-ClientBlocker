@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"net"
 	"time"
 	"flag"
 	"regexp"
@@ -49,6 +50,7 @@ type ConfigStruct struct {
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	BlockList                     []string
+	IPBlockList                   []string
 }
 
 var programVersion = "Unknown"
@@ -56,6 +58,7 @@ var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 
 var blockListCompiled []*regexp.Regexp
+var ipBlockListCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastQBURL = ""
@@ -110,6 +113,7 @@ var config = ConfigStruct {
 	UseBasicAuth:                  false,
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
+	IPBlockList:                   []string {},
 }
 
 func GetQBConfigPath() string {
@@ -304,6 +308,19 @@ func InitConfig() {
 			continue
 		}
 		blockListCompiled[k] = reg
+	}
+	ipBlockListCompiled = make([]*net.IPNet, len(config.IPBlockList))
+	for k, v := range config.IPBlockList {
+		Log("Debug-LoadConfig-CompileIPBlockList", "%s", false, v)
+		if !strings.Contains(v, "/") {
+			v += "/32"
+		}
+		_, cidr, err := net.ParseCIDR(v)
+		if err != nil {
+			Log("LoadConfig-CompileIPBlockList", "IP %s 有错误", true, v)
+			continue
+		}
+		ipBlockListCompiled[k] = cidr
 	}
 }
 func LoadInitConfig(firstLoad bool) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"time"
 	"strings"
 )
@@ -205,6 +206,21 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 			Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s", true, peer.IP, peer.Port, peer.Client)
 			AddBlockPeer(peer.IP, peer.Port)
 			return 1
+		}
+	}
+	ip := net.ParseIP(peer.IP)
+	if ip == nil {
+		Log("Debug-CheckPeer_AddBlockPeer (Bad-Client)", "Bad IP: %s", false, peer.IP)
+	} else {
+		for _, v := range ipBlockListCompiled {
+			if v == nil {
+				continue
+			}
+			if v.Contains(ip) {
+				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s", true, peer.IP, -1, peer.Client)
+				AddBlockPeer(peer.IP, -1)
+				return 3
+			}
 		}
 	}
 	AddIPInfo(peer.IP, torrentInfoHash, peer.Uploaded)
