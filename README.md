@@ -154,7 +154,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | useBasicAuth | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合通过反向代理等方式 增加/换用 认证方式的 qBittorrent Web UI |
 | skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
-| ipBlockList | 空 | 屏蔽 IP 列表. 支持 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
+| ipBlockList | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
 
 ## 致谢 Credit
 
