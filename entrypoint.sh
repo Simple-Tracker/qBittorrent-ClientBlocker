@@ -1,19 +1,17 @@
 #!/bin/sh
 
-if [ -f "./config.json" ]; then
-    echo "config.json exist"
-else
-    echo "config.json not exist, generate config from env"
+if [ -n "$useENV" ]; then
+    echo "Generate config from env."
 
     # Convert $blockList to json array
-    tmpBlockList="[]"
-    tmpIPBlockList="[]"
-    if [ -z "$blockList" ]; then
+    tmpBlockList='[]'
+    tmpIPBlockList='[]'
+    if [ -n "$blockList" ]; then
         tmpBlockList=$(echo $blockList | jq '.')
     fi
-    if [ -z "$ipBlockList" ]; then
+    if [ -n "$ipBlockList" ]; then
         tmpIPBlockList=$(echo $ipBlockList | jq '.')
-    else
+    fi
 
     envKVPair=$(jq -n 'env|to_entries[]')
 
