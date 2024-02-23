@@ -16,11 +16,12 @@ type TorrentStruct struct {
 	TotalSize int64 `json:"total_size"`
 }
 type PeerStruct struct {
-	IP       string
-	Port     int
-	Client   string
-	Progress float64
-	Uploaded int64
+	IP             string
+	Port           int
+	Client         string
+	Peer_ID_Client string
+	Progress       float64
+	Uploaded       int64
 }
 type TorrentPeersStruct struct {
 	FullUpdate bool                  `json:"full_update"`

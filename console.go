@@ -178,7 +178,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	if config.Debug_CheckPeer {
 		Log("Debug-CheckPeer", "%s %s", false, peer.IP, peer.Client)
 	}
-	if peer.IP == "" || peer.Client == "" || CheckPrivateIP(peer.IP) {
+	if peer.IP == "" || (peer.Client == "" && peer.Peer_ID_Client == "") || CheckPrivateIP(peer.IP) {
 		return -1
 	}
 	if IsBlockedPeer(peer.IP, peer.Port, true) {
@@ -202,7 +202,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		if v == nil {
 			continue
 		}
-		if v.MatchString(peer.Client) {
+		if (peer.Client != "" && v.MatchString(peer.Client)) || (peer.Peer_ID_Client != "" && v.MatchString(peer.Peer_ID_Client)) {
 			Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s", true, peer.IP, peer.Port, peer.Client)
 			AddBlockPeer(peer.IP, peer.Port)
 			return 1
