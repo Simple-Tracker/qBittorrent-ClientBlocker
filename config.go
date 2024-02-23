@@ -313,7 +313,11 @@ func InitConfig() {
 	for k, v := range config.IPBlockList {
 		Log("Debug-LoadConfig-CompileIPBlockList", "%s", false, v)
 		if !strings.Contains(v, "/") {
-			v += "/32"
+			if strings.Contains(v, ":") {
+				v += "/128"
+			} else {
+				v += "/32"
+			}
 		}
 		_, cidr, err := net.ParseCIDR(v)
 		if err != nil {
