@@ -177,7 +177,7 @@ func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *Torr
 }
 func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) int {
 	if config.Debug_CheckPeer {
-		Log("Debug-CheckPeer", "%s:%d %s/%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
+		Log("Debug-CheckPeer", "%s:%d %s|%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
 	}
 	hasClientInfo := false
 	if peer.Peer_ID_Client != "" || peer.Client != "" {
@@ -187,7 +187,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		return -1
 	}
 	if IsBlockedPeer(peer.IP, peer.Port, true) {
-		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s/%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
+		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
 		/*
 		if peer.Port == -2 {
 			return 4
@@ -199,7 +199,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		return 2
 	}
 	if IsProgressNotMatchUploaded(torrentTotalSize, peer.Progress, peer.Uploaded) {
-		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s/%s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
+		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
 		AddBlockPeer(peer.IP, peer.Port)
 		return 1
 	}
@@ -209,7 +209,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 				continue
 			}
 			if (peer.Client != "" && v.MatchString(peer.Client)) || (peer.Peer_ID_Client != "" && v.MatchString(peer.Peer_ID_Client)) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s/%s", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
+				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
 				AddBlockPeer(peer.IP, peer.Port)
 				return 1
 			}
@@ -217,14 +217,14 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	}
 	ip := net.ParseIP(peer.IP)
 	if ip == nil {
-		Log("Debug-CheckPeer_AddBlockPeer (Bad-Client)", "Bad IP: %s:%d %s/%s", false, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
+		Log("Debug-CheckPeer_AddBlockPeer (Bad-Client)", "Bad IP: %s:%d %s|%s", false, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
 	} else {
 		for _, v := range ipBlockListCompiled {
 			if v == nil {
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s/%s", true, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
+				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s", true, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
 				AddBlockPeer(peer.IP, -1)
 				return 3
 			}
@@ -330,7 +330,7 @@ func Task() {
 				for _, peer := range torrentPeers.Peers {
 					peerStatus := CheckPeer(peer, torrentInfoHash, torrentInfo.TotalSize)
 					if config.Debug_CheckPeer {
-						Log("Debug-CheckPeer", "%s:%d %s/%s (Status: %d)", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peerStatus)
+						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peerStatus)
 					}
 					switch peerStatus {
 						case 3:
@@ -359,7 +359,7 @@ func Task() {
 		peersStr := GenBlockPeersStr()
 		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
 		SubmitBlockPeer(peersStr)
-		if config.IPUploadedCheck {
+		if config.IPUploadedCheck || len(ipBlockListCompiled) > 0 {
 			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个, 此次封禁 IP 地址: %d 个, 当前封禁 IP 地址: %d 个", true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
 		} else {
 			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个", true, blockCount, len(blockPeerMap))
@@ -378,7 +378,7 @@ func RunConsole() {
 			os.Chdir(dir)
 			Log("RunConsole", "切换工作目录: %s", false, dir)
 		} else {
-			Log("RunConsole", "切换工作目录失败, 将以当前工作目录运行", false, err.Error())
+			Log("RunConsole", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
 		}
 	}
 	LoadInitConfig(true)
