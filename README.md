@@ -115,6 +115,7 @@
 | -v/--version | false (禁用) | 显示程序版本后退出 |
 | -c/--config | config.json | 配置文件路径 |
 | --debug | false (禁用) | 调试模式. 加载配置文件前生效 |
+| --nochdir | false (禁用) | 不切换工作目录. 默认会切换至程序目录 |
 
 ## 配置 Config
 

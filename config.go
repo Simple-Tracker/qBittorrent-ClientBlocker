@@ -56,6 +56,7 @@ type ConfigStruct struct {
 var programVersion = "Unknown"
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
+var noChdir bool
 
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
@@ -355,5 +356,6 @@ func RegFlag() {
 	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
 	flag.StringVar(&configFilename, "config", "config.json", "配置文件路径")
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
+	flag.BoolVar(&noChdir, "nochdir", false, "不切换工作目录")
 	flag.Parse()
 }
