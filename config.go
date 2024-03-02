@@ -31,6 +31,7 @@ type ConfigStruct struct {
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
+	IPUpCheckPerTorrentRatio      uint32
 	MaxIPPortCount                uint32
 	BanByProgressUploaded         bool
 	BanByPUStartMB                uint32
@@ -95,6 +96,7 @@ var config = ConfigStruct {
 	IPUploadedCheck:               false,
 	IPUpCheckInterval:             3600,
 	IPUpCheckIncrementMB:          180000,
+	IPUpCheckPerTorrentRatio:      3,
 	MaxIPPortCount:                0,
 	BanByProgressUploaded:         false,
 	BanByPUStartMB:                10,

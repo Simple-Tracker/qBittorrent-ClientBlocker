@@ -85,18 +85,29 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	
 	return false
 }
-func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) float64 {
+func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct, torrents map[string]TorrentStruct) int64 {
 	var totalUploaded int64 = 0
 	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
-			totalUploaded += torrentUploaded
-		} else {
-			totalUploaded += (torrentUploaded - lastTorrentUploaded)
+		if config.IPUpCheckPerTorrentRatio > 1 {
+			if torrentInfo, exist := torrents[torrentInfoHash]; exist {
+				if torrentUploaded > (torrentInfo.TotalSize * int64(config.IPUpCheckPerTorrentRatio)) {
+					return (torrentUploaded / 1024 / 1024)
+				}
+			}
+		}
+		if config.IPUpCheckIncrementMB > 0 {
+			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
+				totalUploaded += torrentUploaded
+			} else {
+				totalUploaded += (torrentUploaded - lastTorrentUploaded)
+			}
 		}
 	}
-	var totalUploadedMB float64 = (float64(totalUploaded) / 1024 / 1024)
-	if totalUploadedMB > float64(config.IPUpCheckIncrementMB) {
-		return totalUploadedMB
+	if config.IPUpCheckIncrementMB > 0 {
+		var totalUploadedMB int64 = (totalUploaded / 1024 / 1024)
+		if totalUploadedMB > int64(config.IPUpCheckIncrementMB) {
+			return totalUploadedMB
+		}
 	}
 	return 0
 }
@@ -234,15 +245,15 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	AddPeerInfo(peer.IP, peer.Port, peer.Progress, peer.Uploaded)
 	return 0
 }
-func CheckAllIP(lastIPMap map[string]IPInfoStruct) int {
-	if config.IPUploadedCheck && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
+func CheckAllIP(lastIPMap map[string]IPInfoStruct, torrents map[string]TorrentStruct) int {
+	if config.IPUploadedCheck && (config.IPUpCheckIncrementMB > 0 || config.IPUpCheckPerTorrentRatio > 1) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
 		blockCount := 0
 		for ip, ipInfo := range ipMap {
 			if IsBlockedPeer(ip, -1, false) {
 				continue
 			}
 			if lastIPInfo, exist := lastIPMap[ip]; exist {
-				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
+				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo, torrents); uploadDuring > 0 {
 					Log("CheckAllIP_AddBlockPeer (Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
 					blockCount++
 					AddBlockPeer(ip, -1)
@@ -347,7 +358,7 @@ func Task() {
 		}
 	}
 
-	currentIPBlockCount := CheckAllIP(lastIPMap)
+	currentIPBlockCount := CheckAllIP(lastIPMap, metadata.Torrents)
 	ipBlockCount += currentIPBlockCount
 	blockCount += CheckAllPeer(lastPeerMap)
 

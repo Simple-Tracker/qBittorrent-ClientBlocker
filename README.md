@@ -136,7 +136,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | timeout | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |
 | ipUploadedCheck | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | 3600 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量 |
-| ipUpCheckIncrementMB | 180000 (MB) | IP 上传增量检测/增量大小. 若 IP 上传增量大于增量大小, 则允许屏蔽 Peer |
+| ipUpCheckIncrementMB | 180000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局的上传增量大于增量大小, 则允许屏蔽 Peer |
+| ipUpCheckPerTorrentRatio | 3 (X) | IP 上传增量检测/增量倍率. 若 IP 单个 Torrent 的上传增量大于增量倍率及 Torrent 大小之乘积, 则允许屏蔽 Peer |
 | maxIPPortCount | 0 (禁用) | 每 IP 最大端口数. 若 IP 端口数大于设置值, 会自动屏蔽 Peer |
 | banByProgressUploaded | false (禁用) | 增强自动屏蔽 (根据进度及上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽 条件后, 会自动屏蔽 Peer |
 | banByPUStartMB | 10 (MB) | 增强自动屏蔽/起始大小. 若客户端上传量大于起始大小, 则允许屏蔽 Peer |
