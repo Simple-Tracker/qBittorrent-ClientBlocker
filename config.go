@@ -94,8 +94,8 @@ var config = ConfigStruct {
 	SleepTime:                     20,
 	Timeout:                       6,
 	IPUploadedCheck:               false,
-	IPUpCheckInterval:             3600,
-	IPUpCheckIncrementMB:          180000,
+	IPUpCheckInterval:             300,
+	IPUpCheckIncrementMB:          38000,
 	IPUpCheckPerTorrentRatio:      3,
 	MaxIPPortCount:                0,
 	BanByProgressUploaded:         false,
@@ -126,7 +126,7 @@ func GetQBConfigPath() string {
 		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
 		return ""
 	}
-	if !strings.Contains(userHomeDir, "\\") {
+	if IsUnix(userHomeDir) {
 		qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
 	} else {
 		userConfigDir, err := os.UserConfigDir()
@@ -316,7 +316,7 @@ func InitConfig() {
 	for k, v := range config.IPBlockList {
 		Log("Debug-LoadConfig-CompileIPBlockList", "%s", false, v)
 		if !strings.Contains(v, "/") {
-			if strings.Contains(v, ":") {
+			if IsIPv6(v) {
 				v += "/128"
 			} else {
 				v += "/32"
