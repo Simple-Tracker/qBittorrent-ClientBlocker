@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 	"strings"
+	"strconv"
 )
 
 type IPInfoStruct struct {
@@ -30,7 +31,7 @@ var peerMap = make(map[string]PeerInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 
 func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
-	if !config.IPUploadedCheck {
+	if !config.IPUploadedCheck || (config.IPUpCheckIncrementMB <= 0 && config.IPUpCheckPerTorrentRatio <= 0) {
 		return
 	}
 	var clientTorrentUploadedMap map[string]int64
@@ -88,7 +89,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct, torrents map[string]TorrentStruct) int64 {
 	var totalUploaded int64 = 0
 	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if config.IPUpCheckPerTorrentRatio > 1 {
+		if config.IPUpCheckPerTorrentRatio > 0 {
 			if torrentInfo, exist := torrents[torrentInfoHash]; exist {
 				if torrentUploaded > (torrentInfo.TotalSize * int64(config.IPUpCheckPerTorrentRatio)) {
 					return (torrentUploaded / 1024 / 1024)
@@ -171,13 +172,10 @@ func ClearBlockPeer() int {
 	return cleanCount
 }
 func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *TorrentPeersStruct) {
-	if config.Debug_CheckTorrent {
-		Log("Debug-CheckTorrent", "%s", false, torrentInfoHash)
-	}
 	if torrentInfoHash == "" {
 		return -1, nil
 	}
-	if torrentInfo.NumLeechs < 1 {
+	if torrentInfo.NumLeechs <= 0 {
 		return -2, nil
 	}
 	torrentPeers := FetchTorrentPeers(torrentInfoHash)
@@ -187,18 +185,12 @@ func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *Torr
 	return 0, torrentPeers
 }
 func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) int {
-	if config.Debug_CheckPeer {
-		Log("Debug-CheckPeer", "%s:%d %s|%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
-	}
-	hasClientInfo := false
-	if peer.Peer_ID_Client != "" || peer.Client != "" {
-		hasClientInfo = true
-	}
-	if peer.IP == "" || CheckPrivateIP(peer.IP) {
+	hasPeerClient := (peer.Client != "" || peer.Peer_ID_Client != "")
+	if (!config.IgnoreEmptyPeer && !hasPeerClient) || peer.IP == "" || CheckPrivateIP(peer.IP) {
 		return -1
 	}
 	if IsBlockedPeer(peer.IP, peer.Port, true) {
-		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
+		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client))
 		/*
 		if peer.Port == -2 {
 			return 4
@@ -210,17 +202,17 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 		return 2
 	}
 	if IsProgressNotMatchUploaded(torrentTotalSize, peer.Progress, peer.Uploaded) {
-		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
+		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
 		AddBlockPeer(peer.IP, peer.Port)
 		return 1
 	}
-	if hasClientInfo {
+	if hasPeerClient {
 		for _, v := range blockListCompiled {
 			if v == nil {
 				continue
 			}
 			if (peer.Client != "" && v.MatchString(peer.Client)) || (peer.Peer_ID_Client != "" && v.MatchString(peer.Peer_ID_Client)) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s", true, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client)
+				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s", true, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client))
 				AddBlockPeer(peer.IP, peer.Port)
 				return 1
 			}
@@ -228,14 +220,14 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	}
 	ip := net.ParseIP(peer.IP)
 	if ip == nil {
-		Log("Debug-CheckPeer_AddBlockPeer (Bad-Client)", "Bad IP: %s:%d %s|%s", false, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
+		Log("Debug-CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s", false, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client))
 	} else {
 		for _, v := range ipBlockListCompiled {
 			if v == nil {
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s", true, peer.IP, -1, peer.Peer_ID_Client, peer.Client)
+				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client))
 				AddBlockPeer(peer.IP, -1)
 				return 3
 			}
@@ -246,7 +238,7 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 	return 0
 }
 func CheckAllIP(lastIPMap map[string]IPInfoStruct, torrents map[string]TorrentStruct) int {
-	if config.IPUploadedCheck && (config.IPUpCheckIncrementMB > 0 || config.IPUpCheckPerTorrentRatio > 1) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
+	if config.IPUploadedCheck && (config.IPUpCheckIncrementMB > 0 || config.IPUpCheckPerTorrentRatio > 0) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
 		blockCount := 0
 		for ip, ipInfo := range ipMap {
 			if IsBlockedPeer(ip, -1, false) {
@@ -341,7 +333,7 @@ func Task() {
 				for _, peer := range torrentPeers.Peers {
 					peerStatus := CheckPeer(peer, torrentInfoHash, torrentInfo.TotalSize)
 					if config.Debug_CheckPeer {
-						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peerStatus)
+						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), peerStatus)
 					}
 					switch peerStatus {
 						case 3:
@@ -386,8 +378,11 @@ func RunConsole() {
 	if !noChdir {
 		dir, err := os.Getwd()
 		if err == nil {
-			os.Chdir(dir)
-			Log("RunConsole", "切换工作目录: %s", false, dir)
+			if os.Chdir(dir) == nil {
+				Log("RunConsole", "切换工作目录: %s", false, dir)
+			} else {
+				Log("RunConsole", "切换工作目录失败: %s", false, dir)
+			}
 		} else {
 			Log("RunConsole", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
 		}

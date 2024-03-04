@@ -124,13 +124,14 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | 设置项 | 默认值 | 配置说明 |
 | ----- | ----- | ----- |
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
-| debug_CheckTorrent | false (禁用) | 调试模式 (CheckTorrent, 须先启动 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
-| debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启动 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
+| debug_CheckTorrent | false (禁用) | 调试模式 (CheckTorrent, 须先启用 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
+| debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
 | interval | 6 (秒) | 屏蔽循环间隔. 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | peerMapCleanInterval | 60 (秒) | Peer Map 清理间隔 (启用 maxIPPortCount/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
+| IgnoreEmptyPeer | false (禁用) | 忽略无客户端名称的 Peer. 通常出现于连接未完全建立的客户端 |
 | startDelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | sleepTime | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成 qBittorrent 卡顿, 长间隔有助于平均 CPU 资源占用 |
 | timeout | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |

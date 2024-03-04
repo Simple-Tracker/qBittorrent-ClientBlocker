@@ -25,6 +25,7 @@ type ConfigStruct struct {
 	PeerMapCleanInterval          uint32
 	BanTime                       uint32
 	BanAllPort                    bool
+	IgnoreEmptyPeer               bool
 	StartDelay                    uint32
 	SleepTime                     uint32
 	Timeout                       uint32
@@ -90,6 +91,7 @@ var config = ConfigStruct {
 	PeerMapCleanInterval:          60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
+	IgnoreEmptyPeer:               false,
 	StartDelay:                    0,
 	SleepTime:                     20,
 	Timeout:                       6,
@@ -340,7 +342,7 @@ func LoadInitConfig(firstLoad bool) {
 		SetQBURLFromQB()
 	}
 	if config.QBURL != "" {
-		if !firstLoad && lastQBURL != config.QBURL {
+		if lastQBURL != config.QBURL {
 			SubmitBlockPeer("")
 			lastQBURL = config.QBURL
 		}
