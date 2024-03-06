@@ -6,6 +6,7 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"runtime"
 )
 
 type IPInfoStruct struct {
@@ -369,6 +370,33 @@ func Task() {
 		}
 	}
 }
+func GC() {
+	ipMapGCCount := (len(peerMap) - 2333333)
+	peerMapGCCount := (len(peerMap) - 2333333)
+
+	if ipMapGCCount > 0 {
+		for ip, _ := range ipMap {
+			ipMapGCCount--
+			delete(ipMap, ip)
+			if ipMapGCCount <= 0 {
+				break
+			}
+		}
+		runtime.GC()
+		Log("GC", "触发垃圾回收 (ipMap)", true)
+	}
+	if peerMapGCCount > 0 {
+		for ip, _ := range peerMap {
+			peerMapGCCount--
+			delete(peerMap, ip)
+			if peerMapGCCount <= 0 {
+				break
+			}
+		}
+		runtime.GC()
+		Log("GC", "触发垃圾回收 (peerMap)", true)
+	}
+}
 func RunConsole() {
 	RegFlag()
 	ShowVersion()
@@ -403,5 +431,6 @@ func RunConsole() {
 		currentTimestamp = time.Now().Unix()
 		LoadInitConfig(false)
 		Task()
+		GC()
 	}
 }
