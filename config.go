@@ -29,6 +29,17 @@ type ConfigStruct struct {
 	StartDelay                    uint32
 	SleepTime                     uint32
 	Timeout                       uint32
+	LongConnection                bool
+	LogPath                       string
+	LogToFile                     bool
+	LogDebug                      bool
+	QBURL                         string
+	QBUsername                    string
+	QBPassword                    string
+	UseBasicAuth                  bool
+	SkipCertVerification          bool
+	BlockList                     []string
+	IPBlockList                   []string
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
@@ -42,17 +53,6 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   uint32
 	BanByRelativePUAntiErrorRatio uint32
-	LongConnection                bool
-	LogPath                       string
-	LogToFile                     bool
-	LogDebug                      bool
-	QBURL                         string
-	QBUsername                    string
-	QBPassword                    string
-	UseBasicAuth                  bool
-	SkipCertVerification          bool
-	BlockList                     []string
-	IPBlockList                   []string
 }
 
 var programVersion = "Unknown"
@@ -91,10 +91,21 @@ var config = ConfigStruct {
 	PeerMapCleanInterval:          60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
-	IgnoreEmptyPeer:               false,
+	IgnoreEmptyPeer:               true,
 	StartDelay:                    0,
 	SleepTime:                     20,
 	Timeout:                       6,
+	LongConnection:                true,
+	LogPath:                       "logs",
+	LogToFile:                     true,
+	LogDebug:                      false,
+	QBURL:                         "",
+	QBUsername:                    "",
+	QBPassword:                    "",
+	UseBasicAuth:                  false,
+	SkipCertVerification:          false,
+	BlockList:                     []string {},
+	IPBlockList:                   []string {},
 	IPUploadedCheck:               false,
 	IPUpCheckInterval:             300,
 	IPUpCheckIncrementMB:          38000,
@@ -108,17 +119,6 @@ var config = ConfigStruct {
 	BanByRelativePUStartMB:        10,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 5,
-	LongConnection:                true,
-	LogPath:                       "logs",
-	LogToFile:                     true,
-	LogDebug:                      false,
-	QBURL:                         "",
-	QBUsername:                    "",
-	QBPassword:                    "",
-	UseBasicAuth:                  false,
-	SkipCertVerification:          false,
-	BlockList:                     []string {},
-	IPBlockList:                   []string {},
 }
 
 func GetQBConfigPath() string {
@@ -332,7 +332,7 @@ func InitConfig() {
 		ipBlockListCompiled[k] = cidr
 	}
 }
-func LoadInitConfig(firstLoad bool) {
+func LoadInitConfig(firstLoad bool) bool {
 	lastQBURL = config.QBURL
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
@@ -343,6 +343,9 @@ func LoadInitConfig(firstLoad bool) {
 	}
 	if config.QBURL != "" {
 		if lastQBURL != config.QBURL {
+			if firstLoad && !Login() {
+				return false
+			}
 			SubmitBlockPeer("")
 			lastQBURL = config.QBURL
 		}
@@ -350,6 +353,7 @@ func LoadInitConfig(firstLoad bool) {
 		// 重置为上次使用的 QBURL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 QBURL.
 		config.QBURL = lastQBURL
 	}
+	return true
 }
 func ShowVersion() {
 	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)

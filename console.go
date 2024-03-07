@@ -371,8 +371,8 @@ func Task() {
 	}
 }
 func GC() {
-	ipMapGCCount := (len(peerMap) - 2333333)
-	peerMapGCCount := (len(peerMap) - 2333333)
+	ipMapGCCount := (len(peerMap) - 23333333)
+	peerMapGCCount := (len(peerMap) - 23333333)
 
 	if ipMapGCCount > 0 {
 		for ip, _ := range ipMap {
@@ -415,12 +415,11 @@ func RunConsole() {
 			Log("RunConsole", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
 		}
 	}
-	LoadInitConfig(true)
 	if config.StartDelay > 0 {
-		Log("RunConsole", "启动延迟: %d 秒", true, config.StartDelay)
+		Log("RunConsole", "启动延迟: %d 秒", false, config.StartDelay)
 		time.Sleep(time.Duration(config.StartDelay) * time.Second)
 	}
-	if !Login() {
+	if !LoadInitConfig(true) {
 		Log("RunConsole", "认证失败", true)
 		return
 	}
