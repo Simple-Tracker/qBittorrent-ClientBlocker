@@ -33,7 +33,7 @@
     | Windows  | i386       | 32 位      | windows-386   | 少见于部分老式 PC                                      |
     | Windows  | ARM64      | 64 位      | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件     |
     | Windows  | ARMv6      | 32 位      | windows-arm   | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等   |
-    | Linux    | AMD64      | 64 位      | linux-arm64   | 常见于大部分 NAS 及服务器                              |
+    | Linux    | AMD64      | 64 位      | linux-amd64   | 常见于大部分 NAS 及服务器                              |
     | Linux    | i386       | 32 位      | linux-386     | 少见于部分老式 NAS 及服务器                            |
     | Linux    | ARM64      | 64 位      | linux-arm64   | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
     | Linux    | ARMv6      | 32 位      | linux-arm     | 少见于部分老式服务器及开发板                           |
