@@ -9,11 +9,11 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"io/ioutil"
 	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"net/http/cookiejar"
+	"github.com/tidwall/jsonc"
 )
 
 type ConfigStruct struct {
@@ -161,7 +161,7 @@ func GetConfigFromQB() []byte {
 	if qBConfigLastMod != 0 {
 		Log("Debug-GetConfigFromQB", "发现 qBittorrent 配置文件更改, 正在进行热重载", false)
 	}
-	qBConfigFile, err := ioutil.ReadFile(qBConfigFilename)
+	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
 		Log("GetConfigFromQB", "读取 qBittorrent 配置文件时发生了错误: %s", false, err.Error())
 		return []byte {}
@@ -245,13 +245,13 @@ func LoadConfig() bool {
 	if configLastMod != 0 {
 		Log("Debug-LoadConfig", "发现配置文件更改, 正在进行热重载", false)
 	}
-	configFile, err := ioutil.ReadFile(configFilename)
+	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
 		Log("LoadConfig", "读取配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
 	configLastMod = tmpConfigLastMod
-	if err := json.Unmarshal(configFile, &config); err != nil {
+	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
 		Log("LoadConfig", "解析配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
