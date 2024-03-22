@@ -6,20 +6,43 @@ import (
 	"io/ioutil"
 )
 
-func Fetch(url string, tryLogin bool) []byte {
-	request, err := http.NewRequest("GET", url, nil)
+func NewRequest(isPOST bool, url string, postdata string) *http.Request {
+	var request *http.Request
+	var err error
+
+	if !isPOST {
+		request, err = http.NewRequest("GET", url, nil)
+	} else {
+		request, err = http.NewRequest("POST", url, strings.NewReader(postdata))
+	}
+
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: %s (Part 1)", true, err.Error())
+		Log("NewRequest", "请求时发生了错误: %s (Part 1)", true, err.Error())
 		return nil
+	}
+
+	request.Header.Set("User-Agent", "qBittorrent-ClientBlocker " + programVersion)
+
+	if isPOST {
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
 	if config.UseBasicAuth && config.QBUsername != "" {
 		request.SetBasicAuth(config.QBUsername, config.QBPassword)
 	}
 
+	return request
+}
+func Fetch(url string, tryLogin bool) []byte {
+	request := NewRequest(false, url, "")
+	if request == nil {
+		Log("Fetch", "请求时发生了错误", true)
+		return nil
+	}
+
 	response, err := httpClient.Do(request)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: %s (Part 2)", true, err.Error())
+		Log("Fetch", "请求时发生了错误: %s", true, err.Error())
 		return nil
 	}
 	responseBody, err := ioutil.ReadAll(response.Body)
@@ -43,15 +66,10 @@ func Fetch(url string, tryLogin bool) []byte {
 	return responseBody
 }
 func Submit(url string, postdata string, tryLogin bool) []byte {
-	request, err := http.NewRequest("POST", url, strings.NewReader(postdata))
-	if err != nil {
-		Log("Submit", "请求时发生了错误: %s (Part 1)", true, err.Error())
+	request := NewRequest(true, url, postdata)
+	if request == nil {
+		Log("Submit", "请求时发生了错误", true)
 		return nil
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	if config.UseBasicAuth && config.QBUsername != "" {
-		request.SetBasicAuth(config.QBUsername, config.QBPassword)
 	}
 
 	response, err := httpClient.Do(request)
