@@ -228,7 +228,17 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
+				Log("CheckPeer_AddBlockPeer (Bad-IP_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
+				AddBlockPeer(peer.IP, -1)
+				return 3
+			}
+		}
+		for _, v := range ipfilterCompiled {
+			if v == nil {
+				continue
+			}
+			if v.Contains(ip) {
+				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
 				AddBlockPeer(peer.IP, -1)
 				return 3
 			}

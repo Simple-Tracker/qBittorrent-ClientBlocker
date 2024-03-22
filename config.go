@@ -40,6 +40,7 @@ type ConfigStruct struct {
 	SkipCertVerification          bool
 	BlockList                     []string
 	IPBlockList                   []string
+	IPFilterURL                   string
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
@@ -62,6 +63,7 @@ var noChdir bool
 
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
+var ipfilterCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastQBURL = ""
@@ -106,6 +108,7 @@ var config = ConfigStruct {
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
 	IPBlockList:                   []string {},
+	IPFilterURL:                   "",
 	IPUploadedCheck:               false,
 	IPUpCheckInterval:             300,
 	IPUpCheckIncrementMB:          38000,
@@ -120,7 +123,51 @@ var config = ConfigStruct {
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 5,
 }
+func SetIPFilter() bool {
+	if config.IPFilterURL == "" {
+		return true
+	}
 
+	ipfilter := Fetch(config.IPFilterURL, false)
+	if ipfilter == nil {
+		Log("SetIPFilter", "设置 IPFilter 时发生了错误", true)
+		return false
+	}
+
+	// Max 8MB.
+	if len(ipfilter) > 8388608 {
+		Log("SetIPFilter", "设置 IPFilter 时发生了错误: 目标大小大于 8MB", true)
+		return false
+	}
+
+	ipfilterArr := strings.Split(string(ipfilter), "\n")
+	ipBlockListCompiled = make([]*net.IPNet, len(ipfilterArr))
+	k := 0
+	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
+		ipfilterLine = StrTrim(ipfilterLine)
+		if ipfilterLine == "" {
+			Log("Debug-SetIPFilter-Compile", ":%d 为空", false, ipfilterLineNum)
+			continue
+		}
+
+		Log("Debug-SetIPFilter-Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
+		_, cidr, err := net.ParseCIDR(ipfilterLine)
+		if err != nil {
+			Log("SetIPFilter-Compile", ":%d IP %s 有错误", true, ipfilterLineNum, ipfilterLine)
+			continue
+		}
+
+		ipfilterCompiled[k] = cidr
+
+		k++
+	}
+
+	if len(ipfilterCompiled) > 0 {
+		return true
+	}
+
+	return false
+}
 func GetQBConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
