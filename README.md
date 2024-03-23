@@ -57,7 +57,7 @@
 
    对于 macOS, 可选使用一基本 [LaunchAgent 用户代理](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#launchagent-macos) 用于开机自启及后台运行;
 
-   对于 Linux, 可选使用一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd) 用于开机自启及后台运行;
+   对于 Linux, 可选使用一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd-linux) 用于开机自启及后台运行;
 
 ### Docker 版本安装
 
@@ -158,6 +158,10 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByRelativePUStartMB | 10 (MB) | 增强自动屏蔽_相对/起始大小. 若客户端相对上传量大于设置起始大小, 则允许屏蔽 Peer |
 | banByRelativePUStartPrecent | 2 (%) | 增强自动屏蔽_相对/起始进度. 若客户端相对上传进度大于设置起始进度, 则允许屏蔽 Peer |
 | banByRelativePUAntiErrorRatio | 5 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
+
+## 反馈 Feedback
+用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 讨论/提问/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
+注意: 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue.
 
 ## 致谢 Credit
 
