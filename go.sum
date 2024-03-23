@@ -1,3 +1,5 @@
+github.com/chai2010/winsvc v0.0.0-20230626053835-2858f12dbb33 h1:xcs7ZpTuGng3AoeBS4aoMX0Ba+btfFE+dQTcqisO1vw=
+github.com/chai2010/winsvc v0.0.0-20230626053835-2858f12dbb33/go.mod h1:b9Xy0A0C/binZARjeVfHEr+gHzQUVztL71bTms7PRIM=
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e h1:H+t6A/QJMbhCSEH5rAuRxh+CtW96g0Or0Fxa9IKr4uc=
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/tidwall/jsonc v0.3.2 h1:ZTKrmejRlAJYdn0kcaFqRAKlxxFIC21pYq8vLa4p2Wc=

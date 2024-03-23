@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"github.com/tidwall/jsonc"
+	"path/filepath"
 )
 
 type ConfigStruct struct {
@@ -280,7 +281,10 @@ func SetQBURLFromQB() bool {
 	return true
 }
 func LoadConfig() bool {
-	configFileStat, err := os.Stat(configFilename)
+	appPath := os.Args[0]
+	dirPath := filepath.Dir(appPath)
+	configFilePath := filepath.Join(dirPath, configFilename)
+	configFileStat, err := os.Stat(configFilePath)
 	if err != nil {
 		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
 		return false
@@ -292,7 +296,7 @@ func LoadConfig() bool {
 	if configLastMod != 0 {
 		Log("Debug-LoadConfig", "发现配置文件更改, 正在进行热重载", false)
 	}
-	configFile, err := os.ReadFile(configFilename)
+	configFile, err := os.ReadFile(configFilePath)
 	if err != nil {
 		Log("LoadConfig", "读取配置文件时发生了错误: %s", false, err.Error())
 		return false

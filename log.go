@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	"path/filepath"
 )
 
 var todayStr = ""
@@ -30,14 +31,21 @@ func LoadLog() bool {
 	if config.LogPath == "" {
 		return false
 	}
-	if err := os.Mkdir(config.LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
+	logPath := config.LogPath
+	if !filepath.IsAbs(logPath) {
+		appPath := os.Args[0]
+		dirPath := filepath.Dir(appPath)
+		logPath = filepath.Join(dirPath, logPath)
+	}
+
+	if err := os.Mkdir(logPath, os.ModePerm); err != nil && !os.IsExist(err) {
 		Log("LoadLog", "创建日志目录时发生了错误: %s", false, err.Error())
 		return false
 	}
 
 	tmpTodayStr := GetDateTime(false)
 	newDay := (todayStr != tmpTodayStr)
-	newLogPath := (lastLogPath != config.LogPath)
+	newLogPath := (lastLogPath != logPath)
 
 	if !newDay && !newLogPath {
 		return true
@@ -47,12 +55,12 @@ func LoadLog() bool {
 	}
 	if newLogPath {
 		if lastLogPath != "" {
-			Log("LoadLog", "发现日志目录更改, 正在进行热重载 (%s)", false, config.LogPath)
+			Log("LoadLog", "发现日志目录更改, 正在进行热重载 (%s)", false, logPath)
 		}
-		lastLogPath = config.LogPath
+		lastLogPath = logPath
 	}
 
-	tLogFile, err := os.OpenFile(config.LogPath + "/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	tLogFile, err := os.OpenFile(logPath + "/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		tLogFile.Close()
 		tLogFile = nil

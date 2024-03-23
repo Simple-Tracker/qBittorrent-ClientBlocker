@@ -407,6 +407,9 @@ func GC() {
 		Log("GC", "触发垃圾回收 (peerMap)", true)
 	}
 }
+
+var running bool = true
+
 func RunConsole() {
 	RegFlag()
 	ShowVersion()
@@ -436,10 +439,14 @@ func RunConsole() {
 	Log("RunConsole", "程序已启动", true)
 	loopTicker := time.NewTicker(time.Duration(config.Interval) * time.Second)
 	defer loopTicker.Stop()
-	for ; true; <- loopTicker.C {
+	for ; running; <- loopTicker.C {
 		currentTimestamp = time.Now().Unix()
 		LoadInitConfig(false)
 		Task()
 		GC()
 	}
+}
+
+func StopService() {
+	running = false
 }
