@@ -84,7 +84,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 
 		return true
 	}
-	
+
 	return false
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct, torrents map[string]TorrentStruct) int64 {
@@ -137,20 +137,21 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 	}
 	return false
 }
-func IsProgressNotMatchUploaded_Relative(peerInfo PeerInfoStruct, lastPeerInfo PeerInfoStruct) float64 {
-	// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
-	var relativeUploaded float64 = (float64(peerInfo.Uploaded - lastPeerInfo.Uploaded) / 1024 / 1024)
-	if peerInfo.Uploaded > 0 && relativeUploaded > float64(config.BanByRelativePUStartMB) {
-		relativeUploadedPrecent := (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
-		// 若相对上传百分比大于起始百分比, 则继续判断.
-		if relativeUploadedPrecent > (float64(config.BanByRelativePUStartPrecent) / 100) {
-			// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
-			var peerReportProgress float64 = 0
-			if peerInfo.Progress > 0 {
-				peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
-			}
-			if relativeUploadedPrecent > (peerReportProgress * float64(config.BanByRelativePUAntiErrorRatio)) {
-				return relativeUploaded
+func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) float64 {
+	// 与IsProgressNotMatchUploaded保持一致
+	if config.BanByRelativeProgressUploaded && torrentTotalSize > 0 && (progress-lastProgress) >= 0 && (uploaded-lastUploaded) > 0 {
+		
+		// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
+		relativeUploaded  := (float64(uploaded - lastUploaded) / 1024 / 1024)
+		relativeDownloaded := (float64(torrentTotalSize) * (progress - lastProgress))
+
+		if relativeUploaded > float64(config.BanByRelativePUStartMB) {
+			// 若相对上传百分比大于起始百分比, 则继续判断.
+			if relativeUploaded > (float64(torrentTotalSize) * (float64(config.BanByRelativePUStartPrecent) / 100)) {
+				// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
+				if relativeUploaded > (relativeDownloaded * float64(config.BanByRelativePUAntiErrorRatio)) {
+					return relativeUploaded
+				}
 			}
 		}
 	}
@@ -290,15 +291,15 @@ func CheckAllPeer(lastPeerMap map[string]PeerInfoStruct) int {
 				}
 			}
 			if config.BanByRelativeProgressUploaded {
-				if lastPeerInfo, exist := lastPeerMap[ip]; exist {
-					if uploadDuring := IsProgressNotMatchUploaded_Relative(peerInfo, lastPeerInfo); uploadDuring > 0 {
-						blockCount++
-						for port := range peerInfo.Port {
-							Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, port, uploadDuring)
-							AddBlockPeer(ip, port)
-						}
-					}
-				}
+				// if lastPeerInfo, exist := lastPeerMap[ip]; exist {
+				// 	if uploadDuring := IsProgressNotMatchUploaded_Relative(peerInfo, lastPeerInfo); uploadDuring > 0 {
+				// 		blockCount++
+				// 		for port := range peerInfo.Port {
+				// 			Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, port, uploadDuring)
+				// 			AddBlockPeer(ip, port)
+				// 		}
+				// 	}
+				// }
 			}
 		}
 		lastPeerCleanTimestamp = currentTimestamp
@@ -312,7 +313,7 @@ func Task() {
 		Log("Task", "检测到 QBURL 为空, 可能是未配置且未能自动读取 qBittorrent 配置文件", false)
 		return
 	}
-	
+
 	metadata := FetchMaindata()
 	if metadata == nil {
 		return
