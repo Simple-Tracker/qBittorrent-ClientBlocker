@@ -141,13 +141,13 @@ func IsProgressNotMatchUploaded_Relative(peerInfo PeerInfoStruct, lastPeerInfo P
 	// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
 	var relativeUploaded float64 = (float64(peerInfo.Uploaded - lastPeerInfo.Uploaded) / 1024 / 1024)
 	if peerInfo.Uploaded > 0 && relativeUploaded > float64(config.BanByRelativePUStartMB) {
-		relativeUploadedPrecent := (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded))
+		relativeUploadedPrecent := (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
 		// 若相对上传百分比大于起始百分比, 则继续判断.
 		if relativeUploadedPrecent > (float64(config.BanByRelativePUStartPrecent) / 100) {
 			// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
 			var peerReportProgress float64 = 0
 			if peerInfo.Progress > 0 {
-				peerReportProgress = (lastPeerInfo.Progress / peerInfo.Progress)
+				peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
 			}
 			if relativeUploadedPrecent > (peerReportProgress * float64(config.BanByRelativePUAntiErrorRatio)) {
 				return relativeUploaded
