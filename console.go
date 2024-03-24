@@ -24,7 +24,7 @@ type BlockPeerInfoStruct struct {
 }
 type TorrentMapStruct struct {
 	TotalSize int64
-	Peers  			 map[string]PeerStruct
+	Peers  	  map[string]PeerStruct
 }
 
 var currentTimestamp int64 = 0
@@ -220,7 +220,7 @@ func CheckPeer(peer PeerStruct, lastpeer *PeerStruct, torrentInfoHash string, to
 		return 1
 	}
 	if lastpeer != nil {
-		if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentTotalSize, peer.Progress, lastpeer.Progress, peer.Uploaded, lastpeer.Uploaded); uploadDuring > 1e-6 { // 浮点数的比较
+		if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentTotalSize, peer.Progress, lastpeer.Progress, peer.Uploaded, lastpeer.Uploaded); uploadDuring > 0 {
 			Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peer.IP, peer.Port, uploadDuring)
 			AddBlockPeer(peer.IP, peer.Port)
 			return 1
