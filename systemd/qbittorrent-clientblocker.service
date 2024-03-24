@@ -1,0 +1,17 @@
+[Unit]
+Description=qBittorrent ClientBlocker
+After=network.target
+After=qbittorrent.service
+
+[Service]
+Type=simple
+User=qbittorrent
+Group=qbittorrent
+WorkingDirectory=/path/to/your/qBittorrent-ClientBlocker
+ExecStart=/path/to/your/qBittorrent-ClientBlocker/qBittorrent-ClientBlocker -c /path/to/your/qBittorrent-ClientBlocker/config.json
+Restart=always
+RestartSec=30
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target
