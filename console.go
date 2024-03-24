@@ -23,7 +23,6 @@ type BlockPeerInfoStruct struct {
 	Port      map[int]bool
 }
 type TorrentMapStruct struct {
-	TotalSize int64
 	Peers  	  map[string]PeerStruct
 }
 
@@ -67,7 +66,7 @@ func AddTorrentPeers(torrentInfoHash string, torrentTotalSize int64, peers map[s
 	if !config.BanByRelativeProgressUploaded {
 		return
 	}
-	torrentMap[torrentInfoHash] = TorrentMapStruct {TotalSize: torrentTotalSize, Peers: peers}
+	torrentMap[torrentInfoHash] = TorrentMapStruct { Peers: peers }
 }
 func AddBlockPeer(peerIP string, peerPort int) {
 	peerIP = strings.ToLower(peerIP)
