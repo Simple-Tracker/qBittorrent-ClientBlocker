@@ -27,10 +27,9 @@ func RegHotKey() {
 		Log("RegHotKey", "无法注册窗口热键: %v", false, err.Error())
 		return
 	}
-	Log("RegHotKey", "已注册窗口热键: CTRL+ALT+B", false)
+	Log("RegHotKey", "已注册并开始监听窗口热键: CTRL+ALT+B", false)
 
 	for range qBCBHotkey.Keydown() {
-		Log("Debug-RegHotKey", "开始监听窗口热键", false)
 		ShowOrHiddenWindow()
 	}
 }
