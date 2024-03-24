@@ -89,7 +89,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 			}
 		}
 		if updateTimestamp {
-			blockPeer.Timestamp = currentTimestamp
+			blockPeerMap[peerIP] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Port: blockPeer.Port}
 		}
 
 		return true
@@ -150,7 +150,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) float64 {
 	// 与IsProgressNotMatchUploaded保持一致
 	if config.BanByRelativeProgressUploaded && torrentTotalSize > 0 && (progress-lastProgress) >= 0 && (uploaded-lastUploaded) > 0 {
-		
+
 		// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
 		relativeUploaded  := (float64(uploaded - lastUploaded) / 1024 / 1024)
 		relativeDownloaded := (float64(torrentTotalSize) * (progress - lastProgress))
