@@ -22,7 +22,7 @@ type BlockPeerInfoStruct struct {
 	Timestamp int64
 	Port      map[int]bool
 }
-type TorrrentMapStruct struct {
+type TorrentMapStruct struct {
 	TotalSize int64
 	Peers  			 map[string]PeerStruct
 }
@@ -34,7 +34,7 @@ var lastPeerCleanTimestamp int64 = 0
 var ipMap = make(map[string]IPInfoStruct)
 var peerMap = make(map[string]PeerInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
-var torrentMap = make(map[string]TorrrentMapStruct)
+var torrentMap = make(map[string]TorrentMapStruct)
 
 func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
 	if !config.IPUploadedCheck || (config.IPUpCheckIncrementMB <= 0 && config.IPUpCheckPerTorrentRatio <= 0) {
@@ -67,7 +67,7 @@ func AddTorrentPeers(torrentInfoHash string, torrentTotalSize int64, peers map[s
 	if !config.BanByRelativeProgressUploaded {
 		return
 	}
-	torrentMap[torrentInfoHash] = TorrrentMapStruct {TotalSize: torrentTotalSize, Peers: peers}
+	torrentMap[torrentInfoHash] = TorrentMapStruct {TotalSize: torrentTotalSize, Peers: peers}
 }
 func AddBlockPeer(peerIP string, peerPort int) {
 	peerIP = strings.ToLower(peerIP)
@@ -333,7 +333,7 @@ func Task() {
 	lastIPMap := ipMap
 
 	lastTorrentMap := torrentMap
-	torrentMap = make(map[string]TorrrentMapStruct)
+	torrentMap = make(map[string]TorrentMapStruct)
 
 	for torrentInfoHash, torrentInfo := range metadata.Torrents {
 		torrentStatus, torrentPeers := CheckTorrent(torrentInfoHash, torrentInfo)
