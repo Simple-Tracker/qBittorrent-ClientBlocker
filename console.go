@@ -45,7 +45,7 @@ func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
 	ipMap[clientIP] = IPInfoStruct { TorrentUploaded: clientTorrentUploadedMap }
 }
 func AddPeerInfo(peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
-	if config.MaxIPPortCount <= 0 && !config.BanByRelativeProgressUploaded {
+	if config.MaxIPPortCount <= 0 {
 		return
 	}
 	peerIP = strings.ToLower(peerIP)
