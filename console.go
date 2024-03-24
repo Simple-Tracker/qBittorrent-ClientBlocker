@@ -290,6 +290,7 @@ func CheckAllPeer() int {
 			}
 			if len(peerInfo.Port) > int(config.MaxIPPortCount) {
 				Log("CheckAllPeer_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
+				blockCount++
 				AddBlockPeer(ip, -1)
 				continue
 			}
