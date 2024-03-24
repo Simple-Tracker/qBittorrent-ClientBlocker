@@ -22,6 +22,10 @@ type BlockPeerInfoStruct struct {
 	Timestamp int64
 	Port      map[int]bool
 }
+type TorrrentMapStruct struct {
+	TotalSize int64
+	Peers  			 map[string]PeerStruct
+}
 
 var currentTimestamp int64 = 0
 var lastCleanTimestamp int64 = 0
@@ -30,6 +34,7 @@ var lastPeerCleanTimestamp int64 = 0
 var ipMap = make(map[string]IPInfoStruct)
 var peerMap = make(map[string]PeerInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
+var torrentMap = make(map[string]TorrrentMapStruct)
 
 func AddIPInfo(clientIP string, torrentInfoHash string, clientUploaded int64) {
 	if !config.IPUploadedCheck || (config.IPUpCheckIncrementMB <= 0 && config.IPUpCheckPerTorrentRatio <= 0) {
@@ -57,6 +62,12 @@ func AddPeerInfo(peerIP string, peerPort int, peerProgress float64, peerUploaded
 	}
 	peerPortMap[peerPort] = true
 	peerMap[peerIP] = PeerInfoStruct { Timestamp: currentTimestamp, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
+}
+func AddTorrentPeers(torrentInfoHash string, torrentTotalSize int64, peers map[string]PeerStruct) {
+	if !config.BanByRelativeProgressUploaded {
+		return
+	}
+	torrentMap[torrentInfoHash] = TorrrentMapStruct {TotalSize: torrentTotalSize, Peers: peers}
 }
 func AddBlockPeer(peerIP string, peerPort int) {
 	peerIP = strings.ToLower(peerIP)
@@ -321,6 +332,9 @@ func Task() {
 	badPeersCount := 0
 	lastIPMap := ipMap
 
+	lastTorrentMap := torrentMap
+	torrentMap = make(map[string]TorrrentMapStruct)
+
 	for torrentInfoHash, torrentInfo := range metadata.Torrents {
 		torrentStatus, torrentPeers := CheckTorrent(torrentInfoHash, torrentInfo)
 		if config.Debug_CheckTorrent {
@@ -335,7 +349,15 @@ func Task() {
 				badTorrentInfoCount++
 			case 0:
 				for _, peer := range torrentPeers.Peers {
-					peerStatus := 0 // CheckPeer(peer, torrentInfoHash, torrentInfo.TotalSize)
+					var lastpeer *PeerStruct = nil
+					if config.BanByRelativeProgressUploaded {
+						if lastTorrent, exist := lastTorrentMap[torrentInfoHash]; exist {
+							if lp, exist := lastTorrent.Peers[peer.IP]; exist {
+								lastpeer = &lp
+							}
+						}
+					}
+					peerStatus := CheckPeer(peer, lastpeer, torrentInfoHash, torrentInfo.TotalSize)
 					if config.Debug_CheckPeer {
 						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), peerStatus)
 					}
@@ -351,6 +373,7 @@ func Task() {
 							AddPeerInfo(peer.IP, peer.Port, peer.Progress, peer.Uploaded)
 					}
 				}
+				AddTorrentPeers(torrentInfoHash, torrentInfo.TotalSize, torrentPeers.Peers)
 		}
 		if config.SleepTime != 0 {
 			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
