@@ -89,7 +89,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 
 	return &torrentPeersResult
 }
-func GenBlockPeersStr() string {
+func GenBlockPeersStr(blockPeerMap map[string]BlockPeerInfoStruct) string {
 	ip_ports := ""
 	if useNewBanPeersMethod {
 		for peerIP, peerInfo := range blockPeerMap {

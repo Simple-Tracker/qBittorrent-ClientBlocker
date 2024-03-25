@@ -23,7 +23,7 @@ type ConfigStruct struct {
 	Debug_CheckPeer               bool
 	Interval                      uint32
 	CleanInterval                 uint32
-	PeerMapCleanInterval          uint32
+	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
 	BanAllPort                    bool
 	IgnoreEmptyPeer               bool
@@ -91,7 +91,7 @@ var config = ConfigStruct {
 	Debug_CheckPeer:               false,
 	Interval:                      6,
 	CleanInterval:                 3600,
-	PeerMapCleanInterval:          60,
+	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
 	IgnoreEmptyPeer:               true,

@@ -1,11 +1,27 @@
 package main
 
 import (
-	"time"
 	"net"
+	"time"
 	"strings"
+	"encoding/json"
 )
 
+// Source: https://stackoverflow.com/questions/51459083/deep-copying-maps-in-golang.
+func DeepCopyIPMap(src map[string]IPInfoStruct, dest map[string]IPInfoStruct) {
+	if src != nil && dest != nil {
+		if jsonStr, err := json.Marshal(src); err == nil {
+			json.Unmarshal(jsonStr, &dest)
+		}
+	}
+}
+func DeepCopyTorrentMap(src map[string]TorrentInfoStruct, dest map[string]TorrentInfoStruct) {
+	if src != nil && dest != nil {
+		if jsonStr, err := json.Marshal(src); err == nil {
+			json.Unmarshal(jsonStr, &dest)
+		}
+	}
+}
 func IsUnix(path string) bool {
 	return !strings.Contains(path, "\\")
 }
