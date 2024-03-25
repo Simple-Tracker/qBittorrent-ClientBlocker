@@ -139,27 +139,27 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		满足此条件;
 		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
 		*/
-		startUploaded := (float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
-		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
-		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
+		startUploaded := int64(float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
+		peerReportDownloaded := int64(float64(torrentTotalSize) * clientProgress)
+		if clientUploaded / 1024 / 1024 >= int64(config.BanByPUStartMB) && clientUploaded >= startUploaded && peerReportDownloaded * int64(config.BanByPUAntiErrorRatio) < clientUploaded {
 			return true
 		}
 	}
 	return false
 }
-func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) float64 {
+func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) int64 {
 	// 与IsProgressNotMatchUploaded保持一致
 	if config.BanByRelativeProgressUploaded && torrentTotalSize > 0 && (progress-lastProgress) >= 0 && (uploaded-lastUploaded) > 0 {
 
 		// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
-		relativeUploaded  := float64(uploaded - lastUploaded)
-		relativeDownloaded := (float64(torrentTotalSize) * (progress - lastProgress))
+		relativeUploaded  := uploaded - lastUploaded
+		relativeDownloaded := int64(float64(torrentTotalSize) * (progress - lastProgress))
 
-		if (relativeUploaded / 1024 / 1024) > float64(config.BanByRelativePUStartMB) {
+		if relativeUploaded / 1024 / 1024 > int64(config.BanByRelativePUStartMB) {
 			// 若相对上传百分比大于起始百分比, 则继续判断.
-			if relativeUploaded > (float64(torrentTotalSize) * (float64(config.BanByRelativePUStartPrecent) / 100)) {
+			if relativeUploaded > int64(float64(torrentTotalSize) * float64(config.BanByRelativePUStartPrecent) / 100) {
 				// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
-				if relativeUploaded > (relativeDownloaded * float64(config.BanByRelativePUAntiErrorRatio)) {
+				if relativeUploaded > relativeDownloaded * int64(config.BanByRelativePUAntiErrorRatio) {
 					return relativeUploaded
 				}
 			}
