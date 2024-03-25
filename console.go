@@ -147,7 +147,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 	}
 	return false
 }
-func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) int64 {
+func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float64, lastProgress float64, uploaded int64, lastUploaded int64) bool {
 	// 与IsProgressNotMatchUploaded保持一致
 	if config.BanByRelativeProgressUploaded && torrentTotalSize > 0 && (progress-lastProgress) >= 0 && (uploaded-lastUploaded) > 0 {
 
@@ -160,12 +160,12 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float6
 			if relativeUploaded > int64(float64(torrentTotalSize) * float64(config.BanByRelativePUStartPrecent) / 100) {
 				// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
 				if relativeUploaded > relativeDownloaded * int64(config.BanByRelativePUAntiErrorRatio) {
-					return relativeUploaded
+					return true
 				}
 			}
 		}
 	}
-	return 0
+	return false
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
@@ -219,8 +219,10 @@ func CheckPeer(peer PeerStruct, lastpeer *PeerStruct, torrentInfoHash string, to
 		return 1
 	}
 	if lastpeer != nil {
-		if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentTotalSize, peer.Progress, lastpeer.Progress, peer.Uploaded, lastpeer.Uploaded); uploadDuring > 0 {
-			Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peer.IP, peer.Port, uploadDuring)
+		if IsProgressNotMatchUploaded_Relative(torrentTotalSize, peer.Progress, lastpeer.Progress, peer.Uploaded, lastpeer.Uploaded) {
+			Log("CheckAllPeer_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, RecentProgress: %.2f%%, LastProgress: %.2f%%, RecentUploaded: %.2f MB, LastUploaded: %.2f MB)", true, 
+				peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), 
+				torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (lastpeer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024), (float64(lastpeer.Uploaded) / 1024 / 1024))
 			AddBlockPeer(peer.IP, peer.Port)
 			return 1
 		}
