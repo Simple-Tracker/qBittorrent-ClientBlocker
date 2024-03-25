@@ -54,7 +54,7 @@ func Fetch(url string, tryLogin bool) []byte {
 	}
 
 	if response.StatusCode == 403 && (!tryLogin || !Login()) {
-		Log("Fetch", "请求时发生了错误: 认证失败 %s", true, responseBody)
+		Log("Fetch", "请求时发生了错误: 认证失败", true)
 		return nil
 	}
 
@@ -86,7 +86,7 @@ func Submit(url string, postdata string, tryLogin bool) []byte {
 	}
 
 	if response.StatusCode == 403 && (!tryLogin || !Login()) {
-		Log("Submit", "请求时发生了错误: 认证失败 %s", true, responseBody)
+		Log("Submit", "请求时发生了错误: 认证失败", true)
 		return nil
 	}
 

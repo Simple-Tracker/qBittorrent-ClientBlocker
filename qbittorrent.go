@@ -31,9 +31,6 @@ type TorrentPeersStruct struct {
 var useNewBanPeersMethod = false
 
 func Login() bool {
-	if config.QBUsername == "" {
-		return true
-	}
 	loginParams := url.Values {}
 	loginParams.Set("username", config.QBUsername)
 	loginParams.Set("password", config.QBPassword)
