@@ -23,7 +23,7 @@ type ConfigStruct struct {
 	Debug_CheckPeer               bool
 	Interval                      uint32
 	CleanInterval                 uint32
-	PeerMapCleanInterval          uint32
+	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
 	BanAllPort                    bool
 	IgnoreEmptyPeer               bool
@@ -71,6 +71,7 @@ var lastQBURL = ""
 var configFilename string
 var configLastMod int64 = 0
 var qBConfigLastMod int64 = 0
+var ipfilterLastFetch int64 = 0
 
 var httpTransport = &http.Transport {
 	DisableKeepAlives:   false,
@@ -91,7 +92,7 @@ var config = ConfigStruct {
 	Debug_CheckPeer:               false,
 	Interval:                      6,
 	CleanInterval:                 3600,
-	PeerMapCleanInterval:          60,
+	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
 	IgnoreEmptyPeer:               true,
@@ -125,7 +126,7 @@ var config = ConfigStruct {
 	BanByRelativePUAntiErrorRatio: 5,
 }
 func SetIPFilter() bool {
-	if config.IPFilterURL == "" {
+	if config.IPFilterURL == "" || (ipfilterLastFetch + 86400) > currentTimestamp {
 		return true
 	}
 
@@ -147,14 +148,14 @@ func SetIPFilter() bool {
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
 		ipfilterLine = StrTrim(ipfilterLine)
 		if ipfilterLine == "" {
-			Log("Debug-SetIPFilter-Compile", ":%d 为空", false, ipfilterLineNum)
+			Log("Debug-SetIPFilter_Compile", ":%d 为空", false, ipfilterLineNum)
 			continue
 		}
 
-		Log("Debug-SetIPFilter-Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
-		_, cidr, err := net.ParseCIDR(ipfilterLine)
-		if err != nil {
-			Log("SetIPFilter-Compile", ":%d IP %s 有错误", true, ipfilterLineNum, ipfilterLine)
+		Log("Debug-SetIPFilter_Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
+		cidr := ParseIP(ipfilterLine)
+		if cidr == nil {
+			Log("SetIPFilter_Compile", ":%d IP %s 有错误", true, ipfilterLineNum, ipfilterLine)
 			continue
 		}
 
@@ -163,7 +164,12 @@ func SetIPFilter() bool {
 		k++
 	}
 
-	if len(ipfilterCompiled) > 0 {
+	ipfilterLastFetch = currentTimestamp
+	ruleCount := len(ipfilterCompiled)
+
+	Log("SetIPFilter", "设置了 %d 条 IP 规则", true, ruleCount)
+
+	if ruleCount > 0 {
 		return true
 	}
 
@@ -286,48 +292,58 @@ func LoadConfig() bool {
 		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
 		return false
 	}
+
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
 	if tmpConfigLastMod <= configLastMod {
 		return true
 	}
+
 	if configLastMod != 0 {
 		Log("Debug-LoadConfig", "发现配置文件更改, 正在进行热重载", false)
 	}
+
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
 		Log("LoadConfig", "读取配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
+
 	configLastMod = tmpConfigLastMod
+
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
 		Log("LoadConfig", "解析配置文件时发生了错误: %s", false, err.Error())
 		return false
 	}
+
 	Log("LoadConfig", "读取配置文件成功", true)
 	InitConfig()
+
 	return true
 }
 func InitConfig() {
-	if config.LogToFile {
-		LoadLog()
-	} else if logFile != nil {
+	if !LoadLog() && logFile != nil {
 		logFile.Close()
 		logFile = nil
 	}
+
 	if config.Interval < 1 {
 		config.Interval = 1
 	}
+
 	if config.Timeout < 1 {
 		config.Timeout = 1
 	}
+
 	if config.QBURL != "" {
 		config.QBURL = strings.TrimRight(config.QBURL, "/")
 	}
+
 	if config.SkipCertVerification {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: true }
 	} else {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
 	}
+
 	if !config.LongConnection {
 		httpClient = http.Client {
 			Timeout:   time.Duration(config.Timeout) * time.Second,
@@ -347,48 +363,51 @@ func InitConfig() {
 			Transport: httpTransport,
 		}
 	}
+
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
 	for k := 0; k < t.NumField(); k++ {
-		Log("LoadConfig-Current", "%v: %v", true, t.Field(k).Name, v.Field(k).Interface())
+		Log("LoadConfig_Current", "%v: %v", true, t.Field(k).Name, v.Field(k).Interface())
 	}
+
 	blockListCompiled = make([]*regexp.Regexp, len(config.BlockList))
 	for k, v := range config.BlockList {
-		Log("Debug-LoadConfig-CompileBlockList", "%s", false, v)
+		Log("Debug-LoadConfig_CompileBlockList", "%s", false, v)
+
 		reg, err := regexp.Compile("(?i)" + v)
 		if err != nil {
-			Log("LoadConfig-CompileBlockList", "表达式 %s 有错误", true, v)
+			Log("LoadConfig_CompileBlockList", "表达式 %s 有错误", true, v)
 			continue
 		}
+
 		blockListCompiled[k] = reg
 	}
+
 	ipBlockListCompiled = make([]*net.IPNet, len(config.IPBlockList))
 	for k, v := range config.IPBlockList {
-		Log("Debug-LoadConfig-CompileIPBlockList", "%s", false, v)
-		if !strings.Contains(v, "/") {
-			if IsIPv6(v) {
-				v += "/128"
-			} else {
-				v += "/32"
-			}
-		}
-		_, cidr, err := net.ParseCIDR(v)
-		if err != nil {
-			Log("LoadConfig-CompileIPBlockList", "IP %s 有错误", true, v)
+		Log("Debug-LoadConfig_CompileIPBlockList", "%s", false, v)
+
+		cidr := ParseIP(v)
+		if cidr == nil {
+			Log("LoadConfig_CompileIPBlockList", "IP %s 有错误", true, v)
 			continue
 		}
+
 		ipBlockListCompiled[k] = cidr
 	}
 }
 func LoadInitConfig(firstLoad bool) bool {
 	lastQBURL = config.QBURL
+
 	if !LoadConfig() {
 		Log("RunConsole", "读取配置文件失败或不完整", false)
 		InitConfig()
 	}
+
 	if firstLoad && config.QBURL == "" {
 		SetQBURLFromQB()
 	}
+
 	if config.QBURL != "" {
 		if lastQBURL != config.QBURL {
 			if firstLoad && !Login() {
@@ -401,6 +420,11 @@ func LoadInitConfig(firstLoad bool) bool {
 		// 重置为上次使用的 QBURL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 QBURL.
 		config.QBURL = lastQBURL
 	}
+
+	if !firstLoad {
+		SetIPFilter()
+	}
+
 	return true
 }
 func RegFlag() {

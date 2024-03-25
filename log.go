@@ -27,9 +27,10 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 	fmt.Print(logStr)
 }
 func LoadLog() bool {
-	if config.LogPath == "" {
+	if !config.LogToFile || config.LogPath == "" {
 		return false
 	}
+
 	if err := os.Mkdir(config.LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
 		Log("LoadLog", "创建日志目录时发生了错误: %s", false, err.Error())
 		return false
@@ -42,9 +43,11 @@ func LoadLog() bool {
 	if !newDay && !newLogPath {
 		return true
 	}
+
 	if newDay {
 		todayStr = tmpTodayStr
 	}
+
 	if newLogPath {
 		if lastLogPath != "" {
 			Log("LoadLog", "发现日志目录更改, 正在进行热重载 (%s)", false, config.LogPath)
@@ -59,6 +62,7 @@ func LoadLog() bool {
 		Log("LoadLog", "访问日志时发生了错误: %s", false, err.Error())
 		return false
 	}
+
 	logFile.Close()
 	logFile = tLogFile
 
