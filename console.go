@@ -152,10 +152,10 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, progress float6
 	if config.BanByRelativeProgressUploaded && torrentTotalSize > 0 && (progress-lastProgress) >= 0 && (uploaded-lastUploaded) > 0 {
 
 		// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
-		relativeUploaded  := (float64(uploaded - lastUploaded) / 1024 / 1024)
+		relativeUploaded  := float64(uploaded - lastUploaded)
 		relativeDownloaded := (float64(torrentTotalSize) * (progress - lastProgress))
 
-		if relativeUploaded > float64(config.BanByRelativePUStartMB) {
+		if (relativeUploaded / 1024 / 1024) > float64(config.BanByRelativePUStartMB) {
 			// 若相对上传百分比大于起始百分比, 则继续判断.
 			if relativeUploaded > (float64(torrentTotalSize) * (float64(config.BanByRelativePUStartPrecent) / 100)) {
 				// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
