@@ -11,6 +11,7 @@ import (
 	"strings"
 	"crypto/tls"
 	"encoding/json"
+	"path/filepath"
 	"net/http"
 	"net/http/cookiejar"
 	"github.com/tidwall/jsonc"
@@ -40,6 +41,7 @@ type ConfigStruct struct {
 	SkipCertVerification          bool
 	BlockList                     []string
 	IPBlockList                   []string
+	IPFilterURL                   string
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
@@ -62,6 +64,7 @@ var noChdir bool
 
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
+var ipfilterCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastQBURL = ""
@@ -106,6 +109,7 @@ var config = ConfigStruct {
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
 	IPBlockList:                   []string {},
+	IPFilterURL:                   "",
 	IPUploadedCheck:               false,
 	IPUpCheckInterval:             300,
 	IPUpCheckIncrementMB:          38000,
@@ -120,7 +124,51 @@ var config = ConfigStruct {
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 5,
 }
+func SetIPFilter() bool {
+	if config.IPFilterURL == "" {
+		return true
+	}
 
+	ipfilter := Fetch(config.IPFilterURL, false)
+	if ipfilter == nil {
+		Log("SetIPFilter", "设置 IPFilter 时发生了错误", true)
+		return false
+	}
+
+	// Max 8MB.
+	if len(ipfilter) > 8388608 {
+		Log("SetIPFilter", "设置 IPFilter 时发生了错误: 目标大小大于 8MB", true)
+		return false
+	}
+
+	ipfilterArr := strings.Split(string(ipfilter), "\n")
+	ipBlockListCompiled = make([]*net.IPNet, len(ipfilterArr))
+	k := 0
+	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
+		ipfilterLine = StrTrim(ipfilterLine)
+		if ipfilterLine == "" {
+			Log("Debug-SetIPFilter-Compile", ":%d 为空", false, ipfilterLineNum)
+			continue
+		}
+
+		Log("Debug-SetIPFilter-Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
+		_, cidr, err := net.ParseCIDR(ipfilterLine)
+		if err != nil {
+			Log("SetIPFilter-Compile", ":%d IP %s 有错误", true, ipfilterLineNum, ipfilterLine)
+			continue
+		}
+
+		ipfilterCompiled[k] = cidr
+
+		k++
+	}
+
+	if len(ipfilterCompiled) > 0 {
+		return true
+	}
+
+	return false
+}
 func GetQBConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
@@ -355,9 +403,6 @@ func LoadInitConfig(firstLoad bool) bool {
 	}
 	return true
 }
-func ShowVersion() {
-	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
-}
 func RegFlag() {
 	flag.BoolVar(&shortFlag_ShowVersion, "v", false, "程序版本")
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, "程序版本")
@@ -366,4 +411,31 @@ func RegFlag() {
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.BoolVar(&noChdir, "nochdir", false, "不切换工作目录")
 	flag.Parse()
+}
+func ShowVersion() {
+	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
+}
+func PrepareEnv() bool {
+	RegFlag()
+	ShowVersion()
+
+	if shortFlag_ShowVersion || longFlag_ShowVersion {
+		return false
+	}
+
+	if !noChdir {
+		path, err := os.Executable()
+		if err == nil {
+			dir := filepath.Dir(path)
+			if os.Chdir(dir) == nil {
+				Log("PrepareEnv", "切换工作目录: %s", false, dir)
+			} else {
+				Log("PrepareEnv", "切换工作目录失败: %s", false, dir)
+			}
+		} else {
+			Log("PrepareEnv", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
+		}
+	}
+
+	return true
 }
