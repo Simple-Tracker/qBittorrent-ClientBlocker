@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"net"
 	"time"
 	"strings"
@@ -408,23 +407,6 @@ func GC() {
 	}
 }
 func RunConsole() {
-	RegFlag()
-	ShowVersion()
-	if shortFlag_ShowVersion || longFlag_ShowVersion {
-		return
-	}
-	if !noChdir {
-		dir, err := os.Getwd()
-		if err == nil {
-			if os.Chdir(dir) == nil {
-				Log("RunConsole", "切换工作目录: %s", false, dir)
-			} else {
-				Log("RunConsole", "切换工作目录失败: %s", false, dir)
-			}
-		} else {
-			Log("RunConsole", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
-		}
-	}
 	if config.StartDelay > 0 {
 		Log("RunConsole", "启动延迟: %d 秒", false, config.StartDelay)
 		time.Sleep(time.Duration(config.StartDelay) * time.Second)

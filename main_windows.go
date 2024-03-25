@@ -35,5 +35,7 @@ func RegHotKey() {
 }
 func main() {
 	go RegHotKey()
-	RunConsole()
+	if PrepareEnv() {
+		RunConsole()
+	}
 }

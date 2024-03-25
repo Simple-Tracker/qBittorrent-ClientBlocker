@@ -2,5 +2,7 @@
 package main
 
 func main() {
-	RunConsole()
+	if PrepareEnv() {
+		RunConsole()
+	}
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"crypto/tls"
 	"encoding/json"
+	"path/filepath"
 	"net/http"
 	"net/http/cookiejar"
 	"github.com/tidwall/jsonc"
@@ -402,9 +403,6 @@ func LoadInitConfig(firstLoad bool) bool {
 	}
 	return true
 }
-func ShowVersion() {
-	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
-}
 func RegFlag() {
 	flag.BoolVar(&shortFlag_ShowVersion, "v", false, "程序版本")
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, "程序版本")
@@ -413,4 +411,31 @@ func RegFlag() {
 	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
 	flag.BoolVar(&noChdir, "nochdir", false, "不切换工作目录")
 	flag.Parse()
+}
+func ShowVersion() {
+	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
+}
+func PrepareEnv() bool {
+	RegFlag()
+	ShowVersion()
+
+	if shortFlag_ShowVersion || longFlag_ShowVersion {
+		return false
+	}
+
+	if !noChdir {
+		path, err := os.Executable()
+		if err == nil {
+			dir := filepath.Dir(path)
+			if os.Chdir(dir) == nil {
+				Log("PrepareEnv", "切换工作目录: %s", false, dir)
+			} else {
+				Log("PrepareEnv", "切换工作目录失败: %s", false, dir)
+			}
+		} else {
+			Log("PrepareEnv", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
+		}
+	}
+
+	return true
 }
