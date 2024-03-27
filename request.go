@@ -17,7 +17,7 @@ func NewRequest(isPOST bool, url string, postdata string) *http.Request {
 	}
 
 	if err != nil {
-		Log("NewRequest", "请求时发生了错误: %s (Part 1)", true, err.Error())
+		Log("NewRequest", GetLangText("Error-NewRequest"), true, err.Error())
 		return nil
 	}
 
@@ -36,30 +36,30 @@ func NewRequest(isPOST bool, url string, postdata string) *http.Request {
 func Fetch(url string, tryLogin bool) []byte {
 	request := NewRequest(false, url, "")
 	if request == nil {
-		Log("Fetch", "请求时发生了错误", true)
 		return nil
 	}
 
 	response, err := httpClient.Do(request)
 	if err != nil {
-		Log("Fetch", "请求时发生了错误: %s", true, err.Error())
+		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
 		return nil
 	}
+
 	responseBody, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
-		Log("Fetch", "读取时发生了错误: %s", true, err.Error())
+		Log("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
 		return nil
 	}
 
 	if response.StatusCode == 403 && (!tryLogin || !Login()) {
-		Log("Fetch", "请求时发生了错误: 认证失败", true)
+		Log("Fetch", GetLangText("Error-Forbidden"), true)
 		return nil
 	}
 
 	if response.StatusCode == 404 {
-		Log("Fetch", "请求时发生了错误: 资源不存在", true)
+		Log("Fetch", GetLangText("Error-NotFound"), true)
 		return nil
 	}
 
@@ -68,30 +68,29 @@ func Fetch(url string, tryLogin bool) []byte {
 func Submit(url string, postdata string, tryLogin bool) []byte {
 	request := NewRequest(true, url, postdata)
 	if request == nil {
-		Log("Submit", "请求时发生了错误", true)
 		return nil
 	}
 
 	response, err := httpClient.Do(request)
 	if err != nil {
-		Log("Submit", "请求时发生了错误: %s (Part 2)", true, err.Error())
+		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
 		return nil
 	}
 	responseBody, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
-		Log("Submit", "读取时发生了错误: %s", true, err.Error())
+		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
 		return nil
 	}
 
 	if response.StatusCode == 403 && (!tryLogin || !Login()) {
-		Log("Submit", "请求时发生了错误: 认证失败", true)
+		Log("Submit", GetLangText("Error-Forbidden"), true)
 		return nil
 	}
 
 	if response.StatusCode == 404 {
-		Log("Submit", "请求时发生了错误: 资源不存在", true)
+		Log("Submit", GetLangText("Error-NotFound"), true)
 		return nil
 	}
 

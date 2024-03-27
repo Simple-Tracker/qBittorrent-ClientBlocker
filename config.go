@@ -60,6 +60,7 @@ type ConfigStruct struct {
 
 var programName = "qBittorrent-ClientBlocker"
 var programVersion = "Unknown"
+var programDir string
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var noChdir bool
@@ -73,7 +74,6 @@ var cookieJar, _ = cookiejar.New(nil)
 var lastQBURL = ""
 var configFilename string
 var configLastMod int64 = 0
-var qBConfigLastMod int64 = 0
 var ipfilterLastFetch int64 = 0
 
 var httpTransport = &http.Transport {
@@ -136,13 +136,13 @@ func SetIPFilter() bool {
 
 	ipfilter := Fetch(config.IPFilterURL, false)
 	if ipfilter == nil {
-		Log("SetIPFilter", "设置 IPFilter 时发生了错误", true)
+		Log("SetIPFilter", GetLangText("Error-SetIPFilter_Fetch"), true)
 		return false
 	}
 
 	// Max 8MB.
 	if len(ipfilter) > 8388608 {
-		Log("SetIPFilter", "设置 IPFilter 时发生了错误: 目标大小大于 8MB", true)
+		Log("SetIPFilter", GetLangText("Error-SetIPFilter_LargeFile"), true)
 		return false
 	}
 
@@ -152,14 +152,14 @@ func SetIPFilter() bool {
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
 		ipfilterLine = StrTrim(ipfilterLine)
 		if ipfilterLine == "" {
-			Log("Debug-SetIPFilter_Compile", ":%d 为空", false, ipfilterLineNum)
+			Log("Debug-SetIPFilter_Compile", GetLangText("Error-Debug-SetIPFilter_EmptyLine"), false, ipfilterLineNum)
 			continue
 		}
 
 		Log("Debug-SetIPFilter_Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
 		cidr := ParseIP(ipfilterLine)
 		if cidr == nil {
-			Log("SetIPFilter_Compile", ":%d IP %s 有错误", true, ipfilterLineNum, ipfilterLine)
+			Log("SetIPFilter_Compile", GetLangText("Error-SetIPFilter_Compile"), true, ipfilterLineNum, ipfilterLine)
 			continue
 		}
 
@@ -171,7 +171,7 @@ func SetIPFilter() bool {
 	ipfilterLastFetch = currentTimestamp
 	ruleCount := len(ipfilterCompiled)
 
-	Log("SetIPFilter", "设置了 %d 条 IP 规则", true, ruleCount)
+	Log("SetIPFilter", GetLangText("Success-SetIPFilter"), true, ruleCount)
 
 	if ruleCount > 0 {
 		return true
@@ -183,7 +183,7 @@ func GetQBConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		Log("Debug-GetQBConfigPath", "获取 User Home 目录时发生了错误: %s", false, err.Error())
+		Log("Debug-GetQBConfigPath", GetLangText("Error-Debug-GetQBConfigPath_GetUserHomeDir"), false, err.Error())
 		return ""
 	}
 	if IsUnix(userHomeDir) {
@@ -191,7 +191,7 @@ func GetQBConfigPath() string {
 	} else {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			Log("Debug-GetQBConfigPath", "获取 User Config 目录时发生了错误: %s", false, err.Error())
+			Log("Debug-GetQBConfigPath", GetLangText("Error-Debug-GetQBConfigPath_GetUserConfigDir"), false, err.Error())
 			return ""
 		}
 		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
@@ -203,28 +203,24 @@ func GetConfigFromQB() []byte {
 	if qBConfigFilename == "" {
 		return []byte {}
 	}
-	qBConfigFileStat, err := os.Stat(qBConfigFilename)
+
+	_, err := os.Stat(qBConfigFilename)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
-			Log("GetConfigFromQB", "读取 qBittorrent 配置文件元数据时发生了错误: %s", false, err.Error())
+			Log("GetConfigFromQB", GetLangText("Error-GetConfigFromQB_LoadConfigMeta"), false, err.Error())
 		}
 		return []byte {}
 	}
-	tmpQBConfigLastMod := qBConfigFileStat.ModTime().Unix()
-	if config.QBURL != "" && tmpQBConfigLastMod <= qBConfigLastMod {
-		return []byte {}
-	}
-	Log("GetConfigFromQB", "使用 qBittorrent 配置文件: %s", false, qBConfigFilename)
-	if qBConfigLastMod != 0 {
-		Log("Debug-GetConfigFromQB", "发现 qBittorrent 配置文件更改, 正在进行热重载", false)
-	}
+
+	Log("GetConfigFromQB", GetLangText("GetConfigFromQB_UseQBConfig"), false, qBConfigFilename)
+
 	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
-		Log("GetConfigFromQB", "读取 qBittorrent 配置文件时发生了错误: %s", false, err.Error())
+		Log("GetConfigFromQB", GetLangText("Error-GetConfigFromQB_LoadConfig"), false, err.Error())
 		return []byte {}
 	}
-	qBConfigLastMod = tmpQBConfigLastMod
+
 	return qBConfigFile
 }
 func SetQBURLFromQB() bool {
@@ -272,7 +268,7 @@ func SetQBURLFromQB() bool {
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
-		Log("SetQBURLFromQB", "放弃读取 qBittorrent 配置文件 (qBWebUIEnabled: %t, qBAddress: %s)", false, qBWebUIEnabled, qBAddress)
+		Log("SetQBURLFromQB", GetLangText("Abandon-SetQBURLFromQB"), false, qBWebUIEnabled, qBAddress)
 		return false
 	}
 	if qBHTTPSEnabled {
@@ -287,13 +283,13 @@ func SetQBURLFromQB() bool {
 		}
 	}
 	config.QBUsername = qBUsername
-	Log("SetQBURLFromQB", "读取 qBittorrent 配置文件成功 (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)", false, qBWebUIEnabled, config.QBURL, config.QBUsername)
+	Log("SetQBURLFromQB", GetLangText("Success-SetQBURLFromQB"), false, qBWebUIEnabled, config.QBURL, config.QBUsername)
 	return true
 }
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
-		Log("Debug-LoadConfig", "读取配置文件元数据时发生了错误: %s", false, err.Error())
+		Log("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
 		return false
 	}
 
@@ -303,23 +299,23 @@ func LoadConfig() bool {
 	}
 
 	if configLastMod != 0 {
-		Log("Debug-LoadConfig", "发现配置文件更改, 正在进行热重载", false)
+		Log("Debug-LoadConfig", GetLangText("Debug-LoadConfig_HotReload"), false)
 	}
 
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
-		Log("LoadConfig", "读取配置文件时发生了错误: %s", false, err.Error())
+		Log("LoadConfig", GetLangText("Error-LoadConfig"), false, err.Error())
 		return false
 	}
 
 	configLastMod = tmpConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
-		Log("LoadConfig", "解析配置文件时发生了错误: %s", false, err.Error())
+		Log("LoadConfig", GetLangText("Error-ParseConfig"), false, err.Error())
 		return false
 	}
 
-	Log("LoadConfig", "读取配置文件成功", true)
+	Log("LoadConfig", GetLangText("Success-LoadConfig"), true)
 	InitConfig()
 
 	return true
@@ -380,7 +376,7 @@ func InitConfig() {
 
 		reg, err := regexp.Compile("(?i)" + v)
 		if err != nil {
-			Log("LoadConfig_CompileBlockList", "表达式 %s 有错误", true, v)
+			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), true, v)
 			continue
 		}
 
@@ -393,7 +389,7 @@ func InitConfig() {
 
 		cidr := ParseIP(v)
 		if cidr == nil {
-			Log("LoadConfig_CompileIPBlockList", "IP %s 有错误", true, v)
+			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), true, v)
 			continue
 		}
 
@@ -404,7 +400,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	lastQBURL = config.QBURL
 
 	if !LoadConfig() {
-		Log("RunConsole", "读取配置文件失败或不完整", false)
+		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
 		InitConfig()
 	}
 
@@ -432,18 +428,19 @@ func LoadInitConfig(firstLoad bool) bool {
 	return true
 }
 func RegFlag() {
-	flag.BoolVar(&shortFlag_ShowVersion, "v", false, "程序版本")
-	flag.BoolVar(&longFlag_ShowVersion, "version", false, "程序版本")
-	flag.StringVar(&configFilename, "c", "config.json", "配置文件路径")
-	flag.StringVar(&configFilename, "config", "config.json", "配置文件路径")
-	flag.BoolVar(&config.Debug, "debug", false, "调试模式")
-	flag.BoolVar(&noChdir, "nochdir", false, "不切换工作目录")
+	flag.BoolVar(&shortFlag_ShowVersion, "v", false, GetLangText("ProgramVersion"))
+	flag.BoolVar(&longFlag_ShowVersion, "version", false, GetLangText("ProgramVersion"))
+	flag.StringVar(&configFilename, "c", "config.json", GetLangText("ConfigPath"))
+	flag.StringVar(&configFilename, "config", "config.json", GetLangText("ConfigPath"))
+	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
+	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
 	flag.Parse()
 }
 func ShowVersion() {
 	Log("ShowVersion", "%s %s", false, programName, programVersion)
 }
 func PrepareEnv() bool {
+	LoadLang(GetLangCode())
 	RegFlag()
 	ShowVersion()
 
@@ -451,17 +448,20 @@ func PrepareEnv() bool {
 		return false
 	}
 
+	path, err := os.Executable()
+	if err != nil {
+		Log("PrepareEnv", GetLangText("Error-DetectProgramPath"), false, err.Error())
+		return false
+	}
+
+	programDir = filepath.Dir(path)
+
 	if !noChdir {
-		path, err := os.Executable()
-		if err == nil {
-			dir := filepath.Dir(path)
-			if os.Chdir(dir) == nil {
-				Log("PrepareEnv", "切换工作目录: %s", false, dir)
-			} else {
-				Log("PrepareEnv", "切换工作目录失败: %s", false, dir)
-			}
+		if os.Chdir(programDir) == nil {
+			Log("PrepareEnv", GetLangText("Success-ChangeWorkingDir"), false, programDir)
+			LoadLang(GetLangCode())
 		} else {
-			Log("PrepareEnv", "切换工作目录失败, 将以当前工作目录运行: %s", false, err.Error())
+			Log("PrepareEnv", GetLangText("Failed-ChangeWorkingDir"), false, programDir)
 		}
 	}
 
