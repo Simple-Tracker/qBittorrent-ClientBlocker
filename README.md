@@ -1,5 +1,7 @@
 # qBittorrent-ClientBlocker
 
+[中文](README.md) [English](README.en.md)
+
 一款适用于 qBittorrent 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端, 支持 qBittorrent 4.1 及以上版本.
 
 -   全平台支持
@@ -43,9 +45,9 @@
 
 2. 解压后, 可能需要修改随附的配置文件 ```config.json```;
 
-    - 可根据高级需求, 按需设置配置, 具体见 [配置 Config](#配置-config)。
-    - 若客户端屏蔽器运行于本机, 但未启用 qBittorrent "跳过本机客户端认证" (及密码不为空且并未手动设置密码), 则必须修改配置文件, 并填写 `qBPassword`.
-    - 若客户端屏蔽器不运行于本机 或 qBittorrent 未安装在默认路径 或 使用 2.4 及以下版本的客户端屏蔽器, 则必须修改配置文件, 并填写 `qBURL`/`qBUsername`/`qBPassword`.
+    - 可根据高级需求, 按需设置配置, 具体见 [配置 Config](#配置-config).
+    - 若客户端屏蔽器运行于本机, 但未启用 qBittorrent "跳过本机客户端认证" (及密码不为空且并未手动设置密码), 则必须修改配置文件, 并填写 ```qBPassword```.
+    - 若客户端屏蔽器不运行于本机 或 qBittorrent 未安装在默认路径 或 使用 2.4 及以下版本的客户端屏蔽器, 则必须修改配置文件, 并填写 ```qBURL```/```qBUsername```/```qBPassword```.
 
 3. 启动客户端屏蔽器, 并观察信息输出是否正常即可;
    
@@ -69,14 +71,14 @@
 
 -   配置方法一: 使用 配置文件映射
 
-    1. 在合适位置新建 `config.json` 作为配置文件, 具体内容可参考 [config.json](config.json) 及 [配置 Config](#配置-config);
+    1. 在合适位置新建 ```config.json``` 作为配置文件, 具体内容可参考 [config.json](config.json) 及 [配置 Config](#配置-config);
 
-    2. 填入 `qBURL`/`qBUsername`/`qBPassword`;
+    2. 填入 ```qBURL```/```qBUsername```/```qBPassword```;
 
         - 可根据高级需求, 按需设置其它配置, 具体见 [配置 Config](#配置-config).
-        - 若启用 qBittorrent 的 "IP 子网白名单", 则可不填写 `qBUsername` 和 `qBPassword`.
+        - 若启用 qBittorrent 的 "IP 子网白名单", 则可不填写 ```qBUsername``` 和 ```qBPassword```.
 
-    3. 替换 `/path/config.json` 为你的配置文件路径;
+    3. 替换 ```/path/config.json``` 为你的配置文件路径;
 
     4. 运行 Docker 并查看日志, 观察信息输出是否正常即可;
 
@@ -146,7 +148,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
 | ipBlockList | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
-| ipFilterURL | 空 | 屏蔽 IP 列表 URL. 支持格式同 ipBlockList, 一行一条 |
+| ipFilterURL | 空 | 屏蔽 IP 列表 URL. 每 24 小时更新, 支持格式同 ipBlockList, 一行一条 |
 | ipUploadedCheck | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
 | ipUpCheckIncrementMB | 38000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局上传增量大小大于设置增量大小, 则允许屏蔽 Peer |
@@ -162,7 +164,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByRelativePUAntiErrorRatio | 5 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 
 ## 反馈 Feedback
-用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 讨论/提问/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
+用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
 注意: 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue.
 
 ## 致谢 Credit

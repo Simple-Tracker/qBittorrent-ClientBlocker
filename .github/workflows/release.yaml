@@ -83,7 +83,7 @@ jobs:
           md5sum: false
           sha256sum: false
           binary_name: 'qBittorrent-ClientBlocker'
-          extra_files: 'LICENSE README.md config.json'
+          extra_files: 'LICENSE README.md README.en.md config.json'
       - name: 'Upload GitHub Artifact (Nightly Build)'
         uses: actions/upload-artifact@v4
         if: ${{ github.event_name != 'release' }}
