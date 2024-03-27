@@ -21,7 +21,7 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
 	if config.LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
-			Log("Log", "写入日志时发生了错误: %s", false, err.Error())
+			Log("Log", GetLangText("Error-Log_Write"), false, err.Error())
 		}
 	}
 	fmt.Print(logStr)
@@ -32,7 +32,7 @@ func LoadLog() bool {
 	}
 
 	if err := os.Mkdir(config.LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
-		Log("LoadLog", "创建日志目录时发生了错误: %s", false, err.Error())
+		Log("LoadLog", GetLangText("Error-LoadLog_Mkdir"), false, err.Error())
 		return false
 	}
 
@@ -50,7 +50,7 @@ func LoadLog() bool {
 
 	if newLogPath {
 		if lastLogPath != "" {
-			Log("LoadLog", "发现日志目录更改, 正在进行热重载 (%s)", false, config.LogPath)
+			Log("LoadLog", GetLangText("LoadLog_HotReload"), false, config.LogPath)
 		}
 		lastLogPath = config.LogPath
 	}
@@ -59,7 +59,7 @@ func LoadLog() bool {
 	if err != nil {
 		tLogFile.Close()
 		tLogFile = nil
-		Log("LoadLog", "访问日志时发生了错误: %s", false, err.Error())
+		Log("LoadLog", GetLangText("Error-LoadLog_Close"), false, err.Error())
 		return false
 	}
 

@@ -37,31 +37,31 @@ func Login() bool {
 	loginParams.Set("password", config.QBPassword)
 	loginResponseBody := Submit(config.QBURL + "/api/v2/auth/login", loginParams.Encode(), false)
 	if loginResponseBody == nil {
-		Log("Login", "登录时发生了错误", true)
+		Log("Login", GetLangText("Error-Login"), true)
 		return false
 	}
 
 	loginResponseBodyStr := StrTrim(string(loginResponseBody))
 	if loginResponseBodyStr == "Ok." {
-		Log("Login", "登录成功", true)
+		Log("Login", GetLangText("Success-Login"), true)
 		return true
 	} else if loginResponseBodyStr == "Fails." {
-		Log("Login", "登录失败: 账号或密码错误", true)
+		Log("Login", GetLangText("Failed-Login_BadUsernameOrPassword"), true)
 	} else {
-		Log("Login", "登录失败: %s", true, loginResponseBodyStr)
+		Log("Login", GetLangText("Failed-Login_Other"), true, loginResponseBodyStr)
 	}
 	return false
 }
 func FetchMaindata() *MainDataStruct {
 	maindataResponseBody := Fetch(config.QBURL + "/api/v2/sync/maindata?rid=0", true)
 	if maindataResponseBody == nil {
-		Log("FetchMaindata", "发生错误", true)
+		Log("FetchMaindata", GetLangText("Error"), true)
 		return nil
 	}
 
 	var mainDataResult MainDataStruct
 	if err := json.Unmarshal(maindataResponseBody, &mainDataResult); err != nil {
-		Log("FetchMaindata", "解析时发生了错误: %s", true, err.Error())
+		Log("FetchMaindata", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -72,13 +72,13 @@ func FetchMaindata() *MainDataStruct {
 func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 	torrentPeersResponseBody := Fetch(config.QBURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true)
 	if torrentPeersResponseBody == nil {
-		Log("FetchTorrentPeers", "发生错误", true)
+		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
 	}
 
 	var torrentPeersResult TorrentPeersStruct
 	if err := json.Unmarshal(torrentPeersResponseBody, &torrentPeersResult); err != nil {
-		Log("FetchTorrentPeers", "解析时发生了错误: %s", true, err.Error())
+		Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -92,6 +92,7 @@ func FetchTorrentPeers(infoHash string) *TorrentPeersStruct {
 }
 func GenBlockPeersStr(blockPeerMap map[string]BlockPeerInfoStruct) string {
 	ip_ports := ""
+
 	if useNewBanPeersMethod {
 		for peerIP, peerInfo := range blockPeerMap {
 			if _, exist := peerInfo.Port[-1]; config.BanAllPort || exist {
@@ -110,10 +111,12 @@ func GenBlockPeersStr(blockPeerMap map[string]BlockPeerInfoStruct) string {
 			ip_ports += peerIP + "\n"
 		}
 	}
+
 	return ip_ports
 }
 func SubmitBlockPeer(banIPPortsStr string) {
 	var banResponseBody []byte
+
 	if useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
 		banResponseBody = Submit(config.QBURL + "/api/v2/transfer/banPeers", banIPPortsStr, true)
@@ -121,7 +124,8 @@ func SubmitBlockPeer(banIPPortsStr string) {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
 		banResponseBody = Submit(config.QBURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr, true)
 	}
+
 	if banResponseBody == nil {
-		Log("SubmitBlockPeer", "发生错误", true)
+		Log("SubmitBlockPeer", GetLangText("Error"), true)
 	}
 }

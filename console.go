@@ -191,7 +191,7 @@ func ClearBlockPeer() int {
 		}
 		if cleanCount != 0 {
 			lastCleanTimestamp = currentTimestamp
-			Log("ClearBlockPeer", "已清理过期客户端: %d 个", true, cleanCount)
+			Log("ClearBlockPeer", GetLangText("Success-ClearBlockPeer"), true, cleanCount)
 		}
 	}
 	return cleanCount
@@ -366,7 +366,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 }
 func Task() {
 	if config.QBURL == "" {
-		Log("Task", "检测到 QBURL 为空, 可能是未配置且未能自动读取 qBittorrent 配置文件", false)
+		Log("Task", GetLangText("Error-Task_EmptyQBURL"), false)
 		return
 	}
 	
@@ -443,10 +443,10 @@ func Task() {
 		peersStr := GenBlockPeersStr(blockPeerMap)
 		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
 		SubmitBlockPeer(peersStr)
-		if config.IPUploadedCheck || len(ipBlockListCompiled) > 0 {
-			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个, 此次封禁 IP 地址: %d 个, 当前封禁 IP 地址: %d 个", true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
+		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 {
+			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
-			Log("Task", "此次封禁客户端: %d 个, 当前封禁客户端: %d 个", true, blockCount, len(blockPeerMap))
+			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
 		}
 	}
 }
@@ -454,7 +454,7 @@ func GC() {
 	ipMapGCCount := (len(ipMap) - 23333333)
 
 	if ipMapGCCount > 0 {
-		Log("GC", "触发垃圾回收 (ipMap): %d", true, ipMapGCCount)
+		Log("GC", GetLangText("GC_IPMap"), true, ipMapGCCount)
 		for ip, _ := range ipMap {
 			ipMapGCCount--
 			delete(ipMap, ip)
@@ -468,7 +468,7 @@ func GC() {
 	for torrentInfoHash, torrentInfo := range torrentMap {
 		torrentInfoGCCount := (len(torrentInfo.Peers) - 2333333)
 		if torrentInfoGCCount > 0 {
-			Log("GC", "触发垃圾回收 (torrentMap): %s/%d", true, torrentInfoHash, torrentInfoGCCount)
+			Log("GC", GetLangText("GC_TorrentMap"), true, torrentInfoHash, torrentInfoGCCount)
 			for peerIP, _ := range torrentInfo.Peers {
 				torrentInfoGCCount--
 				delete(torrentMap[torrentInfoHash].Peers, peerIP)
@@ -482,14 +482,14 @@ func GC() {
 }
 func RunConsole() {
 	if config.StartDelay > 0 {
-		Log("RunConsole", "启动延迟: %d 秒", false, config.StartDelay)
+		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, config.StartDelay)
 		time.Sleep(time.Duration(config.StartDelay) * time.Second)
 	}
 	if !LoadInitConfig(true) {
-		Log("RunConsole", "认证失败", true)
+		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
 		return
 	}
-	Log("RunConsole", "程序已启动", true)
+	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
 	loopTicker := time.NewTicker(time.Duration(config.Interval) * time.Second)
 	defer loopTicker.Stop()
 	for ; true; <- loopTicker.C {
