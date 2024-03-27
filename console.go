@@ -390,14 +390,18 @@ func Task() {
 		if config.Debug_CheckTorrent {
 			Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrentInfoHash, torrentStatus)
 		}
+		skipSleep := false
 		switch torrentStatus {
 			case -1:
+				skipSleep = true
 				emptyHashCount++
 			case -2:
+				skipSleep = true
 				noLeechersCount++
 			case -3:
 				badTorrentInfoCount++
 			case -4:
+				skipSleep = true
 				ptTorrentCount++
 			case 0:
 				for _, peer := range torrentPeers.Peers {
@@ -419,7 +423,7 @@ func Task() {
 					}
 				}
 		}
-		if config.SleepTime != 0 {
+		if !skipSleep && config.SleepTime != 0 {
 			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
 		}
 	}
