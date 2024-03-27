@@ -147,7 +147,7 @@ func SetIPFilter() bool {
 	}
 
 	ipfilterArr := strings.Split(string(ipfilter), "\n")
-	ipBlockListCompiled = make([]*net.IPNet, len(ipfilterArr))
+	ipfilterCompiled = make([]*net.IPNet, len(ipfilterArr))
 	k := 0
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
 		ipfilterLine = StrTrim(ipfilterLine)
