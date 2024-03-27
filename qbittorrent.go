@@ -12,8 +12,9 @@ type MainDataStruct struct {
 	Torrents   map[string]TorrentStruct `json:"torrents"`
 }
 type TorrentStruct struct {
-	NumLeechs int64 `json:"num_leechs"`
-	TotalSize int64 `json:"total_size"`
+	NumLeechs int64  `json:"num_leechs"`
+	TotalSize int64  `json:"total_size"`
+	Tracker   string `json:"tracker"`
 }
 type PeerStruct struct {
 	IP             string

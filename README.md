@@ -132,6 +132,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banTime | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
 | ignoreEmptyPeer | true (启用) | 忽略无 PeerID 及 UserAgent 的 Peer. 通常出现于连接未完全建立的客户端 |
+| ignorePTTorrent | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |
 | startDelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | sleepTime | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成 qBittorrent 卡顿, 长间隔有助于平均 CPU 资源占用 |
 | timeout | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |

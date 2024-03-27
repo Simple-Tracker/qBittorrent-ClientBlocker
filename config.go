@@ -27,6 +27,7 @@ type ConfigStruct struct {
 	BanTime                       uint32
 	BanAllPort                    bool
 	IgnoreEmptyPeer               bool
+	IgnorePTTorrent               bool
 	StartDelay                    uint32
 	SleepTime                     uint32
 	Timeout                       uint32
@@ -62,6 +63,7 @@ var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var noChdir bool
 
+var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
 var ipfilterCompiled []*net.IPNet
@@ -96,6 +98,7 @@ var config = ConfigStruct {
 	BanTime:                       86400,
 	BanAllPort:                    false,
 	IgnoreEmptyPeer:               true,
+	IgnorePTTorrent:               true,
 	StartDelay:                    0,
 	SleepTime:                     20,
 	Timeout:                       6,

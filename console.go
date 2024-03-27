@@ -200,6 +200,12 @@ func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *Torr
 	if torrentInfoHash == "" {
 		return -1, nil
 	}
+	if config.IgnorePTTorrent && torrentInfo.Tracker != "" {
+		lowerTracker := strings.ToLower(torrentInfo.Tracker)
+		if strings.Contains(lowerTracker, "?passkey=") || strings.Contains(lowerTracker, "?authkey=") || strings.Contains(lowerTracker, "?secure=") || randomStrRegexp.MatchString(lowerTracker) {
+			return -4, nil
+		}
+	}
 	if torrentInfo.NumLeechs <= 0 {
 		return -2, nil
 	}
@@ -374,6 +380,7 @@ func Task() {
 	ipBlockCount := 0
 	emptyHashCount := 0
 	noLeechersCount := 0
+	ptTorrentCount := 0
 	badTorrentInfoCount := 0
 	badPeersCount := 0
 
@@ -390,6 +397,8 @@ func Task() {
 				noLeechersCount++
 			case -3:
 				badTorrentInfoCount++
+			case -4:
+				ptTorrentCount++
 			case 0:
 				for _, peer := range torrentPeers.Peers {
 					peer.IP = strings.ToLower(peer.IP)
@@ -423,6 +432,7 @@ func Task() {
 
 	Log("Debug-Task_IgnoreEmptyHashCount", "%d", false, emptyHashCount)
 	Log("Debug-Task_IgnoreNoLeechersCount", "%d", false, noLeechersCount)
+	Log("Debug-Task_IgnorePTTorrentCount", "%d", false, ptTorrentCount)
 	Log("Debug-Task_IgnoreBadTorrentInfoCount", "%d", false, badTorrentInfoCount)
 	Log("Debug-Task_IgnoreBadPeersCount", "%d", false, badPeersCount)
 	if cleanCount != 0 || blockCount != 0 {
