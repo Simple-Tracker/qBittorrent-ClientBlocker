@@ -58,6 +58,7 @@ type ConfigStruct struct {
 	BanByRelativePUAntiErrorRatio uint32
 }
 
+var programName = "qBittorrent-ClientBlocker"
 var programVersion = "Unknown"
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
@@ -440,7 +441,7 @@ func RegFlag() {
 	flag.Parse()
 }
 func ShowVersion() {
-	Log("ShowVersion", "qBittorrent-ClientBlocker %s", false, programVersion)
+	Log("ShowVersion", "%s %s", false, programName, programVersion)
 }
 func PrepareEnv() bool {
 	RegFlag()

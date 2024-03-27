@@ -21,7 +21,7 @@ func NewRequest(isPOST bool, url string, postdata string) *http.Request {
 		return nil
 	}
 
-	request.Header.Set("User-Agent", "qBittorrent-ClientBlocker " + programVersion)
+	request.Header.Set("User-Agent", programName + "/" + programVersion)
 
 	if isPOST {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
