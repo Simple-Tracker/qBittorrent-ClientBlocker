@@ -153,9 +153,9 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 		满足此条件;
 		则该 Peer 将被封禁, 由于其报告进度为 1%, 算入 config.BanByPUAntiErrorRatio 滞后防误判倍率后为 5% (5GB), 但客户端实际却已上传 6GB.
 		*/
-		startUploaded := (float64(torrentTotalSize) * (float64(config.BanByPUStartPrecent) / 100))
+		startUploaded := (float64(torrentTotalSize) * (config.BanByPUStartPrecent / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
-		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * float64(config.BanByPUAntiErrorRatio)) < float64(clientUploaded) {
+		if (clientUploaded / 1024 / 1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded * config.BanByPUAntiErrorRatio) < float64(clientUploaded) {
 			return true
 		}
 	}
@@ -167,13 +167,13 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 	if peerInfo.Uploaded > 0 && (float64(relativeUploaded) / 1024 / 1024) > float64(config.BanByRelativePUStartMB) {
 		relativeUploadedPrecent := (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
 		// 若相对上传百分比大于起始百分比, 则继续判断.
-		if relativeUploadedPrecent > (float64(config.BanByRelativePUStartPrecent) / 100) {
+		if relativeUploadedPrecent > (config.BanByRelativePUStartPrecent / 100) {
 			// 若相对上传百分比大于 Peer 报告进度乘以一定防误判倍率, 则认为 Peer 是有问题的.
 			var peerReportProgress float64 = 0
 			if peerInfo.Progress > 0 {
 				peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
 			}
-			if relativeUploadedPrecent > (peerReportProgress * float64(config.BanByRelativePUAntiErrorRatio)) {
+			if relativeUploadedPrecent > (peerReportProgress * config.BanByRelativePUAntiErrorRatio) {
 				return relativeUploaded
 			}
 		}
@@ -331,7 +331,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					continue
 				}
 				if config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0 {
-					if float64(peerInfo.Uploaded) > float64(torrentInfo.Size) * peerInfo.Progress * float64(config.IPUpCheckPerTorrentRatio) {
+					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
 						Log("CheckAllTorrent_AddBlockPeer (PerTorrent-Too high uploaded)", "%s:%d (TorrentSize: %.2f MB, Uploaded: %.2f MB)", true, peerIP, -1, (float64(torrentInfo.Size) / 1024 / 1024), (float64(peerInfo.Uploaded) / 1024 / 1024))
 						ipBlockCount++
 						AddBlockPeer(peerIP, -1)

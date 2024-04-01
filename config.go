@@ -46,16 +46,16 @@ type ConfigStruct struct {
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
-	IPUpCheckPerTorrentRatio      uint32
+	IPUpCheckPerTorrentRatio      float64
 	MaxIPPortCount                uint32
 	BanByProgressUploaded         bool
 	BanByPUStartMB                uint32
-	BanByPUStartPrecent           uint32
-	BanByPUAntiErrorRatio         uint32
+	BanByPUStartPrecent           float64
+	BanByPUAntiErrorRatio         float64
 	BanByRelativeProgressUploaded bool
 	BanByRelativePUStartMB        uint32
-	BanByRelativePUStartPrecent   uint32
-	BanByRelativePUAntiErrorRatio uint32
+	BanByRelativePUStartPrecent   float64
+	BanByRelativePUAntiErrorRatio float64
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -121,13 +121,13 @@ var config = ConfigStruct {
 	IPUpCheckPerTorrentRatio:      3,
 	MaxIPPortCount:                0,
 	BanByProgressUploaded:         false,
-	BanByPUStartMB:                10,
+	BanByPUStartMB:                20,
 	BanByPUStartPrecent:           2,
-	BanByPUAntiErrorRatio:         5,
+	BanByPUAntiErrorRatio:         3,
 	BanByRelativeProgressUploaded: false,
-	BanByRelativePUStartMB:        10,
+	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
-	BanByRelativePUAntiErrorRatio: 5,
+	BanByRelativePUAntiErrorRatio: 3,
 }
 func SetIPFilter() bool {
 	if config.IPFilterURL == "" || (ipfilterLastFetch + 86400) > currentTimestamp {

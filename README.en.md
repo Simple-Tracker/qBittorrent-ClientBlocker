@@ -157,13 +157,13 @@ Translation not completed yet...
 | ipUpCheckPerTorrentRatio | 3 (X) | IP 上传增量检测/增量倍率. 若 IP 单个 Torrent 上传增量大小大于设置增量倍率及 Torrent 大小之乘积, 则允许屏蔽 Peer |
 | maxIPPortCount | 0 (Disable) | 每 IP 最大端口数. 若 IP 端口数大于设置值, 会自动屏蔽 Peer |
 | banByProgressUploaded | false | 增强自动屏蔽 (根据进度及上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽 条件后, 会自动屏蔽 Peer |
-| banByPUStartMB | 10 (MB) | 增强自动屏蔽/起始大小. 若客户端上传量大于起始大小, 则允许屏蔽 Peer |
+| banByPUStartMB | 20 (MB) | 增强自动屏蔽/起始大小. 若客户端上传量大于起始大小, 则允许屏蔽 Peer |
 | banByPUStartPrecent | 2 (%) | 增强自动屏蔽/起始进度. 若客户端上传进度大于设置起始进度, 则允许屏蔽 Peer |
-| banByPUAntiErrorRatio | 5 (X) | 增强自动屏蔽/滞后防误判倍率. 若 Peer 报告下载进度与设置倍率及 Torrent 大小之乘积得到之下载量 比 客户端上传量 还低, 则允许屏蔽 Peer |
+| banByPUAntiErrorRatio | 3 (X) | 增强自动屏蔽/滞后防误判倍率. 若 Peer 报告下载进度与设置倍率及 Torrent 大小之乘积得到之下载量 比 客户端上传量 还低, 则允许屏蔽 Peer |
 | banByRelativeProgressUploaded | false | 增强自动屏蔽_相对 (根据相对进度及相对上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽_相对 条件后, 会自动屏蔽 Peer. 此功能当前故障 |
-| banByRelativePUStartMB | 10 (MB) | 增强自动屏蔽_相对/起始大小. 若客户端相对上传量大于设置起始大小, 则允许屏蔽 Peer |
+| banByRelativePUStartMB | 20 (MB) | 增强自动屏蔽_相对/起始大小. 若客户端相对上传量大于设置起始大小, 则允许屏蔽 Peer |
 | banByRelativePUStartPrecent | 2 (%) | 增强自动屏蔽_相对/起始进度. 若客户端相对上传进度大于设置起始进度, 则允许屏蔽 Peer |
-| banByRelativePUAntiErrorRatio | 5 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
+| banByRelativePUAntiErrorRatio | 3 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) ask/discuss/share usage, through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) contribute code improvement to blocker.  
