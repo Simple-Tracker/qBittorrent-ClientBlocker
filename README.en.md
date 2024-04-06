@@ -130,7 +130,7 @@ Translation not completed yet...
 | debug | false | Debug mode. Enable you can see more information, but it may disrupt the field of vision |
 | debug_CheckTorrent | false | Debug mode (CheckTorrent, must enable debug). If it's enabled, debug info will include each Torrent Hash, but the amount of information will be large |
 | debug_CheckPeer | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
-| interval | 6 (秒) | Ban Check Interval. Each cycle interval will obtain relevant information from qBittorrent API for judgment and blocking. Short interval can help reduce ban time but may cause qBittorrent to freeze, but Long interval can help reduce CPU usage |
+| interval | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from qBittorrent API for judgment and blocking. Short interval can help reduce ban time but may cause qBittorrent to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
 | torrentMapCleanInterval | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |

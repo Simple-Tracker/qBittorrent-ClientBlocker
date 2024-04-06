@@ -164,7 +164,7 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerInfoStruct, lastPeerInfo PeerInfoStruct) int64 {
 	// 若客户端对 Peer 上传已大于 0, 且相对上传量大于起始上传量, 则继续判断.
 	var relativeUploaded int64 = (peerInfo.Uploaded - lastPeerInfo.Uploaded)
-	if peerInfo.Uploaded > 0 && (float64(relativeUploaded) / 1024 / 1024) > float64(config.BanByRelativePUStartMB) {
+	if torrentTotalSize > 0 && peerInfo.Uploaded > 0 && (float64(relativeUploaded) / 1024 / 1024) > float64(config.BanByRelativePUStartMB) {
 		relativeUploadedPrecent := (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
 		// 若相对上传百分比大于起始百分比, 则继续判断.
 		if relativeUploadedPrecent > (config.BanByRelativePUStartPrecent / 100) {

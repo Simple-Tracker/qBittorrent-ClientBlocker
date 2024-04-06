@@ -60,12 +60,11 @@ type ConfigStruct struct {
 
 var programName = "qBittorrent-ClientBlocker"
 var programVersion = "Unknown"
-var programDir string
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var noChdir bool
-
 var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
+
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
 var ipfilterCompiled []*net.IPNet
@@ -77,7 +76,7 @@ var configLastMod int64 = 0
 var ipfilterLastFetch int64 = 0
 
 var httpTransport = &http.Transport {
-	DisableKeepAlives:   false,
+	DisableKeepAlives:   true,
 	ForceAttemptHTTP2:   false,
 	MaxConnsPerHost:     32,
 	MaxIdleConns:        32,
@@ -87,6 +86,10 @@ var httpTransport = &http.Transport {
 var httpClient = http.Client {
 	Timeout:   6 * time.Second,
 	Jar:       cookieJar,
+	Transport: httpTransport,
+}
+var httpClientWithoutCookie = http.Client {
+	Timeout:   6 * time.Second,
 	Transport: httpTransport,
 }
 var config = ConfigStruct {
@@ -134,7 +137,7 @@ func SetIPFilter() bool {
 		return true
 	}
 
-	ipfilter := Fetch(config.IPFilterURL, false)
+	ipfilter := Fetch(config.IPFilterURL, false, false)
 	if ipfilter == nil {
 		Log("SetIPFilter", GetLangText("Error-SetIPFilter_Fetch"), true)
 		return false
@@ -344,24 +347,21 @@ func InitConfig() {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
 	}
 
-	if !config.LongConnection {
-		httpClient = http.Client {
-			Timeout:   time.Duration(config.Timeout) * time.Second,
-			Jar:       cookieJar,
-			Transport: httpTransport,
-		}
-	} else if config.Timeout != 6 {
-		httpClient = http.Client {
-			Timeout:   time.Duration(config.Timeout) * time.Second,
-			Jar:       cookieJar,
-			Transport: httpTransport,
-		}
-	} else {
-		httpClient = http.Client {
-			Timeout:   6 * time.Second,
-			Jar:       cookieJar,
-			Transport: httpTransport,
-		}
+	httpTransportWithoutCookie := httpTransport.Clone()
+
+	if config.LongConnection {
+		httpTransport.DisableKeepAlives = false
+	}
+
+	httpClient = http.Client {
+		Timeout:   time.Duration(config.Timeout) * time.Second,
+		Jar:       cookieJar,
+		Transport: httpTransport,
+	}
+
+	httpClientWithoutCookie = http.Client {
+		Timeout:   time.Duration(config.Timeout) * time.Second,
+		Transport: httpTransportWithoutCookie,
 	}
 
 	t := reflect.TypeOf(config)
@@ -454,9 +454,9 @@ func PrepareEnv() bool {
 		return false
 	}
 
-	programDir = filepath.Dir(path)
 
 	if !noChdir {
+		programDir := filepath.Dir(path)
 		if os.Chdir(programDir) == nil {
 			Log("PrepareEnv", GetLangText("Success-ChangeWorkingDir"), false, programDir)
 			LoadLang(GetLangCode())

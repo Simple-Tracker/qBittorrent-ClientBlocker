@@ -128,7 +128,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
 | debug_CheckTorrent | false (禁用) | 调试模式 (CheckTorrent, 须先启用 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
 | debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
-| interval | 6 (秒) | 屏蔽循环间隔. 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
+| interval | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | torrentMapCleanInterval | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |

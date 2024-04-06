@@ -33,13 +33,21 @@ func NewRequest(isPOST bool, url string, postdata string) *http.Request {
 
 	return request
 }
-func Fetch(url string, tryLogin bool) []byte {
+func Fetch(url string, tryLogin bool, withCookie bool) []byte {
 	request := NewRequest(false, url, "")
 	if request == nil {
 		return nil
 	}
 
-	response, err := httpClient.Do(request)
+	var response *http.Response
+	var err error
+
+	if withCookie {
+		response, err = httpClient.Do(request)
+	} else {
+		response, err = httpClientWithoutCookie.Do(request)
+	}
+
 	if err != nil {
 		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
 		return nil
@@ -65,13 +73,21 @@ func Fetch(url string, tryLogin bool) []byte {
 
 	return responseBody
 }
-func Submit(url string, postdata string, tryLogin bool) []byte {
+func Submit(url string, postdata string, tryLogin bool, withCookie bool) []byte {
 	request := NewRequest(true, url, postdata)
 	if request == nil {
 		return nil
 	}
 
-	response, err := httpClient.Do(request)
+	var response *http.Response
+	var err error
+
+	if withCookie {
+		response, err = httpClient.Do(request)
+	} else {
+		response, err = httpClientWithoutCookie.Do(request)
+	}
+
 	if err != nil {
 		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
 		return nil

@@ -105,5 +105,9 @@ func GetLangText(uniqueID string) string {
 		return content
 	}
 
-	return defaultLangContent[uniqueID]
+	if defaultContent, exist := defaultLangContent[uniqueID]; exist {
+		return defaultContent
+	}
+
+	return uniqueID
 }

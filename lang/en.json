@@ -1,8 +1,8 @@
 {
-	"ProgramVersion": "Program Version",
-	"ConfigPath": "Config Path",
-	"DebugMode": "Debug Mode",
-	"NoChdir": "Don't Change Working Directory",
+	"ProgramVersion": "Program version",
+	"ConfigPath": "Config path",
+	"DebugMode": "Debug mode",
+	"NoChdir": "Don't change working directory",
 	"RunConsole_StartDelay": "Start delay",
 	"RunConsole_AuthFailed": "Authentication failed",
 	"RunConsole_ProgramHasStarted": "Program has started",
