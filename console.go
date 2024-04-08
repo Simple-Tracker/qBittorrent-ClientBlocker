@@ -102,7 +102,7 @@ func AddBlockPeer(peerIP string, peerPort int) {
 }
 func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[peerIP]; exist {
-		if useNewBanPeersMethod {
+		if IsBanPort() {
 			if _, exist1 := blockPeer.Port[-1]; !exist1 {
 				if _, exist2 := blockPeer.Port[peerPort]; !exist2 {
 					return false
@@ -197,17 +197,17 @@ func ClearBlockPeer() int {
 	}
 	return cleanCount
 }
-func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *TorrentPeersStruct) {
+func CheckTorrent(torrentInfoHash string, tracker string, leecherCount int64) (int, interface{}) {
 	if torrentInfoHash == "" {
 		return -1, nil
 	}
-	if config.IgnorePTTorrent && torrentInfo.Tracker != "" {
-		lowerTracker := strings.ToLower(torrentInfo.Tracker)
+	if config.IgnorePTTorrent && tracker != "" {
+		lowerTracker := strings.ToLower(tracker)
 		if strings.Contains(lowerTracker, "?passkey=") || strings.Contains(lowerTracker, "?authkey=") || strings.Contains(lowerTracker, "?secure=") || randomStrRegexp.MatchString(lowerTracker) {
 			return -4, nil
 		}
 	}
-	if torrentInfo.NumLeechs <= 0 {
+	if leecherCount <= 0 {
 		return -2, nil
 	}
 	torrentPeers := FetchTorrentPeers(torrentInfoHash)
@@ -216,28 +216,28 @@ func CheckTorrent(torrentInfoHash string, torrentInfo TorrentStruct) (int, *Torr
 	}
 	return 0, torrentPeers
 }
-func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) int {
-	hasPeerClient := (peer.Client != "" || peer.Peer_ID_Client != "")
-	if (!config.IgnoreEmptyPeer && !hasPeerClient) || peer.IP == "" || CheckPrivateIP(peer.IP) {
+func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) int {
+	hasPeerClient := (peerID != "" || peerClient != "")
+	if (!config.IgnoreEmptyPeer && !hasPeerClient) || peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1
 	}
 
-	if IsBlockedPeer(peer.IP, peer.Port, true) {
-		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client))
+	if IsBlockedPeer(peerIP, peerPort, true) {
+		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient))
 		/*
-		if peer.Port == -2 {
+		if peerPort == -2 {
 			return 4
 		}
 		*/
-		if peer.Port == -1 {
+		if peerPort == -1 {
 			return 3
 		}
 		return 2
 	}
 
-	if IsProgressNotMatchUploaded(torrentTotalSize, peer.Progress, peer.Uploaded) {
-		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Uploaded) / 1024 / 1024))
-		AddBlockPeer(peer.IP, peer.Port)
+	if IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
+		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
+		AddBlockPeer(peerIP, peerPort)
 		return 1
 	}
 
@@ -246,25 +246,25 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 			if v == nil {
 				continue
 			}
-			if (peer.Client != "" && v.MatchString(peer.Client)) || (peer.Peer_ID_Client != "" && v.MatchString(peer.Peer_ID_Client)) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
-				AddBlockPeer(peer.IP, peer.Port)
+			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
+				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer(peerIP, peerPort)
 				return 1
 			}
 		}
 	}
 
-	ip := net.ParseIP(peer.IP)
+	ip := net.ParseIP(peerIP)
 	if ip == nil {
-		Log("Debug-CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s (TorrentInfoHash: %s)", false, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
+		Log("Debug-CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s (TorrentInfoHash: %s)", false, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 	} else {
 		for _, v := range ipBlockListCompiled {
 			if v == nil {
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
-				AddBlockPeer(peer.IP, -1)
+				Log("CheckPeer_AddBlockPeer (Bad-IP_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer(peerIP, -1)
 				return 3
 			}
 		}
@@ -273,8 +273,8 @@ func CheckPeer(peer PeerStruct, torrentInfoHash string, torrentTotalSize int64) 
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peer.IP, -1, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), torrentInfoHash)
-				AddBlockPeer(peer.IP, -1)
+				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer(peerIP, -1)
 				return 3
 			}
 		}
@@ -366,8 +366,8 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 	return 0, 0
 }
 func Task() {
-	if config.QBURL == "" {
-		Log("Task", GetLangText("Error-Task_EmptyQBURL"), false)
+	if config.URL == "" {
+		Log("Task", GetLangText("Error-Task_EmptyURL"), false)
 		return
 	}
 	
@@ -385,9 +385,11 @@ func Task() {
 	badTorrentInfoCount := 0
 	badPeersCount := 0
 
-	for torrentInfoHash, torrentInfo := range metadata.Torrents {
+	metadata2 := metadata.(*qB_MainDataStruct)
+
+	for torrentInfoHash, torrentInfo := range metadata2.Torrents {
 		torrentInfoHash = strings.ToLower(torrentInfoHash)
-		torrentStatus, torrentPeers := CheckTorrent(torrentInfoHash, torrentInfo)
+		torrentStatus, torrentPeersStruct := CheckTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs)
 		if config.Debug_CheckTorrent {
 			Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrentInfoHash, torrentStatus)
 		}
@@ -405,9 +407,10 @@ func Task() {
 				skipSleep = true
 				ptTorrentCount++
 			case 0:
-				for _, peer := range torrentPeers.Peers {
+				torrentPeers := torrentPeersStruct.(*qB_TorrentPeersStruct).Peers
+				for _, peer := range torrentPeers {
 					peer.IP = strings.ToLower(peer.IP)
-					peerStatus := CheckPeer(peer, torrentInfoHash, torrentInfo.TotalSize)
+					peerStatus := CheckPeer(peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peer.Progress, peer.Uploaded, torrentInfoHash, torrentInfo.TotalSize)
 					if config.Debug_CheckPeer {
 						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), peerStatus)
 					}
@@ -441,9 +444,7 @@ func Task() {
 	Log("Debug-Task_IgnoreBadTorrentInfoCount", "%d", false, badTorrentInfoCount)
 	Log("Debug-Task_IgnoreBadPeersCount", "%d", false, badPeersCount)
 	if cleanCount != 0 || blockCount != 0 {
-		peersStr := GenBlockPeersStr(blockPeerMap)
-		Log("Debug-Task_GenBlockPeersStr", "%s", false, peersStr)
-		SubmitBlockPeer(peersStr)
+		SubmitBlockPeer(blockPeerMap)
 		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {

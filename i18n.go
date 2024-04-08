@@ -62,7 +62,7 @@ var defaultLangContent = map[string]string {
 	"Success-RegHotkey": "已注册并开始监听窗口热键: CTRL+ALT+B",
 	"Success-ChangeWorkingDir": "切换工作目录: %s",
 	"Success-LoadConfig": "加载配置文件成功",
-	"Success-SetQBURLFromQB": "读取 qBittorrent 配置文件成功 (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)",
+	"Success-SetURLFromQB": "读取 qBittorrent 配置文件成功 (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)",
 	"Success-SetIPFilter": "设置了 %d 条 IP 规则",
 	"Success-Login": "登录成功",
 	"Success-ClearBlockPeer": "已清理过期客户端: %d 个",

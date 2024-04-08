@@ -35,9 +35,9 @@ type ConfigStruct struct {
 	LogPath                       string
 	LogToFile                     bool
 	LogDebug                      bool
-	QBURL                         string
-	QBUsername                    string
-	QBPassword                    string
+	URL                           string
+	Username                      string
+	Password                      string
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	BlockList                     []string
@@ -70,7 +70,7 @@ var ipBlockListCompiled []*net.IPNet
 var ipfilterCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
-var lastQBURL = ""
+var lastURL = ""
 var configFilename string
 var configLastMod int64 = 0
 var ipfilterLastFetch int64 = 0
@@ -110,9 +110,9 @@ var config = ConfigStruct {
 	LogPath:                       "logs",
 	LogToFile:                     true,
 	LogDebug:                      false,
-	QBURL:                         "",
-	QBUsername:                    "",
-	QBPassword:                    "",
+	URL:                           "",
+	Username:                      "",
+	Password:                      "",
 	UseBasicAuth:                  false,
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
@@ -226,7 +226,7 @@ func GetConfigFromQB() []byte {
 
 	return qBConfigFile
 }
-func SetQBURLFromQB() bool {
+func SetURLFromQB() bool {
 	qBConfigFile := GetConfigFromQB()
 	if len(qBConfigFile) < 1 {
 		return false
@@ -236,7 +236,7 @@ func SetQBURLFromQB() bool {
 	qBHTTPSEnabled := false
 	qBAddress := ""
 	qBPort := 8080
-	qBUsername := ""
+	Username := ""
 	for _, qbConfigLine := range qBConfigFileArr {
 		qbConfigLineArr := strings.SplitN(qbConfigLine, "=", 2)
 		if len(qbConfigLineArr) < 2 || qbConfigLineArr[1] == "" {
@@ -267,26 +267,26 @@ func SetQBURLFromQB() bool {
 					qBPort = tmpQBPort
 				}
 			case "webui\\username":
-				qBUsername = qbConfigLineArr[1]
+				Username = qbConfigLineArr[1]
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
-		Log("SetQBURLFromQB", GetLangText("Abandon-SetQBURLFromQB"), false, qBWebUIEnabled, qBAddress)
+		Log("SetURLFromQB", GetLangText("Abandon-SetURLFromQB"), false, qBWebUIEnabled, qBAddress)
 		return false
 	}
 	if qBHTTPSEnabled {
-		config.QBURL = "https://" + qBAddress
+		config.URL = "https://" + qBAddress
 		if qBPort != 443 {
-			config.QBURL += ":" + strconv.Itoa(qBPort)
+			config.URL += ":" + strconv.Itoa(qBPort)
 		}
 	} else {
-		config.QBURL = "http://" + qBAddress
+		config.URL = "http://" + qBAddress
 		if qBPort != 80 {
-			config.QBURL += ":" + strconv.Itoa(qBPort)
+			config.URL += ":" + strconv.Itoa(qBPort)
 		}
 	}
-	config.QBUsername = qBUsername
-	Log("SetQBURLFromQB", GetLangText("Success-SetQBURLFromQB"), false, qBWebUIEnabled, config.QBURL, config.QBUsername)
+	config.Username = Username
+	Log("SetURLFromQB", GetLangText("Success-SetURLFromQB"), false, qBWebUIEnabled, config.URL, config.Username)
 	return true
 }
 func LoadConfig() bool {
@@ -337,8 +337,8 @@ func InitConfig() {
 		config.Timeout = 1
 	}
 
-	if config.QBURL != "" {
-		config.QBURL = strings.TrimRight(config.QBURL, "/")
+	if config.URL != "" {
+		config.URL = strings.TrimRight(config.URL, "/")
 	}
 
 	if config.SkipCertVerification {
@@ -397,28 +397,28 @@ func InitConfig() {
 	}
 }
 func LoadInitConfig(firstLoad bool) bool {
-	lastQBURL = config.QBURL
+	lastURL = config.URL
 
 	if !LoadConfig() {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
 		InitConfig()
 	}
 
-	if firstLoad && config.QBURL == "" {
-		SetQBURLFromQB()
+	if firstLoad && config.URL == "" {
+		SetURLFromQB()
 	}
 
-	if config.QBURL != "" {
-		if lastQBURL != config.QBURL {
+	if config.URL != "" {
+		if lastURL != config.URL {
 			if firstLoad && !Login() {
 				return false
 			}
-			SubmitBlockPeer("")
-			lastQBURL = config.QBURL
+			SubmitBlockPeer(nil)
+			lastURL = config.URL
 		}
 	} else {
-		// 重置为上次使用的 QBURL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 QBURL.
-		config.QBURL = lastQBURL
+		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 URL.
+		config.URL = lastURL
 	}
 
 	if !firstLoad {

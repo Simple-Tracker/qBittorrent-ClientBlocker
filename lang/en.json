@@ -53,7 +53,7 @@
 	"Success-RegHotkey": "Registered and started listening for window hotkey: CTRL+ALT+B",
 	"Success-ChangeWorkingDir": "Change working directory: %s",
 	"Success-LoadConfig": "Loading config file successfully",
-	"Success-SetQBURLFromQB": "Read qBittorrent config file successfully (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)",
+	"Success-SetURLFromQB": "Read qBittorrent config file successfully (qBWebUIEnabled: %t, qBURL: %s, qBUsername: %s)",
 	"Success-SetIPFilter": "%d IP rules are set",
 	"Success-Login": "Login successful",
 	"Success-ClearBlockPeer": "Cleaned up expired client: %d"
