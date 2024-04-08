@@ -4,9 +4,11 @@ import (
 	"os"
 	"net"
 	"time"
+	"syscall"
 	"strings"
 	"strconv"
 	"runtime"
+	"os/signal"
 )
 
 type IPInfoStruct struct {
@@ -25,8 +27,10 @@ type TorrentInfoStruct struct {
 type BlockPeerInfoStruct struct {
 	Timestamp int64
 	Port      map[int]bool
+	InfoHash  string
 }
 
+var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
 var lastCleanTimestamp int64 = 0
 var lastIPCleanTimestamp int64 = 0
@@ -90,7 +94,7 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, peerIP strin
 	peers[peerIP] = PeerInfoStruct { Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
 	torrentMap[torrentInfoHash] = TorrentInfoStruct { Size: torrentTotalSize, Peers: peers }
 }
-func AddBlockPeer(peerIP string, peerPort int) {
+func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 	var blockPeerPortMap map[int]bool
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
 		blockPeerPortMap = make(map[int]bool)
@@ -99,7 +103,7 @@ func AddBlockPeer(peerIP string, peerPort int) {
 	}
 
 	blockPeerPortMap[peerPort] = true
-	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap }
+	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
 
 	cidr := ""
 	if IsIPv6(peerIP) {
@@ -264,23 +268,35 @@ func IsMatchCIDR(ip string) string {
 
 	return ""
 }
-func CheckTorrent(torrentInfoHash string, tracker string, leecherCount int64) (int, interface{}) {
+func CheckTorrent(torrentInfoHash string, torrentTracker string, torrentLeecherCount int64, torrentPeers interface{}) (int, interface{}) {
 	if torrentInfoHash == "" {
 		return -1, nil
 	}
-	if config.IgnorePTTorrent && tracker != "" {
-		lowerTracker := strings.ToLower(tracker)
-		if strings.Contains(lowerTracker, "?passkey=") || strings.Contains(lowerTracker, "?authkey=") || strings.Contains(lowerTracker, "?secure=") || randomStrRegexp.MatchString(lowerTracker) {
+
+	if config.IgnorePTTorrent && torrentTracker != "" {
+		if torrentTracker == "Private" {
+			return -4, nil
+		}
+
+		lowerTorrentTracker := strings.ToLower(torrentTracker)
+		if strings.Contains(lowerTorrentTracker, "?passkey=") || strings.Contains(lowerTorrentTracker, "?authkey=") || strings.Contains(lowerTorrentTracker, "?secure=") || randomStrRegexp.MatchString(lowerTorrentTracker) {
 			return -4, nil
 		}
 	}
-	if leecherCount <= 0 {
+
+	if torrentLeecherCount <= 0 {
 		return -2, nil
 	}
-	torrentPeers := FetchTorrentPeers(torrentInfoHash)
+
+	if torrentPeers != nil {
+		return 0, torrentPeers
+	}
+
+	torrentPeers = FetchTorrentPeers(torrentInfoHash)
 	if torrentPeers == nil {
 		return -3, nil
 	}
+
 	return 0, torrentPeers
 }
 func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) int {
@@ -304,14 +320,14 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 
 	peerNetStr := IsMatchCIDR(peerIP)
 	if peerNetStr != "" {
-		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d (Net: %s)", false, peerIP, peerPort, peerNetStr)
-		AddBlockPeer(peerIP, peerPort)
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d (TorrentInfoHash: %s, Net: %s)", false, peerIP, peerPort, torrentInfoHash, peerNetStr)
+		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1
 	}
 
 	if IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
 		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
-		AddBlockPeer(peerIP, peerPort)
+		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1
 	}
 
@@ -322,7 +338,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer(peerIP, peerPort)
+				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 				return 1
 			}
 		}
@@ -338,7 +354,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer(peerIP, -1)
+				AddBlockPeer(peerIP, -1, torrentInfoHash)
 				return 3
 			}
 		}
@@ -348,7 +364,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer(peerIP, -1)
+				AddBlockPeer(peerIP, -1, torrentInfoHash)
 				return 3
 			}
 		}
@@ -376,7 +392,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
-					AddBlockPeer(ip, -1)
+					AddBlockPeer(ip, -1, "")
 					continue
 				}
 			}
@@ -385,7 +401,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
 					ipBlockCount++
-					AddBlockPeer(ip, -1)
+					AddBlockPeer(ip, -1, "")
 				}
 			}
 		}
@@ -415,7 +431,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
 						Log("CheckAllTorrent_AddBlockPeer (PerTorrent-Too high uploaded)", "%s:%d (TorrentSize: %.2f MB, Uploaded: %.2f MB)", true, peerIP, -1, (float64(torrentInfo.Size) / 1024 / 1024), (float64(peerInfo.Uploaded) / 1024 / 1024))
 						ipBlockCount++
-						AddBlockPeer(peerIP, -1)
+						AddBlockPeer(peerIP, -1, torrentInfoHash)
 						continue
 					}
 				}
@@ -429,7 +445,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 								}
 								blockCount++
 								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
-								AddBlockPeer(peerIP, port)
+								AddBlockPeer(peerIP, port, torrentInfoHash)
 							}
 							continue
 						}
@@ -446,9 +462,73 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 	return 0, 0
 }
+func ProcessTorrent(torrentInfoHash string, torrentTracker string, torrentLeecherCount int64, torrentTotalSize int64, torrentPeers interface{}, emptyHashCount *int, noLeechersCount *int, badTorrentInfoCount *int, ptTorrentCount *int, blockCount *int, ipBlockCount *int, badPeersCount *int) {
+	torrentInfoHash = strings.ToLower(torrentInfoHash)
+	torrentStatus, torrentPeersStruct := CheckTorrent(torrentInfoHash, torrentTracker, torrentLeecherCount, torrentPeers)
+	if config.Debug_CheckTorrent {
+		Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrentInfoHash, torrentStatus)
+	}
+
+	skipSleep := false
+
+	switch torrentStatus {
+		case -1:
+			skipSleep = true
+			*emptyHashCount++
+		case -2:
+			skipSleep = true
+			*noLeechersCount++
+		case -3:
+			*badTorrentInfoCount++
+		case -4:
+			skipSleep = true
+			*ptTorrentCount++
+		case 0:
+			switch currentClientType {
+				case "qBittorrent":
+					torrentPeers := torrentPeersStruct.(*qB_TorrentPeersStruct).Peers
+					for _, peer := range torrentPeers {
+						ProcessPeer(peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peer.Progress, peer.Uploaded, torrentInfoHash, torrentTotalSize, blockCount, ipBlockCount, badPeersCount)
+					}
+				case "Transmission":
+					torrentPeers := torrentPeersStruct.([]Tr_PeerStruct)
+					for _, peer := range torrentPeers {
+						// Transmission 目前似乎并不提供 Peer 的 PeerID 及 Uploaded, 因此使用无效值取代.
+						ProcessPeer(peer.IP, peer.Port, "", peer.Client, peer.Progress, -1, torrentInfoHash, torrentTotalSize, blockCount, ipBlockCount, badPeersCount)
+					}
+			}
+	}
+
+	if !skipSleep && config.SleepTime != 0 {
+		time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
+	}
+}
+func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int) {
+	peerIP = ProcessIP(peerIP)
+	peerStatus := CheckPeer(peerIP, peerPort, peerID, peerClient, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
+	if config.Debug_CheckPeer {
+		Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), peerStatus)
+	}
+
+	switch peerStatus {
+		case 1:
+			*blockCount++
+		case 3:
+			*ipBlockCount++
+		case -1:
+			*badPeersCount++
+		case 0:
+			AddIPInfo(peerIP, peerPort, torrentInfoHash, peerUploaded)
+			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerIP, peerPort, peerProgress, peerUploaded)
+	}
+}
 func Task() {
-	if config.URL == "" {
+	if config.ClientURL == "" {
 		Log("Task", GetLangText("Error-Task_EmptyURL"), false)
+		return
+	}
+	if !IsSupportClient() {
+		Log("Task", GetLangText("Error-Task_NotSupportClient"), false, currentClientType)
 		return
 	}
 	
@@ -458,61 +538,40 @@ func Task() {
 	}
 
 	cleanCount := ClearBlockPeer()
-	blockCount := 0
-	ipBlockCount := 0
+
 	emptyHashCount := 0
 	noLeechersCount := 0
-	ptTorrentCount := 0
 	badTorrentInfoCount := 0
+	ptTorrentCount := 0
+
+	blockCount := 0
+	ipBlockCount := 0
 	badPeersCount := 0
 
-	metadata2 := metadata.(*qB_MainDataStruct)
-
-	for torrentInfoHash, torrentInfo := range metadata2.Torrents {
-		torrentInfoHash = strings.ToLower(torrentInfoHash)
-		torrentStatus, torrentPeersStruct := CheckTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs)
-		if config.Debug_CheckTorrent {
-			Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrentInfoHash, torrentStatus)
-		}
-		skipSleep := false
-		switch torrentStatus {
-			case -1:
-				skipSleep = true
-				emptyHashCount++
-			case -2:
-				skipSleep = true
-				noLeechersCount++
-			case -3:
-				badTorrentInfoCount++
-			case -4:
-				skipSleep = true
-				ptTorrentCount++
-			case 0:
-				torrentPeers := torrentPeersStruct.(*qB_TorrentPeersStruct).Peers
-				for _, peer := range torrentPeers {
-					peer.IP = ProcessIP(peer.IP)
-					peerStatus := CheckPeer(peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peer.Progress, peer.Uploaded, torrentInfoHash, torrentInfo.TotalSize)
-
-					if config.Debug_CheckPeer {
-						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), peerStatus)
-					}
-
-					switch peerStatus {
-						case 3:
-							ipBlockCount++
-						case 1:
-							blockCount++
-						case -1:
-							badPeersCount++
-						case 0:
-							AddIPInfo(peer.IP, peer.Port, torrentInfoHash, peer.Uploaded)
-							AddTorrentInfo(torrentInfoHash, torrentInfo.TotalSize, peer.IP, peer.Port, peer.Progress, peer.Uploaded)
+	switch currentClientType {
+		case "qBittorrent":
+			metadata2 := metadata.(*qB_MainDataStruct)
+			for torrentInfoHash, torrentInfo := range metadata2.Torrents {
+				ProcessTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount)
+			}
+		case "Transmission":
+			metadata2 := metadata.(*Tr_TorrentsStruct)
+			for _, torrentInfo := range metadata2.Torrents {
+				// 手动判断有无 Peer 正在下载.
+				var leecherCount int64 = 0
+				for _, torrentPeer := range torrentInfo.Peers {
+					if torrentPeer.IsUploading {
+						leecherCount++
 					}
 				}
-		}
-		if !skipSleep && config.SleepTime != 0 {
-			time.Sleep(time.Duration(config.SleepTime) * time.Millisecond)
-		}
+
+				tracker := ""
+				if torrentInfo.Private {
+					tracker = "Private"
+				}
+
+				ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount)
+			}
 	}
 
 	currentIPBlockCount := CheckAllIP(ipMap, lastIPMap)
@@ -566,6 +625,7 @@ func GC() {
 	}
 }
 func RunConsole() {
+	go WaitStop()
 	if config.StartDelay > 0 {
 		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, config.StartDelay)
 		time.Sleep(time.Duration(config.StartDelay) * time.Second)
@@ -575,12 +635,26 @@ func RunConsole() {
 		os.Exit(1)
 	}
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
-	loopTicker := time.NewTicker(time.Duration(config.Interval) * time.Second)
-	defer loopTicker.Stop()
+	loopTicker = time.NewTicker(time.Duration(config.Interval) * time.Second)
 	for ; true; <- loopTicker.C {
 		currentTimestamp = time.Now().Unix()
 		LoadInitConfig(false)
 		Task()
 		GC()
 	}
+}
+func WaitStop() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
+
+	<-signalChan
+		Log("WaitStop", GetLangText("WaitStop_Stoping"), true)
+		if loopTicker != nil {
+			loopTicker.Stop()
+		}
+		httpClient.CloseIdleConnections()
+		httpClientWithoutCookie.CloseIdleConnections()
+		StopServer()
+		Platform_Stop()
+		os.Exit(0)
 }

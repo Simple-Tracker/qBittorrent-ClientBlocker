@@ -7,6 +7,7 @@ import (
 )
 
 var showWindow = true
+var qBCBHotkey = hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
 
 func ShowOrHiddenWindow() {
 	consoleWindow := win.GetConsoleWindow()
@@ -21,7 +22,6 @@ func ShowOrHiddenWindow() {
 	}
 }
 func RegHotKey() {
-	qBCBHotkey := hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
 	err := qBCBHotkey.Register()
 	if err != nil {
 		Log("RegHotKey", GetLangText("Error-RegHotkey"), false, err.Error())
@@ -38,4 +38,7 @@ func main() {
 		go RegHotKey()
 		RunConsole()
 	}
+}
+func Platform_Stop() {
+	qBCBHotkey.Unregister()
 }

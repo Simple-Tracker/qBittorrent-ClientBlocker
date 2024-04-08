@@ -27,16 +27,20 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool) *http.R
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	if withAuth && config.UseBasicAuth && config.QBUsername != "" {
-		request.SetBasicAuth(config.QBUsername, config.QBPassword)
+	if currentClientType == "Transmission" && withAuth && Tr_csrfToken != "" {
+		request.Header.Set("X-Transmission-Session-Id", Tr_csrfToken)
+	}
+
+	if withAuth && config.UseBasicAuth && config.ClientUsername != "" {
+		request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
 	}
 
 	return request
 }
-func Fetch(url string, tryLogin bool, withCookie bool) []byte {
+func Fetch(url string, tryLogin bool, withCookie bool) (int, []byte) {
 	request := NewRequest(false, url, "", withCookie)
 	if request == nil {
-		return nil
+		return -1, nil
 	}
 
 	var response *http.Response
@@ -50,7 +54,7 @@ func Fetch(url string, tryLogin bool, withCookie bool) []byte {
 
 	if err != nil {
 		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
-		return nil
+		return -2, nil
 	}
 
 	responseBody, err := ioutil.ReadAll(response.Body)
@@ -58,25 +62,56 @@ func Fetch(url string, tryLogin bool, withCookie bool) []byte {
 
 	if err != nil {
 		Log("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
-		return nil
+		return -3, nil
 	}
 
-	if response.StatusCode == 403 && (!tryLogin || !Login()) {
+	if response.StatusCode == 401 {
+		Log("Fetch", GetLangText("Error-NoAuth"), true)
+		return 401, nil
+	}
+
+	if response.StatusCode == 403 {
+		if tryLogin {
+			Login()
+		}
 		Log("Fetch", GetLangText("Error-Forbidden"), true)
-		return nil
+		return 403, nil
+	}
+
+	if response.StatusCode == 409 {
+		// 尝试获取并设置 CSRF Token.
+		if currentClientType == "Transmission" {
+			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
+			if transmissionCSRFToken != "" {
+				Tr_SetCSRFToken(transmissionCSRFToken)
+				return 409, nil
+			}
+		}
+
+		if tryLogin {
+			Login()
+		}
+
+		Log("Fetch", GetLangText("Error-Forbidden"), true)
+		return 409, nil
 	}
 
 	if response.StatusCode == 404 {
 		Log("Fetch", GetLangText("Error-NotFound"), true)
-		return nil
+		return 404, nil
 	}
 
-	return responseBody
+	if response.StatusCode != 200 {
+		Log("Fetch", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
+		return response.StatusCode, nil
+	}
+
+	return response.StatusCode, responseBody
 }
-func Submit(url string, postdata string, tryLogin bool, withCookie bool) []byte {
+func Submit(url string, postdata string, tryLogin bool, withCookie bool) (int, []byte) {
 	request := NewRequest(true, url, postdata, withCookie)
 	if request == nil {
-		return nil
+		return -1, nil
 	}
 
 	var response *http.Response
@@ -90,25 +125,51 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool) []byte 
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
-		return nil
+		return -2, nil
 	}
 	responseBody, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
-		return nil
+		return -3, nil
 	}
 
-	if response.StatusCode == 403 && (!tryLogin || !Login()) {
+	if response.StatusCode == 401 {
+		Log("Submit", GetLangText("Error-NoAuth"), true)
+		return 401, nil
+	}
+
+	if response.StatusCode == 403 {
+		if tryLogin {
+			Login()
+		}
 		Log("Submit", GetLangText("Error-Forbidden"), true)
-		return nil
+		return 403, nil
+	}
+
+	if response.StatusCode == 409 {
+		// 尝试获取并设置 CSRF Token.
+		if currentClientType == "Transmission" {
+			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
+			if transmissionCSRFToken != "" {
+				Tr_SetCSRFToken(transmissionCSRFToken)
+				return 409, nil
+			}
+		}
+
+		if tryLogin {
+			Login()
+		}
+
+		Log("Fetch", GetLangText("Error-Forbidden"), true)
+		return 409, nil
 	}
 
 	if response.StatusCode == 404 {
 		Log("Submit", GetLangText("Error-NotFound"), true)
-		return nil
+		return 404, nil
 	}
 
-	return responseBody
+	return response.StatusCode, responseBody
 }

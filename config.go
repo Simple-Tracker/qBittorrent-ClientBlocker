@@ -7,7 +7,6 @@ import (
 	"flag"
 	"regexp"
 	"reflect"
-	"strconv"
 	"strings"
 	"crypto/tls"
 	"encoding/json"
@@ -37,9 +36,11 @@ type ConfigStruct struct {
 	LogPath                       string
 	LogToFile                     bool
 	LogDebug                      bool
-	URL                           string
-	Username                      string
-	Password                      string
+	Listen                        string
+	ClientType                    string 
+	ClientURL                     string
+	ClientUsername                string
+	ClientPassword                string
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	BlockList                     []string
@@ -65,8 +66,8 @@ var programVersion = "Unknown"
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var noChdir bool
-var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 
+var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
 var ipfilterCompiled []*net.IPNet
@@ -85,15 +86,15 @@ var httpTransport = &http.Transport {
 	MaxIdleConnsPerHost: 32,
 	TLSClientConfig:     &tls.Config { InsecureSkipVerify: false },
 }
-var httpClient = http.Client {
-	Timeout:   6 * time.Second,
-	Jar:       cookieJar,
-	Transport: httpTransport,
+var httpClient http.Client
+var httpClientWithoutCookie http.Client
+var httpServer = http.Server {
+	ReadTimeout:  30,
+	WriteTimeout: 30,
+	Handler:      &httpServerHandler {},
 }
-var httpClientWithoutCookie = http.Client {
-	Timeout:   6 * time.Second,
-	Transport: httpTransport,
-}
+
+
 var config = ConfigStruct {
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
@@ -114,9 +115,11 @@ var config = ConfigStruct {
 	LogPath:                       "logs",
 	LogToFile:                     true,
 	LogDebug:                      false,
-	URL:                           "",
-	Username:                      "",
-	Password:                      "",
+	Listen:                        ":26262",
+	ClientType:                    "",
+	ClientURL:                     "",
+	ClientUsername:                "",
+	ClientPassword:                "",
 	UseBasicAuth:                  false,
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
@@ -141,19 +144,19 @@ func SetIPFilter() bool {
 		return true
 	}
 
-	ipfilter := Fetch(config.IPFilterURL, false, false)
-	if ipfilter == nil {
+	_, ipfilterContent := Fetch(config.IPFilterURL, false, false)
+	if ipfilterContent == nil {
 		Log("SetIPFilter", GetLangText("Error-SetIPFilter_Fetch"), true)
 		return false
 	}
 
 	// Max 8MB.
-	if len(ipfilter) > 8388608 {
+	if len(ipfilterContent) > 8388608 {
 		Log("SetIPFilter", GetLangText("Error-SetIPFilter_LargeFile"), true)
 		return false
 	}
 
-	ipfilterArr := strings.Split(string(ipfilter), "\n")
+	ipfilterArr := strings.Split(string(ipfilterContent), "\n")
 	ipfilterCompiled = make([]*net.IPNet, len(ipfilterArr))
 	k := 0
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
@@ -185,113 +188,6 @@ func SetIPFilter() bool {
 	}
 
 	return false
-}
-func GetQBConfigPath() string {
-	var qBConfigFilename string
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		Log("Debug-GetQBConfigPath", GetLangText("Error-Debug-GetQBConfigPath_GetUserHomeDir"), false, err.Error())
-		return ""
-	}
-	if IsUnix(userHomeDir) {
-		qBConfigFilename = userHomeDir + "/.config/qBittorrent/qBittorrent.ini"
-	} else {
-		userConfigDir, err := os.UserConfigDir()
-		if err != nil {
-			Log("Debug-GetQBConfigPath", GetLangText("Error-Debug-GetQBConfigPath_GetUserConfigDir"), false, err.Error())
-			return ""
-		}
-		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
-	}
-	return qBConfigFilename
-}
-func GetConfigFromQB() []byte {
-	qBConfigFilename := GetQBConfigPath()
-	if qBConfigFilename == "" {
-		return []byte {}
-	}
-
-	_, err := os.Stat(qBConfigFilename)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
-			Log("GetConfigFromQB", GetLangText("Error-GetConfigFromQB_LoadConfigMeta"), false, err.Error())
-		}
-		return []byte {}
-	}
-
-	Log("GetConfigFromQB", GetLangText("GetConfigFromQB_UseQBConfig"), false, qBConfigFilename)
-
-	qBConfigFile, err := os.ReadFile(qBConfigFilename)
-	if err != nil {
-		Log("GetConfigFromQB", GetLangText("Error-GetConfigFromQB_LoadConfig"), false, err.Error())
-		return []byte {}
-	}
-
-	return qBConfigFile
-}
-func SetURLFromQB() bool {
-	qBConfigFile := GetConfigFromQB()
-	if len(qBConfigFile) < 1 {
-		return false
-	}
-	qBConfigFileArr := strings.Split(string(qBConfigFile), "\n")
-	qBWebUIEnabled := false
-	qBHTTPSEnabled := false
-	qBAddress := ""
-	qBPort := 8080
-	Username := ""
-	for _, qbConfigLine := range qBConfigFileArr {
-		qbConfigLineArr := strings.SplitN(qbConfigLine, "=", 2)
-		if len(qbConfigLineArr) < 2 || qbConfigLineArr[1] == "" {
-			continue
-		}
-		qbConfigLineArr[0] = strings.ToLower(StrTrim(qbConfigLineArr[0]))
-		qbConfigLineArr[1] = strings.ToLower(StrTrim(qbConfigLineArr[1]))
-		switch qbConfigLineArr[0] {
-			case "webui\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBWebUIEnabled = true
-				}
-			case "webui\\https\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBHTTPSEnabled = true
-				}
-			case "webui\\address":
-				if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
-					qBAddress = "127.0.0.1"
-				} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
-					qBAddress = "[::1]"
-				} else {
-					qBAddress = qbConfigLineArr[1]
-				}
-			case "webui\\port":
-				tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
-				if err == nil {
-					qBPort = tmpQBPort
-				}
-			case "webui\\username":
-				Username = qbConfigLineArr[1]
-		}
-	}
-	if !qBWebUIEnabled || qBAddress == "" {
-		Log("SetURLFromQB", GetLangText("Abandon-SetURLFromQB"), false, qBWebUIEnabled, qBAddress)
-		return false
-	}
-	if qBHTTPSEnabled {
-		config.URL = "https://" + qBAddress
-		if qBPort != 443 {
-			config.URL += ":" + strconv.Itoa(qBPort)
-		}
-	} else {
-		config.URL = "http://" + qBAddress
-		if qBPort != 80 {
-			config.URL += ":" + strconv.Itoa(qBPort)
-		}
-	}
-	config.Username = Username
-	Log("SetURLFromQB", GetLangText("Success-SetURLFromQB"), false, qBWebUIEnabled, config.URL, config.Username)
-	return true
 }
 func LoadConfig() bool {
 	configFileStat, err := os.Stat(configFilename)
@@ -341,8 +237,8 @@ func InitConfig() {
 		config.Timeout = 1
 	}
 
-	if config.URL != "" {
-		config.URL = strings.TrimRight(config.URL, "/")
+	if config.ClientURL != "" {
+		config.ClientURL = strings.TrimRight(config.ClientURL, "/")
 	}
 
 	if config.SkipCertVerification {
@@ -357,16 +253,27 @@ func InitConfig() {
 		httpTransport.DisableKeepAlives = false
 	}
 
+	currentTimeout := time.Duration(config.Timeout) * time.Second
+
 	httpClient = http.Client {
-		Timeout:   time.Duration(config.Timeout) * time.Second,
+		Timeout:   currentTimeout,
 		Jar:       cookieJar,
 		Transport: httpTransport,
+		CheckRedirect: func (req *http.Request, via []*http.Request) error {
+	        return http.ErrUseLastResponse
+	    },
 	}
 
 	httpClientWithoutCookie = http.Client {
-		Timeout:   time.Duration(config.Timeout) * time.Second,
+		Timeout:   currentTimeout,
 		Transport: httpTransportWithoutCookie,
+		CheckRedirect: func (req *http.Request, via []*http.Request) error {
+	        return http.ErrUseLastResponse
+	    },
 	}
+
+	httpServer.ReadTimeout = currentTimeout
+	httpServer.WriteTimeout = currentTimeout
 
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
@@ -401,28 +308,30 @@ func InitConfig() {
 	}
 }
 func LoadInitConfig(firstLoad bool) bool {
-	lastURL = config.URL
+	lastURL = config.ClientURL
 
 	if !LoadConfig() {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
 		InitConfig()
 	}
 
-	if firstLoad && config.URL == "" {
-		SetURLFromQB()
+	if firstLoad && config.ClientURL == "" {
+		SetURLFromClient()
 	}
 
-	if config.URL != "" {
-		if lastURL != config.URL {
+	if config.ClientURL != "" {
+		if lastURL != config.ClientURL {
+			DetectClient()
+			InitClient()
 			if firstLoad && !Login() {
 				return false
 			}
 			SubmitBlockPeer(nil)
-			lastURL = config.URL
+			lastURL = config.ClientURL
 		}
 	} else {
 		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 URL.
-		config.URL = lastURL
+		config.ClientURL = lastURL
 	}
 
 	if !firstLoad {

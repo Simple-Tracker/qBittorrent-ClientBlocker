@@ -1,0 +1,228 @@
+package main
+
+import (
+	"time"
+	"strings"
+	"strconv"
+	"net/http"
+	"encoding/json"
+)
+
+type Tr_RequestStruct struct {
+	Method string      `json:"method"`
+	Args   interface{} `json:"arguments"`
+}
+type Tr_ResponseStruct struct {
+	Result string      `json:"result"`
+}
+type Tr_TorrentsResponseStruct struct {
+	Result string            `json:"result"`
+	Args   Tr_TorrentsStruct `json:"arguments"`
+}
+type Tr_GetStruct struct {
+	Field []string `json:"fields"`
+}
+type Tr_SessionSetStruct struct {
+	BlocklistEnabled bool   `json:"blocklist-enabled"`
+	BlocklistSize    int    `json:"blocklist-size"`
+	BlocklistURL     string `json:"blocklist-url"`
+}
+type Tr_TorrentsStruct struct {
+	Torrents []Tr_TorrentStruct `json:"torrents"`
+}
+type Tr_TorrentStruct struct {
+	InfoHash     string          `json:"hashString"`
+	TotalSize    int64           `json:"totalSize"`
+	Private      bool            `json:"private"`
+	Peers        []Tr_PeerStruct `json:"peers"`
+}
+type Tr_PeerStruct struct {
+	IP          string  `json:"address"`
+	Port        int     `json:"port"`
+	Client      string  `json:"clientName"`
+	Progress    float64 `json:"progress"`
+	IsUploading bool    `json:"isUploadingTo"`
+}
+
+var Tr_csrfToken = ""
+var Tr_ipfilterStr = ""
+
+func Tr_InitClient() {
+	go StartServer()
+}
+func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
+	if strings.SplitN(r.RequestURI, "?", 2)[0] == "/ipfilter.dat" {
+		w.WriteHeader(200)
+		w.Write([]byte(Tr_ipfilterStr))
+
+		return true
+	}
+
+	return false
+}
+func Tr_SetURL() bool {
+	return false
+}
+func Tr_DetectVersion() bool {
+	getStruct := Tr_GetStruct { Field: []string { "version" } }
+	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: getStruct })
+	if err != nil {
+		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
+		return false
+	}
+
+	detectStatusCode, _ := Submit(config.ClientURL, string(detectJSON), false, false)
+	return (detectStatusCode == 200 || detectStatusCode == 409)
+}
+func Tr_Login() bool {
+	// Transmission 通过 Basic Auth 进行认证, 因此实际处理 CSRF 请求以避免 409 响应.
+	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get" })
+	if err != nil {
+		Log("Login", GetLangText("Error-GenJSON"), true, err.Error())
+		return false
+	}
+
+	Submit(config.ClientURL, string(loginJSON), false, true)
+
+	if Tr_csrfToken == "" {
+		Log("Login", GetLangText("Error-Login"), true)
+		return false
+	}
+
+	return true
+}
+func Tr_SetCSRFToken(csrfToken string) {
+	Tr_csrfToken = csrfToken
+	Log("SetCSRFToken", GetLangText("Success-SetCSRFToken"), true, csrfToken)
+}
+func Tr_FetchTorrents() *Tr_TorrentsStruct {
+	getStruct := Tr_GetStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } }
+	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: getStruct })
+	if err != nil {
+		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
+		return nil
+	}
+
+	_, torrentsResponseBody := Submit(config.ClientURL, string(loginJSON), true, true)
+	if torrentsResponseBody == nil {
+		Log("FetchTorrents", GetLangText("Error"), true)
+		return nil
+	}
+
+	var torrentsResponse Tr_TorrentsResponseStruct
+	if err := json.Unmarshal(torrentsResponseBody, &torrentsResponse); err != nil {
+		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
+		return nil
+	}
+
+	if torrentsResponse.Result != "success" {
+		Log("FetchTorrents", GetLangText("Error-Parse"), true, torrentsResponse.Result)
+		return nil
+	}
+
+	return &torrentsResponse.Args
+}
+
+func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
+	peerInfoHashes := []string {}
+	for _, peerInfo := range blockPeerMap {
+		peerInfoHashes = append(peerInfoHashes, peerInfo.InfoHash)
+	}
+
+	if len(peerInfoHashes) <= 0 {
+		return
+	}
+
+	stopJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-stop", Args: peerInfoHashes })
+	if err != nil {
+		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
+		return
+	}
+
+	stopStatusCode, _ := Submit(config.ClientURL, string(stopJSON), true, true)
+	if stopStatusCode != 200 {
+		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, err.Error())
+		return
+	}
+
+	Log("RestartTorrentByMap", GetLangText("Debug-RestartTorrentByMap_Wait"), true, config.Interval)
+	time.Sleep(time.Duration(config.Interval) * time.Second)
+
+	startJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-start", Args: peerInfoHashes })
+	if err != nil {
+		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
+		return
+	}
+
+	startStatusCode, _ := Submit(config.ClientURL, string(startJSON), true, true)
+	if startStatusCode != 200 {
+		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, err.Error())
+		return
+	}
+}
+func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	ipfilterCount, ipfilterStr := GenIPFilter_CIDR(blockPeerMap)
+	Tr_ipfilterStr = ipfilterStr
+	if ipfilterCount == 0 {
+		return true
+	}
+
+	blocklistURL := ""
+	if strings.Contains(config.Listen, ".") {
+		blocklistURL = "http://" + config.Listen
+	} else {
+		blocklistURL = "http://127.0.0.1" + config.Listen
+	}
+	blocklistURL += "/ipfilter.dat?t=" + strconv.FormatInt(currentTimestamp, 10)
+
+	sessionSetStruct := Tr_SessionSetStruct { BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL }
+	sessionSetJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-set", Args: sessionSetStruct })
+	if err != nil {
+		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
+		return false
+	}
+
+	_, sessionResponseBody := Submit(config.ClientURL, string(sessionSetJSON), true, true)
+	if sessionResponseBody == nil {
+		Log("SubmitBlockPeer", GetLangText("Error"), true)
+		return false
+	}
+
+	var sessionResponse Tr_ResponseStruct
+	if err := json.Unmarshal(sessionResponseBody, &sessionResponse); err != nil {
+		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, err.Error())
+		return false
+	}
+
+	if sessionResponse.Result != "success" {
+		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, sessionResponse.Result)
+		return false
+	}
+
+	blocklistUpdateJSON, err := json.Marshal(Tr_RequestStruct { Method: "blocklist-update" })
+	if err != nil {
+		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
+		return false
+	}
+
+	_, blocklistUpdateResponseBody := Submit(config.ClientURL, string(blocklistUpdateJSON), true, true)
+	if blocklistUpdateResponseBody == nil {
+		Log("SubmitBlockPeer", GetLangText("Error"), true)
+		return false
+	}
+
+	var blocklistUpdateResponse Tr_ResponseStruct
+	if err := json.Unmarshal(blocklistUpdateResponseBody, &blocklistUpdateResponse); err != nil {
+		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, err.Error())
+		return false
+	}
+
+	if blocklistUpdateResponse.Result != "success" {
+		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, blocklistUpdateResponse.Result)
+		return false
+	}
+
+	Tr_RestartTorrentByMap(blockPeerMap)
+
+	return true
+}

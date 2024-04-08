@@ -26,7 +26,7 @@ func IsUnix(path string) bool {
 	return !strings.Contains(path, "\\")
 }
 func IsIPv6(ip string) bool {
-	return strings.Contains(ip, ":")
+	return strings.Contains(ip, "::")
 }
 func StrTrim(str string) string {
 	return strings.Trim(str, " \n\r")

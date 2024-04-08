@@ -28,3 +28,5 @@ func main() {
 		RunConsole()
 	}
 }
+func Platform_Stop() {
+}

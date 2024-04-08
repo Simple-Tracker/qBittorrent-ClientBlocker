@@ -6,9 +6,10 @@
 	"timeout": 6,
 	"logPath": "logs",
 	"logToFile": true,
-	"qBURL": "",
-	"qBUsername": "",
-	"qBPassword": "",
+	"clientType": "",
+	"clientURL": "",
+	"clientUsername": "",
+	"clientPassword": "",
 	"skipCertVerification": false,
 	"blockList": [
 		"^-(SD|XF|QD|BN|DL)(\\d+)-",

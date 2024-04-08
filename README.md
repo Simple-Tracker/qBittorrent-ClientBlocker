@@ -2,7 +2,7 @@
 
 [中文](README.md) [English](README.en.md)
 
-一款适用于 qBittorrent 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端, 支持 qBittorrent 4.1 及以上版本.
+一款适用于 qBittorrent (4.1+)/Transmission (3.0+) 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端.
 
 -   全平台支持
 -   支持记录日志及热重载配置
@@ -18,48 +18,46 @@
 
 ### 前提
 
--   必须启用 qBittorrent Web UI 功能.
+-   必须启用客户端的 Web UI 功能.
 
 ### 常规版本使用
 
 1. 从 [**GitHub Release**](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases) 下载压缩包并解压;
 
     <details>
-    <summary>查看 常见平台下载版本 对照表</summary>
+        <summary>查看 常见平台下载版本 对照表</summary>
 
-    | 操作系统 | 处理器架构 | 处理器位数 | 下载版本      | 说明                                                   |
-    | -------- | ---------- | ---------- | ------------- | ------------------------------------------------------ |
-    | macOS    | ARM64      | 64 位      | darwin-arm64  | 常见于 Apple M 系列                                    |
-    | macOS    | AMD64      | 64 位      | darwin-amd64  | 常见于 Intel 系列                                      |
-    | Windows  | AMD64      | 64 位      | windows-amd64 | 常见于大部分现代 PC                                    |
-    | Windows  | i386       | 32 位      | windows-386   | 少见于部分老式 PC                                      |
-    | Windows  | ARM64      | 64 位      | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件     |
-    | Windows  | ARMv6      | 32 位      | windows-arm   | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等   |
-    | Linux    | AMD64      | 64 位      | linux-amd64   | 常见于大部分 NAS 及服务器                              |
-    | Linux    | i386       | 32 位      | linux-386     | 少见于部分老式 NAS 及服务器                            |
-    | Linux    | ARM64      | 64 位      | linux-arm64   | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
-    | Linux    | ARMv6      | 32 位      | linux-arm     | 少见于部分老式服务器及开发板                           |
+        | 操作系统 | 处理器架构 | 处理器位数 | 下载版本      | 说明                                                   |
+        | -------- | ---------- | ---------- | ------------- | ------------------------------------------------------ |
+        | macOS    | ARM64      | 64 位      | darwin-arm64  | 常见于 Apple M 系列                                    |
+        | macOS    | AMD64      | 64 位      | darwin-amd64  | 常见于 Intel 系列                                      |
+        | Windows  | AMD64      | 64 位      | windows-amd64 | 常见于大部分现代 PC                                    |
+        | Windows  | i386       | 32 位      | windows-386   | 少见于部分老式 PC                                      |
+        | Windows  | ARM64      | 64 位      | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件     |
+        | Windows  | ARMv6      | 32 位      | windows-arm   | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等   |
+        | Linux    | AMD64      | 64 位      | linux-amd64   | 常见于大部分 NAS 及服务器                              |
+        | Linux    | i386       | 32 位      | linux-386     | 少见于部分老式 NAS 及服务器                            |
+        | Linux    | ARM64      | 64 位      | linux-arm64   | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
+        | Linux    | ARMv6      | 32 位      | linux-arm     | 少见于部分老式服务器及开发板                           |
 
-    其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.
+        其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.
     </details>
 
 2. 解压后, 可能需要修改随附的配置文件 ```config.json```;
 
     - 可根据高级需求, 按需设置配置, 具体见 [配置 Config](#配置-config).
-    - 若客户端屏蔽器运行于本机, 但未启用 qBittorrent "跳过本机客户端认证" (及密码不为空且并未手动设置密码), 则必须修改配置文件, 并填写 ```qBPassword```.
-    - 若客户端屏蔽器不运行于本机 或 qBittorrent 未安装在默认路径 或 使用 2.4 及以下版本的客户端屏蔽器, 则必须修改配置文件, 并填写 ```qBURL```/```qBUsername```/```qBPassword```.
+    - 若客户端屏蔽器运行于本机, 但未启用客户端 "跳过本机客户端认证" (及密码不为空且并未手动设置密码), 则必须修改配置文件, 并填写 ```clientPassword```.
+    - 若客户端屏蔽器不运行于本机 或 客户端未安装在默认路径 或 客户端不支持自动读取配置文件, 则必须修改配置文件, 并填写 ```clientURL```/```clientUsername```/```clientPassword```.
 
 3. 启动客户端屏蔽器, 并观察信息输出是否正常即可;
    
-   对于 Windows, 可选修改 qBittorrent 的快捷方式, 放入自己的屏蔽器路径, 使 qBittorrent 与屏蔽器同时运行;
+    对于 Windows, 可选修改客户端的快捷方式, 放入自己的屏蔽器路径, 使客户端与屏蔽器同时运行;
 
-   ```
-   C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start     qbittorrent.exe"
-   ```
+    qBittorrent: ```C:\Windows\System32\cmd.exe /c "(tasklist | findstr qBittorrent-ClientBlocker || start C:\Users\Example\qBittorrent-ClientBlocker\qBittorrent-ClientBlocker.exe) && start qbittorrent.exe"```
 
-   对于 macOS, 可选使用一基本 [LaunchAgent 用户代理](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#launchagent-macos) 用于开机自启及后台运行;
+    对于 macOS, 可选使用一基本 [LaunchAgent 用户代理](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#launchagent-macos) 用于开机自启及后台运行;
 
-   对于 Linux, 可选使用一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd-linux) 用于开机自启及后台运行;
+    对于 Linux, 可选使用一基本 [Systemd 服务配置文件](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/wiki#systemd-linux) 用于开机自启及后台运行;
 
 ### Docker 版本使用
 
@@ -73,16 +71,14 @@
 
     1. 在合适位置新建 ```config.json``` 作为配置文件, 具体内容可参考 [config.json](config.json) 及 [配置 Config](#配置-config);
 
-    2. 填入 ```qBURL```/```qBUsername```/```qBPassword```;
+    2. 填入 ```clientURL```/```clientUsername```/```clientPassword```;
 
         - 可根据高级需求, 按需设置其它配置, 具体见 [配置 Config](#配置-config).
-        - 若启用 qBittorrent 的 "IP 子网白名单", 则可不填写 ```qBUsername``` 和 ```qBPassword```.
+        - 若启用客户端的 "IP 子网白名单", 则可不填写 ```clientUsername``` 和 ```clientPassword```.
 
-    3. 替换 ```/path/config.json``` 为你的配置文件路径;
+    3. 运行 Docker 并查看日志, 观察信息输出是否正常即可;
 
-    4. 运行 Docker 并查看日志, 观察信息输出是否正常即可;
-
-       以下命令模版仅作为参考.
+       以下命令模版仅作为参考, 请替换 ```/path/config.json``` 为你的配置文件路径.
 
         ```
         docker run -d \
@@ -104,9 +100,9 @@
             -e debug=false \
             -e logPath=logs \
             -e blockList='["ExampleBlockList1", "ExampleBlockList2"]' \
-            -e qBURL=http://example.com \
-            -e qBUsername=exampleUser \
-            -e qBPassword=examplePass \
+            -e clientURL=http://example.com \
+            -e clientUsername=exampleUser \
+            -e clientPassword=examplePass \
             simpletracker/qbittorrent-clientblocker:latest
         ```
 
@@ -128,24 +124,28 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | debug | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
 | debug_CheckTorrent | false (禁用) | 调试模式 (CheckTorrent, 须先启用 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
 | debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
-| interval | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从 qBittorrent API 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成 qBittorrent 卡顿, 长间隔有助于降低 CPU 资源占用 |
+| interval | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从 Web UI 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | torrentMapCleanInterval | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
+| banIPCIDR | /32 | 封禁 IPv4 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
+| banIP6CIDR | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | ignoreEmptyPeer | true (启用) | 忽略无 PeerID 及 UserAgent 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignorePTTorrent | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |
 | startDelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
-| sleepTime | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成 qBittorrent 卡顿, 长间隔有助于平均 CPU 资源占用 |
+| sleepTime | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成客户端卡顿, 长间隔有助于平均 CPU 资源占用 |
 | timeout | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |
 | longConnection | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
 | logDebug | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
-| qBURL | 空 | qBittorrent Web UI 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取 qBittorrent 配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990```. |
-| qBUsername | 空 | qBittorrent Web UI 账号. 留空会跳过认证. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空, 因可自动读取 qBittorrent 配置文件并设置 |
-| qBPassword | 空 | qBittorrent Web UI 密码. 若启用 qBittorrent 内 "跳过本机客户端认证" 可默认留空 |
-| useBasicAuth | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合通过反向代理等方式 增加/换用 认证方式的 qBittorrent Web UI |
-| skipCertVerification | false (禁用) | 跳过 qBittorrent Web UI 证书校验. 适合自签及过期证书 |
+| listen | :26262 | 监听端口. 用于向部分客户端提供 BlockPeerList |
+| clientType | 空 | 客户端类型. 使用客户端屏蔽器的前提条件, 若未能自动检测客户端类型, 则须正确填入. 目前支持 ```qBittorrent```/```Transmission``` |
+| clientURL | 空 | Web UI 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990``` 或 ```http://127.0.0.1:9091/transmission/rpc```. |
+| clientUsername | 空 | Web UI 账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
+| clientPassword | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
+| useBasicAuth | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
+| skipCertVerification | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
 | ipBlockList | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
 | ipFilterURL | 空 | 屏蔽 IP 列表 URL. 每 24 小时更新, 支持格式同 ipBlockList, 一行一条 |
@@ -158,14 +158,14 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByPUStartMB | 20 (MB) | 增强自动屏蔽/起始大小. 若客户端上传量大于起始大小, 则允许屏蔽 Peer |
 | banByPUStartPrecent | 2 (%) | 增强自动屏蔽/起始进度. 若客户端上传进度大于设置起始进度, 则允许屏蔽 Peer |
 | banByPUAntiErrorRatio | 3 (X) | 增强自动屏蔽/滞后防误判倍率. 若 Peer 报告下载进度与设置倍率及 Torrent 大小之乘积得到之下载量 比 客户端上传量 还低, 则允许屏蔽 Peer |
-| banByRelativeProgressUploaded | false (禁用) | 增强自动屏蔽_相对 (根据相对进度及相对上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽_相对 条件后, 会自动屏蔽 Peer. 此功能当前故障 |
+| banByRelativeProgressUploaded | false (禁用) | 增强自动屏蔽_相对 (根据相对进度及相对上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽_相对 条件后, 会自动屏蔽 Peer |
 | banByRelativePUStartMB | 20 (MB) | 增强自动屏蔽_相对/起始大小. 若客户端相对上传量大于设置起始大小, 则允许屏蔽 Peer |
 | banByRelativePUStartPrecent | 2 (%) | 增强自动屏蔽_相对/起始进度. 若客户端相对上传进度大于设置起始进度, 则允许屏蔽 Peer |
 | banByRelativePUAntiErrorRatio | 3 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 
 ## 反馈 Feedback
 用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
-注意: 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue.
+注意: 应基于 dev 分支. 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue.
 
 ## 致谢 Credit
 
