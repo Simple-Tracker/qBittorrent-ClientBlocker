@@ -34,6 +34,7 @@ var lastTorrentCleanTimestamp int64 = 0
 var ipMap = make(map[string]IPInfoStruct)
 var torrentMap = make(map[string]TorrentInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
+var blockCIDRMap = make(map[string]*net.IPNet)
 var lastIPMap = make(map[string]IPInfoStruct)
 var lastTorrentMap = make(map[string]TorrentInfoStruct)
 
@@ -99,6 +100,63 @@ func AddBlockPeer(peerIP string, peerPort int) {
 
 	blockPeerPortMap[peerPort] = true
 	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap }
+
+	cidr := ""
+	if IsIPv6(peerIP) {
+		if config.BanIP6CIDR != "/128" {
+			cidr = config.BanIP6CIDR
+		}
+	} else {
+		if config.BanIPCIDR != "/32" {
+			cidr = config.BanIPCIDR
+		}
+	}
+
+	if cidr != "" {
+		peerNet := ParseIP(peerIP + cidr)
+		if peerNet != nil {
+			peerNetStr := peerNet.String()
+			blockCIDRMap[peerNetStr] = peerNet
+		}
+	}
+}
+func ClearBlockPeer() int {
+	cleanCount := 0
+	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
+		for clientIP, clientInfo := range blockPeerMap {
+			if currentTimestamp > (clientInfo.Timestamp + int64(config.BanTime)) {
+				cleanCount++
+				delete(blockPeerMap, clientIP)
+
+				cidr := ""
+				if IsIPv6(clientIP) {
+					if config.BanIP6CIDR != "/128" {
+						cidr = config.BanIP6CIDR
+					}
+				} else {
+					if config.BanIPCIDR != "/32" {
+						cidr = config.BanIPCIDR
+					}
+				}
+
+				if cidr != "" {
+					peerNet := ParseIP(clientIP + cidr)
+					if peerNet != nil {
+						peerNetStr := peerNet.String()
+						if _, exist := blockCIDRMap[peerNetStr]; !exist {
+							delete(blockCIDRMap, peerNetStr)
+						}
+					}
+				}
+			}
+		}
+		if cleanCount != 0 {
+			lastCleanTimestamp = currentTimestamp
+			Log("ClearBlockPeer", GetLangText("Success-ClearBlockPeer"), true, cleanCount)
+		}
+	}
+
+	return cleanCount
 }
 func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	if blockPeer, exist := blockPeerMap[peerIP]; exist {
@@ -109,6 +167,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 				}
 			}
 		}
+
 		if updateTimestamp {
 			blockPeer.Timestamp = currentTimestamp
 			blockPeerMap[peerIP] = blockPeer
@@ -181,21 +240,29 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 	}
 	return 0
 }
-func ClearBlockPeer() int {
-	cleanCount := 0
-	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
-		for clientIP, clientInfo := range blockPeerMap {
-			if currentTimestamp > (clientInfo.Timestamp + int64(config.BanTime)) {
-				cleanCount++
-				delete(blockPeerMap, clientIP)
-			}
+func IsMatchCIDR(ip string) string {
+	cidr := ""
+	if IsIPv6(ip) {
+		if config.BanIP6CIDR != "/128" {
+			cidr = config.BanIP6CIDR
 		}
-		if cleanCount != 0 {
-			lastCleanTimestamp = currentTimestamp
-			Log("ClearBlockPeer", GetLangText("Success-ClearBlockPeer"), true, cleanCount)
+	} else {
+		if config.BanIPCIDR != "/32" {
+			cidr = config.BanIPCIDR
 		}
 	}
-	return cleanCount
+
+	if cidr != "" {
+		peerNet := ParseIP(ip + cidr)
+		if peerNet != nil {
+			peerNetStr := peerNet.String()
+			if _, exist := blockCIDRMap[peerNetStr]; !exist {
+				return peerNetStr
+			}
+		}
+	}
+
+	return ""
 }
 func CheckTorrent(torrentInfoHash string, tracker string, leecherCount int64) (int, interface{}) {
 	if torrentInfoHash == "" {
@@ -233,6 +300,13 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			return 3
 		}
 		return 2
+	}
+
+	peerNetStr := IsMatchCIDR(peerIP)
+	if peerNetStr != "" {
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d (Net: %s)", false, peerIP, peerPort, peerNetStr)
+		AddBlockPeer(peerIP, peerPort)
+		return 1
 	}
 
 	if IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
@@ -291,11 +365,13 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 			if IsBlockedPeer(ip, -1, true) || len(ipInfo.Port) <= 0 {
 				continue
 			}
+
 			for port := range ipInfo.Port {
 				if IsBlockedPeer(ip, port, true) {
 					continue ipMapLoop
 				}
 			}
+
 			if config.MaxIPPortCount > 0 {
 				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
@@ -304,6 +380,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 					continue
 				}
 			}
+
 			if lastIPInfo, exist := lastIPMap[ip]; exist {
 				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
@@ -328,9 +405,12 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 		for torrentInfoHash, torrentInfo := range torrentMap {
 			for peerIP, peerInfo := range torrentInfo.Peers {
+				peerIP = ProcessIP(peerIP)
+
 				if IsBlockedPeer(peerIP, -1, true) {
 					continue
 				}
+
 				if config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0 {
 					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
 						Log("CheckAllTorrent_AddBlockPeer (PerTorrent-Too high uploaded)", "%s:%d (TorrentSize: %.2f MB, Uploaded: %.2f MB)", true, peerIP, -1, (float64(torrentInfo.Size) / 1024 / 1024), (float64(peerInfo.Uploaded) / 1024 / 1024))
@@ -339,6 +419,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 						continue
 					}
 				}
+
 				if config.BanByRelativeProgressUploaded {
 					if lastPeerInfo, exist := lastTorrentMap[torrentInfoHash].Peers[peerIP]; exist {
 						if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentInfo.Size, peerInfo, lastPeerInfo); uploadDuring > 0 {
@@ -409,11 +490,13 @@ func Task() {
 			case 0:
 				torrentPeers := torrentPeersStruct.(*qB_TorrentPeersStruct).Peers
 				for _, peer := range torrentPeers {
-					peer.IP = strings.ToLower(peer.IP)
+					peer.IP = ProcessIP(peer.IP)
 					peerStatus := CheckPeer(peer.IP, peer.Port, peer.Peer_ID_Client, peer.Client, peer.Progress, peer.Uploaded, torrentInfoHash, torrentInfo.TotalSize)
+
 					if config.Debug_CheckPeer {
 						Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peer.IP, peer.Port, strconv.QuoteToASCII(peer.Peer_ID_Client), strconv.QuoteToASCII(peer.Client), peerStatus)
 					}
+
 					switch peerStatus {
 						case 3:
 							ipBlockCount++

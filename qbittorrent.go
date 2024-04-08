@@ -98,7 +98,12 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) {
 			for peerIP, peerInfo := range blockPeerMap {
 				if _, exist := peerInfo.Port[-1]; config.BanAllPort || exist {
 					for port := 0; port <= 65535; port++ {
-						banIPPortsStr += peerIP + ":" + strconv.Itoa(port) + "|"
+						if IsIPv6(peerIP) {
+							banIPPortsStr += "[" + peerIP + "]:" + strconv.Itoa(port) + "|"
+						} else {
+							banIPPortsStr += peerIP + ":" + strconv.Itoa(port) + "|"
+							banIPPortsStr += "[::ffff:" + peerIP + "]:" + strconv.Itoa(port) + "|"
+						}
 					}
 					continue
 				}
@@ -110,6 +115,9 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) {
 		} else {
 			for peerIP := range blockPeerMap {
 				banIPPortsStr += peerIP + "\n"
+				if !IsIPv6(peerIP) {
+					banIPPortsStr += "::ffff:" + peerIP + "\n"
+				}
 			}
 		}
 	}

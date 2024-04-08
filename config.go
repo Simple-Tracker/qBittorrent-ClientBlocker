@@ -26,6 +26,8 @@ type ConfigStruct struct {
 	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
 	BanAllPort                    bool
+	BanIPCIDR                     string
+	BanIP6CIDR                    string
 	IgnoreEmptyPeer               bool
 	IgnorePTTorrent               bool
 	StartDelay                    uint32
@@ -101,6 +103,8 @@ var config = ConfigStruct {
 	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
+	BanIPCIDR:                     "/32",
+	BanIP6CIDR:                    "/128",
 	IgnoreEmptyPeer:               true,
 	IgnorePTTorrent:               true,
 	StartDelay:                    0,

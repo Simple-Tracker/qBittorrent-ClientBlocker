@@ -61,3 +61,12 @@ func ParseIP(ip string) *net.IPNet {
 
 	return cidr
 }
+func ProcessIP(ip string) string {
+	ip = strings.ToLower(ip)
+
+	if strings.HasPrefix(ip, "::ffff:") {
+		return ip[7:]
+	}
+
+	return ip
+}
