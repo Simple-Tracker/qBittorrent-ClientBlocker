@@ -17,7 +17,8 @@
 		"^-DT", "dt[ /]torrent",
 		"trafficConsume",
 		"go[ \\.]torrent",
-		"Taipei-Torrent dev"
+		"Taipei-Torrent dev",
+		"\u07ad__"
 	],
 	"_blockList": [ // 可选 blockList, 合并以屏蔽媒体播放器.
 		"^-(UW\\w{4}-", // uTorrent Web.
