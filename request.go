@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-func NewRequest(isPOST bool, url string, postdata string) *http.Request {
+func NewRequest(isPOST bool, url string, postdata string, withAuth bool) *http.Request {
 	var request *http.Request
 	var err error
 
@@ -27,14 +27,14 @@ func NewRequest(isPOST bool, url string, postdata string) *http.Request {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	if config.UseBasicAuth && config.QBUsername != "" {
+	if withAuth && config.UseBasicAuth && config.QBUsername != "" {
 		request.SetBasicAuth(config.QBUsername, config.QBPassword)
 	}
 
 	return request
 }
 func Fetch(url string, tryLogin bool, withCookie bool) []byte {
-	request := NewRequest(false, url, "")
+	request := NewRequest(false, url, "", withCookie)
 	if request == nil {
 		return nil
 	}
@@ -74,7 +74,7 @@ func Fetch(url string, tryLogin bool, withCookie bool) []byte {
 	return responseBody
 }
 func Submit(url string, postdata string, tryLogin bool, withCookie bool) []byte {
-	request := NewRequest(true, url, postdata)
+	request := NewRequest(true, url, postdata, withCookie)
 	if request == nil {
 		return nil
 	}
