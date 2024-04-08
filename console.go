@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"net"
 	"time"
 	"strings"
@@ -487,7 +488,7 @@ func RunConsole() {
 	}
 	if !LoadInitConfig(true) {
 		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
-		return
+		os.Exit(1)
 	}
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
 	loopTicker := time.NewTicker(time.Duration(config.Interval) * time.Second)
