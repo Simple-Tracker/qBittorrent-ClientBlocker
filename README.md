@@ -1,6 +1,7 @@
 # qBittorrent-ClientBlocker
 
-[中文](README.md) [English](README.en.md)
+[中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
+[中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
 一款适用于 qBittorrent (4.1+)/Transmission (3.0+) 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端.
 
@@ -11,6 +12,9 @@
 -   支持客户端认证
 -   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
 -   在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
+
+我们相信, 通过即时通讯, 能够: 改善问题跟踪及处理的速度和流程 及 更好的加快想法流转.  
+因此, 我们创建了一个 QQ 用户群 (临时): [857326151](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=edXDN0Dk0kFfgS6t2Uc1MeqUD4NLx76_&authKey=u2Cm6up4ctiHrLTSwCvIo%2FxETz5xYa6%2BBWK187BSGHlgEng6ZRIuv8OC870QGoGq&noverify=0&group_code=857326151)
 
 ![Preview](Preview.png)
 

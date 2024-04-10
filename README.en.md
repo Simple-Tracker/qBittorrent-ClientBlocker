@@ -1,6 +1,7 @@
 # qBittorrent-ClientBlocker
 
-[中文](README.md) [English](README.en.md)
+[中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
+[中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
 A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+), which is prohibited to include but not limited to clients such as Xunlei.
 
