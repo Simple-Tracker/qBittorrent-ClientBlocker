@@ -29,6 +29,10 @@ type BlockPeerInfoStruct struct {
 	Port      map[int]bool
 	InfoHash  string
 }
+type BlockCIDRInfoStruct struct {
+	Timestamp int64
+	Net       *net.IPNet
+}
 
 var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
@@ -38,7 +42,7 @@ var lastTorrentCleanTimestamp int64 = 0
 var ipMap = make(map[string]IPInfoStruct)
 var torrentMap = make(map[string]TorrentInfoStruct)
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
-var blockCIDRMap = make(map[string]*net.IPNet)
+var blockCIDRMap = make(map[string]BlockCIDRInfoStruct)
 var lastIPMap = make(map[string]IPInfoStruct)
 var lastTorrentMap = make(map[string]TorrentInfoStruct)
 
@@ -120,7 +124,7 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 		peerNet := ParseIP(peerIP + cidr)
 		if peerNet != nil {
 			peerNetStr := peerNet.String()
-			blockCIDRMap[peerNetStr] = peerNet
+			blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
 		}
 	}
 }
@@ -147,7 +151,12 @@ func ClearBlockPeer() int {
 					peerNet := ParseIP(clientIP + cidr)
 					if peerNet != nil {
 						peerNetStr := peerNet.String()
-						if _, exist := blockCIDRMap[peerNetStr]; !exist {
+						if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
+							if blockCIDRInfo.Timestamp > currentTimestamp {
+								clientInfo.Timestamp = blockCIDRInfo.Timestamp
+								blockPeerMap[clientIP] = clientInfo
+								continue
+							}
 							delete(blockCIDRMap, peerNetStr)
 						}
 					}
@@ -260,7 +269,7 @@ func IsMatchCIDR(ip string) string {
 		peerNet := ParseIP(ip + cidr)
 		if peerNet != nil {
 			peerNetStr := peerNet.String()
-			if _, exist := blockCIDRMap[peerNetStr]; !exist {
+			if _, exist := blockCIDRMap[peerNetStr]; exist {
 				return peerNetStr
 			}
 		}
