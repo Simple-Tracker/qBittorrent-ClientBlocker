@@ -15,43 +15,24 @@ jobs:
         goos: [darwin, windows, linux, netbsd, openbsd, freebsd]
         goarch: ['386', 'amd64', 'arm', 'arm64']
         include:
-          - goos: darwin
-            no_upx_compression: true
-          - goos: windows
-            goarch: 'arm'
-            no_upx_compression: true
-          - goos: windows
-            goarch: 'arm64'
-            no_upx_compression: true
           - goos: linux
             goarch: 'mips'
             pre_command: 'export GOMIPS=softfloat'
-            no_upx_compression: true
           - goos: linux
             goarch: 'mipsle'
             pre_command: 'export GOMIPS=softfloat'
-            no_upx_compression: true
           - goos: linux
             goarch: 'mips64'
             pre_command: 'export GOMIPS64=softfloat'
-            no_upx_compression: true
           - goos: linux
             goarch: 'mips64le'
             pre_command: 'export GOMIPS64=softfloat'
-            no_upx_compression: true
           - goos: linux
             goarch: 'riscv64'
-            no_upx_compression: true
           - goos: linux
             goarch: 'ppc64'
           - goos: linux
             goarch: 'ppc64le'
-          - goos: netbsd
-            no_upx_compression: true
-          - goos: openbsd
-            no_upx_compression: true
-          - goos: freebsd
-            no_upx_compression: true
           - goos: solaris
             goarch: 'amd64'
         exclude:
@@ -78,7 +59,6 @@ jobs:
           goarch: ${{ matrix.goarch }}
           ldflags: "-w -X \"main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_version || steps.build_info.outputs.nightly_build_version }}\""
           pre_command: ${{ matrix.pre_command }}
-          executable_compression: ${{ matrix.no_upx_compression != true && 'upx -v -9' || '' }}
           goversion: 1.20.13
           md5sum: false
           sha256sum: false
