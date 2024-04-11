@@ -246,16 +246,16 @@ func SetBlockListFromURL() bool {
 
 	return false
 }
-func LoadConfig() bool {
+func LoadConfig() int {
 	configFileStat, err := os.Stat(configFilename)
 	if err != nil {
 		Log("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
-		return false
+		return -2
 	}
 
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
 	if tmpConfigLastMod <= configLastMod {
-		return true
+		return -1
 	}
 
 	if configLastMod != 0 {
@@ -265,30 +265,32 @@ func LoadConfig() bool {
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
 		Log("LoadConfig", GetLangText("Error-LoadConfig"), false, err.Error())
-		return false
+		return -3
 	}
 
 	configLastMod = tmpConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
 		Log("LoadConfig", GetLangText("Error-ParseConfig"), false, err.Error())
-		return false
+		return -4
 	}
 
 	Log("LoadConfig", GetLangText("Success-LoadConfig"), true)
 
-	return true
+	return 0
 }
-func LoadAdditionalConfig() bool {
+func LoadAdditionalConfig() int {
 	additionalConfigFileStat, err := os.Stat(additionConfigFilename)
 	if err != nil {
-		Log("Debug-LoadAdditionalConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
-		return false
+		if !os.IsNotExist(err) {
+			Log("Debug-LoadAdditionalConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
+		}
+		return -2
 	}
 
 	tmpAdditionalConfigLastMod := additionalConfigFileStat.ModTime().Unix()
 	if tmpAdditionalConfigLastMod <= additionConfigLastMod {
-		return true
+		return -1
 	}
 
 	if additionConfigLastMod != 0 {
@@ -298,19 +300,19 @@ func LoadAdditionalConfig() bool {
 	additionalConfigFile, err := os.ReadFile(additionConfigFilename)
 	if err != nil {
 		Log("LoadAdditionalConfig", GetLangText("Error-LoadConfig"), false, err.Error())
-		return false
+		return -3
 	}
 
 	additionConfigLastMod = tmpAdditionalConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(additionalConfigFile), &config); err != nil {
 		Log("LoadAdditionalConfig", GetLangText("Error-ParseConfig"), false, err.Error())
-		return false
+		return -4
 	}
 
 	Log("LoadAdditionalConfig", GetLangText("Success-LoadConfig"), true)
 
-	return true
+	return 0
 }
 func InitConfig() {
 	if !LoadLog() && logFile != nil {
@@ -399,12 +401,15 @@ func InitConfig() {
 func LoadInitConfig(firstLoad bool) bool {
 	lastURL = config.ClientURL
 
-	if LoadConfig() {
-		LoadAdditionalConfig()
+	loadConfigStatus := LoadConfig()
+	if loadConfigStatus >= -1 {
+		loadAdditionalConfigStatus := LoadAdditionalConfig()
+		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
+			InitConfig()
+		}
 	} else {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
 	}
-	InitConfig()
 
 	if firstLoad && config.ClientURL == "" {
 		SetURLFromClient()

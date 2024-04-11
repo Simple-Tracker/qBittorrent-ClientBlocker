@@ -115,7 +115,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 }
 func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) int {
 	hasPeerClient := (peerID != "" || peerClient != "")
-	if (!config.IgnoreEmptyPeer && !hasPeerClient) || peerIP == "" || CheckPrivateIP(peerIP) {
+	if (config.IgnoreEmptyPeer && !hasPeerClient) || peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1
 	}
 
