@@ -79,6 +79,8 @@ var cookieJar, _ = cookiejar.New(nil)
 var lastURL = ""
 var configFilename string
 var configLastMod int64 = 0
+var additionConfigFilename string
+var additionConfigLastMod int64 = 0
 var ipfilterLastFetch int64 = 0
 var blockListLastFetch int64 = 0
 
@@ -274,7 +276,39 @@ func LoadConfig() bool {
 	}
 
 	Log("LoadConfig", GetLangText("Success-LoadConfig"), true)
-	InitConfig()
+
+	return true
+}
+func LoadAdditionalConfig() bool {
+	additionalConfigFileStat, err := os.Stat(additionConfigFilename)
+	if err != nil {
+		Log("Debug-LoadAdditionalConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
+		return false
+	}
+
+	tmpAdditionalConfigLastMod := additionalConfigFileStat.ModTime().Unix()
+	if tmpAdditionalConfigLastMod <= additionConfigLastMod {
+		return true
+	}
+
+	if additionConfigLastMod != 0 {
+		Log("Debug-LoadAdditionalConfig", GetLangText("Debug-LoadConfig_HotReload"), false)
+	}
+
+	additionalConfigFile, err := os.ReadFile(additionConfigFilename)
+	if err != nil {
+		Log("LoadAdditionalConfig", GetLangText("Error-LoadConfig"), false, err.Error())
+		return false
+	}
+
+	additionConfigLastMod = tmpAdditionalConfigLastMod
+
+	if err := json.Unmarshal(jsonc.ToJSON(additionalConfigFile), &config); err != nil {
+		Log("LoadAdditionalConfig", GetLangText("Error-ParseConfig"), false, err.Error())
+		return false
+	}
+
+	Log("LoadAdditionalConfig", GetLangText("Success-LoadConfig"), true)
 
 	return true
 }
@@ -365,10 +399,12 @@ func InitConfig() {
 func LoadInitConfig(firstLoad bool) bool {
 	lastURL = config.ClientURL
 
-	if !LoadConfig() {
+	if LoadConfig() {
+		LoadAdditionalConfig()
+	} else {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
-		InitConfig()
 	}
+	InitConfig()
 
 	if firstLoad && config.ClientURL == "" {
 		SetURLFromClient()
@@ -401,6 +437,8 @@ func RegFlag() {
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, GetLangText("ProgramVersion"))
 	flag.StringVar(&configFilename, "c", "config.json", GetLangText("ConfigPath"))
 	flag.StringVar(&configFilename, "config", "config.json", GetLangText("ConfigPath"))
+	flag.StringVar(&additionConfigFilename, "ca", "config_additional.json", GetLangText("AdditionalConfigPath"))
+	flag.StringVar(&additionConfigFilename, "config_additional", "config_additional.json", GetLangText("AdditionalConfigPath"))
 	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
 	flag.Parse()

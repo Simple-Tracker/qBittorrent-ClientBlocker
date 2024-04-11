@@ -10,6 +10,7 @@ var langContent map[string]string
 var defaultLangContent = map[string]string {
 	"ProgramVersion": "程序版本",
 	"ConfigPath": "配置文件路径",
+	"AdditionalConfigPath": "附加配置文件路径",
 	"DebugMode": "调试模式",
 	"NoChdir": "不切换工作目录",
 	"RunConsole_StartDelay": "启动延迟",

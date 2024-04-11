@@ -113,6 +113,7 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+), which i
 | ----- | ----- | ----- |
 | -v/--version | false | Show program version and exit  |
 | -c/--config | config.json | Config path |
+| -ca/--config_additional | config_additional.json | Additional config path |
 | --debug | false | Debug mode. Effective before loading config file |
 | --nochdir | false | Don't change working directory. Change to the program directory by default |
 
