@@ -160,7 +160,7 @@ func SetIPFilter() bool {
 	ipfilterCompiled = make([]*net.IPNet, len(ipfilterArr))
 	k := 0
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
-		ipfilterLine = StrTrim(ipfilterLine)
+		ipfilterLine = StrTrim(strings.SplitN(ipfilterLine, "#", 2)[0])
 		if ipfilterLine == "" {
 			Log("Debug-SetIPFilter_Compile", GetLangText("Error-Debug-SetIPFilter_EmptyLine"), false, ipfilterLineNum)
 			continue
