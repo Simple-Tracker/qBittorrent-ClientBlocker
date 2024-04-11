@@ -130,6 +130,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | debug_CheckPeer | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
 | interval | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从 Web UI 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
+| updateInterval | 86400 (秒) | 列表 URL 更新间隔 (ipFilterURL/blockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | torrentMapCleanInterval | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
@@ -151,8 +152,9 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | useBasicAuth | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
 | skipCertVerification | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
+| blockListURL | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | ipBlockList | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
-| ipFilterURL | 空 | 屏蔽 IP 列表 URL. 每 24 小时更新, 支持格式同 ipBlockList, 一行一条 |
+| ipFilterURL | 空 | 屏蔽 IP 列表 URL. 支持格式同 ipBlockList, 一行一条 |
 | ipUploadedCheck | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
 | ipUpCheckIncrementMB | 38000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局上传增量大小大于设置增量大小, 则允许屏蔽 Peer |

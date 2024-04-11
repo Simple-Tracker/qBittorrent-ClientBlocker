@@ -22,6 +22,7 @@ type ConfigStruct struct {
 	Debug_CheckPeer               bool
 	Interval                      uint32
 	CleanInterval                 uint32
+	UpdateInterval                uint32
 	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
 	BanAllPort                    bool
@@ -44,6 +45,7 @@ type ConfigStruct struct {
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	BlockList                     []string
+	BlockListURL                  string
 	IPBlockList                   []string
 	IPFilterURL                   string
 	IPUploadedCheck               bool
@@ -69,14 +71,16 @@ var noChdir bool
 
 var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
+var blockListFromURLCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
-var ipfilterCompiled []*net.IPNet
+var ipfilterFromURLCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
 var configFilename string
 var configLastMod int64 = 0
 var ipfilterLastFetch int64 = 0
+var blockListLastFetch int64 = 0
 
 var httpTransport = &http.Transport {
 	DisableKeepAlives:   true,
@@ -94,13 +98,13 @@ var httpServer = http.Server {
 	Handler:      &httpServerHandler {},
 }
 
-
 var config = ConfigStruct {
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,
 	Interval:                      6,
 	CleanInterval:                 3600,
+	UpdateInterval:                86400,
 	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
@@ -139,49 +143,100 @@ var config = ConfigStruct {
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
 }
-func SetIPFilter() bool {
-	if config.IPFilterURL == "" || (ipfilterLastFetch + 86400) > currentTimestamp {
+func SetIPFilterFromURL() bool {
+	if config.IPFilterURL == "" || (ipfilterLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
 	_, ipfilterContent := Fetch(config.IPFilterURL, false, false)
 	if ipfilterContent == nil {
-		Log("SetIPFilter", GetLangText("Error-SetIPFilter_Fetch"), true)
+		Log("SetIPFilterFromURL", GetLangText("Error-FetchResponse"), true)
 		return false
 	}
 
 	// Max 8MB.
 	if len(ipfilterContent) > 8388608 {
-		Log("SetIPFilter", GetLangText("Error-SetIPFilter_LargeFile"), true)
+		Log("SetIPFilterFromURL", GetLangText("Error-LargeFile"), true)
 		return false
 	}
 
 	ipfilterArr := strings.Split(string(ipfilterContent), "\n")
-	ipfilterCompiled = make([]*net.IPNet, len(ipfilterArr))
+	ipfilterFromURLCompiled = make([]*net.IPNet, len(ipfilterArr))
 	k := 0
 	for ipfilterLineNum, ipfilterLine := range ipfilterArr {
 		ipfilterLine = StrTrim(strings.SplitN(ipfilterLine, "#", 2)[0])
 		if ipfilterLine == "" {
-			Log("Debug-SetIPFilter_Compile", GetLangText("Error-Debug-SetIPFilter_EmptyLine"), false, ipfilterLineNum)
+			Log("Debug-SetIPFilterFromURL_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipfilterLineNum)
 			continue
 		}
 
-		Log("Debug-SetIPFilter_Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
+		Log("Debug-SetIPFilterFromURL_Compile", ":%d %s", false, ipfilterLineNum, ipfilterLine)
 		cidr := ParseIP(ipfilterLine)
 		if cidr == nil {
-			Log("SetIPFilter_Compile", GetLangText("Error-SetIPFilter_Compile"), true, ipfilterLineNum, ipfilterLine)
+			Log("SetIPFilterFromURL_Compile", GetLangText("Error-SetIPFilterFromURL_Compile"), true, ipfilterLineNum, ipfilterLine)
 			continue
 		}
 
-		ipfilterCompiled[k] = cidr
+		ipfilterFromURLCompiled[k] = cidr
 
 		k++
 	}
 
 	ipfilterLastFetch = currentTimestamp
-	ruleCount := len(ipfilterCompiled)
+	ruleCount := len(ipfilterFromURLCompiled)
 
-	Log("SetIPFilter", GetLangText("Success-SetIPFilter"), true, ruleCount)
+	Log("SetIPFilterFromURL", GetLangText("Success-SetIPFilterFromURL"), true, ruleCount)
+
+	if ruleCount > 0 {
+		return true
+	}
+
+	return false
+}
+func SetBlockListFromURL() bool {
+	if config.BlockListURL == "" || (blockListLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
+		return true
+	}
+
+	_, blockListContent := Fetch(config.BlockListURL, false, false)
+	if blockListContent == nil {
+		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse"), true)
+		return false
+	}
+
+	// Max 8MB.
+	if len(blockListContent) > 8388608 {
+		Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
+		return false
+	}
+
+	blockListArr := strings.Split(string(blockListContent), "\n")
+	blockListFromURLCompiled = make([]*regexp.Regexp, len(blockListArr))
+	k := 0
+	for blockListLineNum, blockListLine := range blockListArr {
+		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
+		if blockListLine == "" {
+			Log("Debug-SetBlockListFromURL_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
+			continue
+		}
+
+		Log("Debug-SetBlockListFromURL_Compile", "%s", false, blockListLine)
+
+		reg, err := regexp.Compile("(?i)" + blockListLine)
+		if err != nil {
+			Log("SetBlockListFromURL_Compile", GetLangText("Error-SetBlockListFromURL_Compile"), true, blockListLineNum, blockListLine)
+			continue
+		}
+
+		blockListFromURLCompiled[k] = reg
+
+		k++
+	}
+
+	blockListLastFetch = currentTimestamp
+	ruleCount := len(blockListFromURLCompiled)
+
+	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
 
 	if ruleCount > 0 {
 		return true
@@ -335,7 +390,8 @@ func LoadInitConfig(firstLoad bool) bool {
 	}
 
 	if !firstLoad {
-		SetIPFilter()
+		SetIPFilterFromURL()
+		SetBlockListFromURL()
 	}
 
 	return true

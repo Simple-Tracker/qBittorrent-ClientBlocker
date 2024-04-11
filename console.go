@@ -346,7 +346,17 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				continue
 			}
 			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+				return 1
+			}
+		}
+		for _, v := range blockListFromURLCompiled {
+			if v == nil {
+				continue
+			}
+			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
+				Log("CheckPeer_AddBlockPeer (Bad-Client_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 				return 1
 			}
@@ -362,12 +372,12 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				Log("CheckPeer_AddBlockPeer (Bad-IP_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, -1, torrentInfoHash)
 				return 3
 			}
 		}
-		for _, v := range ipfilterCompiled {
+		for _, v := range ipfilterFromURLCompiled {
 			if v == nil {
 				continue
 			}
@@ -596,7 +606,7 @@ func Task() {
 	Log("Debug-Task_IgnoreBadPeersCount", "%d", false, badPeersCount)
 	if cleanCount != 0 || blockCount != 0 {
 		SubmitBlockPeer(blockPeerMap)
-		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 {
+		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipfilterFromURLCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
