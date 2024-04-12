@@ -183,8 +183,8 @@ func Task() {
 		return
 	}
 	
-	metadata := FetchMaindata()
-	if metadata == nil {
+	torrents := FetchTorrents()
+	if torrents == nil {
 		return
 	}
 
@@ -202,13 +202,13 @@ func Task() {
 
 	switch currentClientType {
 		case "qBittorrent":
-			metadata2 := metadata.(*qB_MainDataStruct)
-			for torrentInfoHash, torrentInfo := range metadata2.Torrents {
-				ProcessTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+			torrents2 := torrents.(*[]qB_TorrentStruct)
+			for _, torrentInfo := range *torrents2 {
+				ProcessTorrent(torrentInfo.InfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 			}
 		case "Transmission":
-			metadata2 := metadata.(*Tr_TorrentsStruct)
-			for _, torrentInfo := range metadata2.Torrents {
+			torrents2 := torrents.(*Tr_TorrentsStruct)
+			for _, torrentInfo := range torrents2.Torrents {
 				// 手动判断有无 Peer 正在下载.
 				var leecherCount int64 = 0
 				for _, torrentPeer := range torrentInfo.Peers {

@@ -62,10 +62,10 @@ func Login() bool {
 
 	return false
 }
-func FetchMaindata() interface{} {
+func FetchTorrents() interface{} {
 	switch currentClientType {
 		case "qBittorrent":
-			maindata := qB_FetchMaindata()
+			maindata := qB_FetchTorrents()
 			if maindata == nil {
 				return nil
 			}

@@ -8,11 +8,8 @@ import (
 	"net/url"
 )
 
-type qB_MainDataStruct struct {
-	FullUpdate bool                        `json:"full_update"`
-	Torrents   map[string]qB_TorrentStruct `json:"torrents"`
-}
 type qB_TorrentStruct struct {
+	InfoHash  string `json:"hash"`
 	NumLeechs int64  `json:"num_leechs"`
 	TotalSize int64  `json:"total_size"`
 	Tracker   string `json:"tracker"`
@@ -164,22 +161,20 @@ func qB_Login() bool {
 	}
 	return false
 }
-func qB_FetchMaindata() *qB_MainDataStruct {
-	_, maindataResponseBody := Fetch(config.ClientURL + "/api/v2/sync/maindata?rid=0", true, true, nil)
-	if maindataResponseBody == nil {
-		Log("FetchMaindata", GetLangText("Error"), true)
+func qB_FetchTorrents() *[]qB_TorrentStruct {
+	_, torrentsResponseBody := Fetch(config.ClientURL + "/api/v2/torrents/info?filter=active", true, true, nil)
+	if torrentsResponseBody == nil {
+		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
 	}
 
-	var mainDataResult qB_MainDataStruct
-	if err := json.Unmarshal(maindataResponseBody, &mainDataResult); err != nil {
-		Log("FetchMaindata", GetLangText("Error-Parse"), true, err.Error())
+	var torrentsResult []qB_TorrentStruct
+	if err := json.Unmarshal(torrentsResponseBody, &torrentsResult); err != nil {
+		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
-	//Log("Debug-FetchMaindata", "完整更新: %s", false, strconv.FormatBool(mainDataResult.FullUpdate))
-
-	return &mainDataResult
+	return &torrentsResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 	_, torrentPeersResponseBody := Fetch(config.ClientURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true, nil)
