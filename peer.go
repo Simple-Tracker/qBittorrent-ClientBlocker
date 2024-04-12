@@ -114,8 +114,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	return false
 }
 func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) int {
-	hasPeerClient := (peerID != "" || peerClient != "")
-	if (config.IgnoreEmptyPeer && !hasPeerClient) || peerIP == "" || CheckPrivateIP(peerIP) {
+	if peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1
 	}
 
@@ -132,14 +131,24 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		return 2
 	}
 
+	for port := range config.PortBlockList {
+		if port == peerPort {
+			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+			return 1
+		}
+	}
+
 	peerNetStr := IsMatchCIDR(peerIP)
 	if peerNetStr != "" {
-		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d (TorrentInfoHash: %s, Net: %s)", false, peerIP, peerPort, torrentInfoHash, peerNetStr)
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNetStr)
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1
 	}
 
-	if IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
+	hasPeerClient := (peerID != "" || peerClient != "")
+	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
+	if (!config.IgnoreEmptyPeer || hasPeerClient) && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
 		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1
@@ -182,7 +191,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				return 3
 			}
 		}
-		for _, v := range ipfilterFromURLCompiled {
+		for _, v := range ipBlockListFromURLCompiled {
 			if v == nil {
 				continue
 			}
@@ -194,9 +203,13 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		}
 	}
 
+	if (config.IgnoreEmptyPeer && !hasPeerClient) {
+		return -2
+	}
+
 	return 0
 }
-func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int) {
+func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	peerIP = ProcessIP(peerIP)
 	peerStatus := CheckPeer(peerIP, peerPort, peerID, peerClient, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
 	if config.Debug_CheckPeer {
@@ -210,6 +223,8 @@ func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, 
 			*ipBlockCount++
 		case -1:
 			*badPeersCount++
+		case -2:
+			*emptyPeersCount++
 		case 0:
 			AddIPInfo(peerIP, peerPort, torrentInfoHash, peerUploaded)
 			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerIP, peerPort, peerProgress, peerUploaded)

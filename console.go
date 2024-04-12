@@ -196,12 +196,13 @@ func Task() {
 	blockCount := 0
 	ipBlockCount := 0
 	badPeersCount := 0
+	emptyPeersCount := 0
 
 	switch currentClientType {
 		case "qBittorrent":
 			metadata2 := metadata.(*qB_MainDataStruct)
 			for torrentInfoHash, torrentInfo := range metadata2.Torrents {
-				ProcessTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount)
+				ProcessTorrent(torrentInfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 			}
 		case "Transmission":
 			metadata2 := metadata.(*Tr_TorrentsStruct)
@@ -219,7 +220,7 @@ func Task() {
 					tracker = "Private"
 				}
 
-				ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount)
+				ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 			}
 	}
 
@@ -233,10 +234,11 @@ func Task() {
 	Log("Debug-Task_IgnorePTTorrentCount", "%d", false, ptTorrentCount)
 	Log("Debug-Task_IgnoreBadTorrentInfoCount", "%d", false, badTorrentInfoCount)
 	Log("Debug-Task_IgnoreBadPeersCount", "%d", false, badPeersCount)
+	Log("Debug-Task_IgnoreEmptyPeersCount", "%d", false, emptyPeersCount)
 
 	if cleanCount != 0 || blockCount != 0 {
 		SubmitBlockPeer(blockPeerMap)
-		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipfilterFromURLCompiled) <= 0 {
+		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockListFromURLCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
