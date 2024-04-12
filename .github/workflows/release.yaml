@@ -8,13 +8,24 @@ on:
 
 jobs:
   Release-Go-Binary:
+    name: ${{ matrix.goarch == 'arm' && format('{0}, {1}v{2}', matrix.goos, matrix.goarch, matrix.goarm) || format('{0}, {1}', matrix.goos, matrix.goarch) }}
     runs-on: 'ubuntu-latest'
     strategy:
       fail-fast: false
       matrix:
         goos: [darwin, windows, linux, netbsd, openbsd, freebsd]
         goarch: ['386', 'amd64', 'arm', 'arm64']
+        goarm: ['6']
         include:
+          - goos: windows
+            goarch: 'arm'
+            goarm: '7'
+          - goos: linux
+            goarch: 'arm'
+            goarm: '5'
+          - goos: linux
+            goarch: 'arm'
+            goarm: '7'
           - goos: linux
             goarch: 'mips'
             pre_command: 'export GOMIPS=softfloat'
@@ -40,16 +51,19 @@ jobs:
             goarch: '386'
           - goos: darwin
             goarch: 'arm'
+          - goos: windows
+            goarch: 'arm'
+            goarm: '6'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
       - name: Set build info
         id: build_info
         run: |
-          echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
+          echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goarch == 'arm' && format('{0}, {1}v{2}', matrix.goos, matrix.goarch, matrix.goarm) || format('{0}, {1}', matrix.goos, matrix.goarch) }})" >> "${GITHUB_OUTPUT}"
           echo "nightly_build_name=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7`" >> "${GITHUB_OUTPUT}"
-          echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goos }}, ${{ matrix.goarch }})" >> "${GITHUB_OUTPUT}"
-      - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly Build)' }}
+          echo "nightly_build_version=$(basename ${GITHUB_REF})_`echo ${GITHUB_SHA} | cut -c1-7` (${{ matrix.goarch == 'arm' && format('{0}, {1}v{2}', matrix.goos, matrix.goarch, matrix.goarm) || format('{0}, {1}', matrix.goos, matrix.goarch) }}) (Nightly)" >> "${GITHUB_OUTPUT}"
+      - name: ${{ github.event_name == 'release' && 'Build' || 'Build (Nightly)' }}
         id: build
         uses: 'wangyoucao577/go-release-action@v1'
         with:
@@ -57,6 +71,7 @@ jobs:
           upload: ${{ github.event_name == 'release' && true || false }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
+          goarm: ${{ matrix.goarm }}
           ldflags: "-w -X \"main.programVersion=${{ github.event_name == 'release' && steps.build_info.outputs.tag_version || steps.build_info.outputs.nightly_build_version }}\""
           pre_command: ${{ matrix.pre_command }}
           goversion: 1.20.13
@@ -68,5 +83,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ github.event_name != 'release' }}
         with:
-          name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: ${{ github.event.repository.name }}-${{ steps.build_info.outputs.nightly_build_name }}-${{ matrix.goarch == 'arm' && format('{0}-{1}v{2}', matrix.goos, matrix.goarch, matrix.goarm) || format('{0}-{1}', matrix.goos, matrix.goarch) }}
           path: ${{ steps.build.outputs.release_asset_dir }}
