@@ -151,8 +151,9 @@ Docker version is configured through the same name variable configuration, which
 | skipCertVerification | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
 | blockList | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
 | blockListURL | Empty | Block client list URL. Support format is same as blockList, one rule per line |
+| portBlockList | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
 | ipBlockList | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
-| ipFilterURL | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
+| ipBlockListURL | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
 | ipUploadedCheck | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
 | ipUpCheckInterval | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
 | ipUpCheckIncrementMB | 38000 (MB) | IP upload incremental detection/Increment size. If the IP global upload increment size is greater than the set increment size, Peer will be automatically block |

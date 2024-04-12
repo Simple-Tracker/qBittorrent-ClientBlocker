@@ -154,8 +154,9 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | skipCertVerification | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
 | blockList | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
 | blockListURL | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
+| portBlockList | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
 | ipBlockList | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
-| ipFilterURL | 空 | 屏蔽 IP 列表 URL. 支持格式同 ipBlockList, 一行一条 |
+| ipBlockListURL | 空 | 屏蔽 IP 列表 URL. 支持格式同 ipBlockList, 一行一条 |
 | ipUploadedCheck | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
 | ipUpCheckIncrementMB | 38000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局上传增量大小大于设置增量大小, 则允许屏蔽 Peer |
