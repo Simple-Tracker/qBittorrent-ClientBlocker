@@ -71,6 +71,8 @@ func CheckUpdate() {
 		return
 	}
 
+	lastCheckUpdateTimestamp = currentTimestamp
+
 	currentVersionType, currentMainVersion, currentSubVersion, currentSub2Version := ProcessVersion(programVersion)
 
 	if currentVersionType == -1 {
@@ -90,7 +92,7 @@ func CheckUpdate() {
 
 	_, listReleaseContent := Fetch("https://api.github.com/repos/Simple-Tracker/qBittorrent-ClientBlocker/releases?per_page=5", false, false, &githubAPIHeader)
 	if listReleaseContent == nil {
-		Log("CheckUpdate", GetLangText("Error-FetchResponse"), false)
+		Log("CheckUpdate", GetLangText("Error-FetchUpdate"), false)
 		return
 	}
 
@@ -161,14 +163,14 @@ func CheckUpdate() {
 		}
 	}
 
-	Log("CheckUpdate", "当前版本: %s, 最新版本: %s, 最新版本 (Beta): %s", true, programVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
+	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, programVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
 
 	if hasNewReleaseVersion {
-		Log("CheckUpdate", "检测到新的版本: %s, 更新内容如下: \n%s", true, latestReleaseStruct.TagName, strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
+		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
 	}
 
 	if hasNewPreReleaseVersion {
-		Log("CheckUpdate", "检测到新的版本 (Beta): %s, 更新内容如下: \n%s", true, latestPreReleaseStruct.TagName, strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
+		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewBetaVersion"), true, latestPreReleaseStruct.TagName, strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
 	}
 }
 func Task() {

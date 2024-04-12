@@ -141,7 +141,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 
 	peerNetStr := IsMatchCIDR(peerIP)
 	if peerNetStr != "" {
-		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNetStr)
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNetStr)
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1
 	}
