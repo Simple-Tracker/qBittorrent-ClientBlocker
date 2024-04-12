@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-func NewRequest(isPOST bool, url string, postdata string, withAuth bool) *http.Request {
+func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
 
@@ -23,7 +23,18 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool) *http.R
 
 	request.Header.Set("User-Agent", programName + "/" + programVersion)
 
-	if isPOST {
+	setContentType := false
+
+	if withHeader != nil {
+		for k, v := range *withHeader {
+			if strings.ToLower(k) == "content-type" {
+				setContentType = true
+			}
+			request.Header.Set(k, v)
+		}
+	}
+
+	if !setContentType && isPOST {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
@@ -37,8 +48,8 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool) *http.R
 
 	return request
 }
-func Fetch(url string, tryLogin bool, withCookie bool) (int, []byte) {
-	request := NewRequest(false, url, "", withCookie)
+func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, []byte) {
+	request := NewRequest(false, url, "", withCookie, withHeader)
 	if request == nil {
 		return -1, nil
 	}
@@ -108,8 +119,8 @@ func Fetch(url string, tryLogin bool, withCookie bool) (int, []byte) {
 
 	return response.StatusCode, responseBody
 }
-func Submit(url string, postdata string, tryLogin bool, withCookie bool) (int, []byte) {
-	request := NewRequest(true, url, postdata, withCookie)
+func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, []byte) {
+	request := NewRequest(true, url, postdata, withCookie, withHeader)
 	if request == nil {
 		return -1, nil
 	}
@@ -169,6 +180,11 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool) (int, [
 	if response.StatusCode == 404 {
 		Log("Submit", GetLangText("Error-NotFound"), true)
 		return 404, nil
+	}
+
+	if response.StatusCode != 200 {
+		Log("Submit", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
+		return response.StatusCode, nil
 	}
 
 	return response.StatusCode, responseBody

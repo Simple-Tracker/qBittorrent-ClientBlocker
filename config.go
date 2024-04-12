@@ -150,7 +150,7 @@ func SetIPFilterFromURL() bool {
 		return true
 	}
 
-	_, ipfilterContent := Fetch(config.IPFilterURL, false, false)
+	_, ipfilterContent := Fetch(config.IPFilterURL, false, false, nil)
 	if ipfilterContent == nil {
 		Log("SetIPFilterFromURL", GetLangText("Error-FetchResponse"), true)
 		return false
@@ -200,7 +200,7 @@ func SetBlockListFromURL() bool {
 		return true
 	}
 
-	_, blockListContent := Fetch(config.BlockListURL, false, false)
+	_, blockListContent := Fetch(config.BlockListURL, false, false, nil)
 	if blockListContent == nil {
 		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse"), true)
 		return false

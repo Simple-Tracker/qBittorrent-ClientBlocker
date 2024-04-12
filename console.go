@@ -3,14 +3,174 @@ package main
 import (
 	"os"
 	"time"
+	"strings"
+	"strconv"
 	"syscall"
 	"runtime"
 	"os/signal"
+	"encoding/json"
 )
 
 var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
+var lastCheckUpdateTimestamp int64 = 0
+var githubAPIHeader = map[string]string { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
 
+type ReleaseStruct struct {
+	URL        string `json:"html_url"`
+	TagName    string `json:"tag_name"`
+	Name       string `json:"name"`
+	Body       string `json:"body"`
+	PreRelease bool `json:"prerelease`
+}
+
+func ProcessVersion(version string) (int, int, int, int) {
+	versionSplit := strings.SplitN(strings.SplitN(version, " ", 2)[0], ".", 2)
+
+	if versionSplit[0] == "Unknown" || len(versionSplit) != 2 {
+		return -1, 0, 0, 0
+	}
+
+	if strings.Contains(version, "(Nightly)") {
+		return -2, 0, 0, 0
+	}
+
+	if strings.Contains(version, "-") {
+		return -3, 0, 0, 0
+	}
+
+	mainVersion, err1 := strconv.Atoi(versionSplit[0])
+
+	versionType := 0 // 0: Public, 1: Beta.
+	versionSplit2 := strings.SplitN(versionSplit[1], "p", 2)
+	versionSplit3 := strings.SplitN(versionSplit[1], "b", 2)
+
+	subVersionStr := versionSplit[1]
+	sub2VersionStr := "0"
+
+	if len(versionSplit2) >= 2 {
+		subVersionStr = versionSplit2[0]
+		sub2VersionStr = versionSplit2[1]
+	} else if len(versionSplit3) >= 2 {
+		versionType = 1
+		subVersionStr = versionSplit3[0]
+		sub2VersionStr = versionSplit3[1]
+	}
+
+	subVersion, err2 := strconv.Atoi(subVersionStr)
+	sub2Version, err3 := strconv.Atoi(sub2VersionStr)
+
+	if err1 != nil || err2 != nil || err3 != nil {
+		return -3, 0, 0, 0
+	}
+ 
+	return versionType, mainVersion, subVersion, sub2Version
+}
+func CheckUpdate() {
+	if (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
+		return
+	}
+
+	currentVersionType, currentMainVersion, currentSubVersion, currentSub2Version := ProcessVersion(programVersion)
+
+	if currentVersionType == -1 {
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_UnknownVersion"), false)
+		return
+	}
+
+	if currentVersionType == -2 {
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_NightlyVersion"), false)
+		return
+	}
+
+	if currentVersionType == -3 {
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_BadVersion"), false, programVersion)
+		return
+	}
+
+	_, listReleaseContent := Fetch("https://api.github.com/repos/Simple-Tracker/qBittorrent-ClientBlocker/releases?per_page=5", false, false, &githubAPIHeader)
+	if listReleaseContent == nil {
+		Log("CheckUpdate", GetLangText("Error-FetchResponse"), false)
+		return
+	}
+
+	var releasesStruct []ReleaseStruct
+	if err := json.Unmarshal(listReleaseContent, &releasesStruct); err != nil {
+		Log("CheckUpdate", GetLangText("Error-Parse"), false, err.Error())
+		return
+	}
+
+	matchLatestReleaseVersion := false
+	matchLatestPreReleaseVersion := false
+	var latestReleaseStruct ReleaseStruct
+	var latestPreReleaseStruct ReleaseStruct
+
+	for _, releaseStruct := range releasesStruct {
+		if releaseStruct.TagName == "" {
+			continue
+		}
+
+		if matchLatestPreReleaseVersion && matchLatestReleaseVersion {
+			break
+		}
+
+		if !matchLatestPreReleaseVersion && releaseStruct.PreRelease {
+			matchLatestPreReleaseVersion = true
+			latestPreReleaseStruct = releaseStruct
+		}
+		if !matchLatestReleaseVersion && !releaseStruct.PreRelease {
+			matchLatestReleaseVersion = true
+			latestReleaseStruct = releaseStruct
+		}
+	}
+
+	hasNewReleaseVersion := false
+	hasNewPreReleaseVersion := false
+
+	if matchLatestReleaseVersion {
+		versionType, mainVersion, subVersion, sub2Version := ProcessVersion(latestReleaseStruct.TagName)
+
+		if versionType == 0 {
+			if mainVersion > currentMainVersion {
+				hasNewReleaseVersion = true
+			} else if mainVersion == currentMainVersion {
+				if subVersion > currentSubVersion {
+					hasNewReleaseVersion = true
+				} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
+					hasNewReleaseVersion = true
+				}
+			}
+		}
+	}
+
+	if matchLatestPreReleaseVersion {
+		versionType, mainVersion, subVersion, sub2Version := ProcessVersion(latestPreReleaseStruct.TagName)
+
+		if versionType == 1 {
+			if versionType == currentVersionType {
+				if mainVersion > currentMainVersion {
+					hasNewPreReleaseVersion = true
+				} else if mainVersion == currentMainVersion {
+					if subVersion > currentSubVersion {
+						hasNewPreReleaseVersion = true
+					} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
+						hasNewPreReleaseVersion = true
+					}
+				}
+			}
+		}
+	}
+
+	Log("CheckUpdate", "当前版本: %s, 最新版本: %s, 最新版本 (Beta): %s", true, programVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
+
+	if hasNewReleaseVersion {
+		Log("CheckUpdate", "检测到新的版本: %s, 更新内容如下: \n%s", true, latestReleaseStruct.TagName, strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
+	}
+
+	if hasNewPreReleaseVersion {
+		Log("CheckUpdate", "检测到新的版本 (Beta): %s, 更新内容如下: \n%s", true, latestPreReleaseStruct.TagName, strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
+	}
+}
 func Task() {
 	if config.ClientURL == "" {
 		Log("Task", GetLangText("Error-Task_EmptyURL"), false)
@@ -128,6 +288,7 @@ func RunConsole() {
 	for ; true; <- loopTicker.C {
 		currentTimestamp = time.Now().Unix()
 		LoadInitConfig(false)
+		go CheckUpdate()
 		Task()
 		GC()
 	}

@@ -140,14 +140,14 @@ func qB_SetURL() bool {
 	return true
 }
 func qB_GetAPIVersion() bool {
-	apiResponseStatusCode, _ := Fetch(config.ClientURL + "/api/v2/app/webapiVersion", false, false)
+	apiResponseStatusCode, _ := Fetch(config.ClientURL + "/api/v2/app/webapiVersion", false, false, nil)
 	return (apiResponseStatusCode == 200 || apiResponseStatusCode == 403)
 }
 func qB_Login() bool {
 	loginParams := url.Values {}
 	loginParams.Set("username", config.ClientUsername)
 	loginParams.Set("password", config.ClientPassword)
-	_, loginResponseBody := Submit(config.ClientURL + "/api/v2/auth/login", loginParams.Encode(), false, true)
+	_, loginResponseBody := Submit(config.ClientURL + "/api/v2/auth/login", loginParams.Encode(), false, true, nil)
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
@@ -165,7 +165,7 @@ func qB_Login() bool {
 	return false
 }
 func qB_FetchMaindata() *qB_MainDataStruct {
-	_, maindataResponseBody := Fetch(config.ClientURL + "/api/v2/sync/maindata?rid=0", true, true)
+	_, maindataResponseBody := Fetch(config.ClientURL + "/api/v2/sync/maindata?rid=0", true, true, nil)
 	if maindataResponseBody == nil {
 		Log("FetchMaindata", GetLangText("Error"), true)
 		return nil
@@ -182,7 +182,7 @@ func qB_FetchMaindata() *qB_MainDataStruct {
 	return &mainDataResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
-	_, torrentPeersResponseBody := Fetch(config.ClientURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true)
+	_, torrentPeersResponseBody := Fetch(config.ClientURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
@@ -240,10 +240,10 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, banResponseBody = Submit(config.ClientURL + "/api/v2/transfer/banPeers", banIPPortsStr, true, true)
+		_, banResponseBody = Submit(config.ClientURL + "/api/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		_, banResponseBody = Submit(config.ClientURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr, true, true)
+		_, banResponseBody = Submit(config.ClientURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr, true, true, nil)
 	}
 
 	if banResponseBody == nil {
