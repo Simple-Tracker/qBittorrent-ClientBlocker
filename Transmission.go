@@ -42,6 +42,8 @@ type Tr_PeerStruct struct {
 	Client      string  `json:"clientName"`
 	Progress    float64 `json:"progress"`
 	IsUploading bool    `json:"isUploadingTo"`
+	DlSpeed     int64   `json:"rateToClient"`
+	UpSpeed     int64   `json:"rateToPeer"`
 }
 
 var Tr_csrfToken = ""

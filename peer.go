@@ -89,8 +89,8 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	
 	return false
 }
-func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
-	if peerIP == "" || CheckPrivateIP(peerIP) {
+func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
+	if peerIP == "" || CheckPrivateIP(peerIP) || (peerDlSpeed <= 0 && peerUpSpeed <= 0) {
 		return -1, nil
 	}
 
@@ -185,11 +185,11 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 
 	return 0, peerNet
 }
-func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
+func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	peerIP = ProcessIP(peerIP)
-	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
+	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerDlSpeed, peerUpSpeed, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
 	if config.Debug_CheckPeer {
-		Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), peerStatus)
+		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %d, PeerDlSpeed: %.2f%% MB/s, PeerUpSpeed: %.2f%% MB/s, Progress: %.2f%%, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, torrentTotalSize, (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024), peerStatus)
 	}
 
 	switch peerStatus {
