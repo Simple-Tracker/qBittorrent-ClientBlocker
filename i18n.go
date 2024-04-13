@@ -105,7 +105,7 @@ func LoadLang(langCode string) bool {
 	}
 
 	if err := json.Unmarshal(langFile, &langContent); err != nil {
-		Log("LoadConfig", GetLangText("Error-ParseLang"), false, langPath, err.Error())
+		Log("LoadLang", GetLangText("Error-ParseLang"), false, langPath, err.Error())
 		return false
 	}
 

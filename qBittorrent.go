@@ -35,7 +35,7 @@ func qB_GetConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserHomeDir"), false, err.Error())
+		Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserHomeDir"), true, err.Error())
 		return ""
 	}
 	if IsUnix(userHomeDir) {
@@ -43,7 +43,7 @@ func qB_GetConfigPath() string {
 	} else {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserConfigDir"), false, err.Error())
+			Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserConfigDir"), true, err.Error())
 			return ""
 		}
 		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
@@ -60,16 +60,16 @@ func qB_GetConfig() []byte {
 	if err != nil {
 		if !os.IsNotExist(err) {
 			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
-			Log("GetConfig", GetLangText("Error-GetConfig_LoadConfigMeta"), false, err.Error())
+			Log("GetConfig", GetLangText("Error-GetConfig_LoadConfigMeta"), true, err.Error())
 		}
 		return []byte {}
 	}
 
-	Log("GetConfig", GetLangText("GetConfig_UseConfig"), false, qBConfigFilename)
+	Log("GetConfig", GetLangText("GetConfig_UseConfig"), true, qBConfigFilename)
 
 	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
-		Log("GetConfig", GetLangText("Error-GetConfig_LoadConfig"), false, err.Error())
+		Log("GetConfig", GetLangText("Error-GetConfig_LoadConfig"), true, err.Error())
 		return []byte {}
 	}
 
@@ -120,7 +120,7 @@ func qB_SetURL() bool {
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
-		Log("SetURL", GetLangText("Abandon-SetURL"), false, qBWebUIEnabled, qBAddress)
+		Log("SetURL", GetLangText("Abandon-SetURL"), true, qBWebUIEnabled, qBAddress)
 		return false
 	}
 	if qBHTTPSEnabled {
@@ -135,7 +135,7 @@ func qB_SetURL() bool {
 		}
 	}
 	config.ClientUsername = Username
-	Log("SetURL", GetLangText("Success-SetURL"), false, qBWebUIEnabled, config.ClientURL, config.ClientUsername)
+	Log("SetURL", GetLangText("Success-SetURL"), true, qBWebUIEnabled, config.ClientURL, config.ClientUsername)
 	return true
 }
 func qB_GetAPIVersion() bool {

@@ -267,14 +267,14 @@ func LoadConfig() int {
 
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
-		Log("LoadConfig", GetLangText("Error-LoadConfig"), false, err.Error())
+		Log("LoadConfig", GetLangText("Error-LoadConfig"), true, err.Error())
 		return -3
 	}
 
 	configLastMod = tmpConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
-		Log("LoadConfig", GetLangText("Error-ParseConfig"), false, err.Error())
+		Log("LoadConfig", GetLangText("Error-ParseConfig"), true, err.Error())
 		return -4
 	}
 
@@ -302,14 +302,14 @@ func LoadAdditionalConfig() int {
 
 	additionalConfigFile, err := os.ReadFile(additionConfigFilename)
 	if err != nil {
-		Log("LoadAdditionalConfig", GetLangText("Error-LoadConfig"), false, err.Error())
+		Log("LoadAdditionalConfig", GetLangText("Error-LoadConfig"), true, err.Error())
 		return -3
 	}
 
 	additionConfigLastMod = tmpAdditionalConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(additionalConfigFile), &config); err != nil {
-		Log("LoadAdditionalConfig", GetLangText("Error-ParseConfig"), false, err.Error())
+		Log("LoadAdditionalConfig", GetLangText("Error-ParseConfig"), true, err.Error())
 		return -4
 	}
 
@@ -411,7 +411,7 @@ func LoadInitConfig(firstLoad bool) bool {
 			InitConfig()
 		}
 	} else {
-		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), false)
+		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
 	}
 
 	if firstLoad && config.ClientURL == "" {

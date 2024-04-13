@@ -77,29 +77,29 @@ func CheckUpdate() {
 	currentVersionType, currentMainVersion, currentSubVersion, currentSub2Version, currentVersion := ProcessVersion(programVersion)
 
 	if currentVersionType == -1 {
-		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_UnknownVersion"), false)
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_UnknownVersion"), true)
 		return
 	}
 
 	if currentVersionType == -2 {
-		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_NightlyVersion"), false)
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_NightlyVersion"), true)
 		return
 	}
 
 	if currentVersionType == -3 {
-		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_BadVersion"), false, programVersion)
+		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_BadVersion"), true, programVersion)
 		return
 	}
 
 	_, listReleaseContent := Fetch("https://api.github.com/repos/Simple-Tracker/qBittorrent-ClientBlocker/releases?per_page=5", false, false, &githubAPIHeader)
 	if listReleaseContent == nil {
-		Log("CheckUpdate", GetLangText("Error-FetchUpdate"), false)
+		Log("CheckUpdate", GetLangText("Error-FetchUpdate"), true)
 		return
 	}
 
 	var releasesStruct []ReleaseStruct
 	if err := json.Unmarshal(listReleaseContent, &releasesStruct); err != nil {
-		Log("CheckUpdate", GetLangText("Error-Parse"), false, err.Error())
+		Log("CheckUpdate", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
 
@@ -176,11 +176,11 @@ func CheckUpdate() {
 }
 func Task() {
 	if config.ClientURL == "" {
-		Log("Task", GetLangText("Error-Task_EmptyURL"), false)
+		Log("Task", GetLangText("Error-Task_EmptyURL"), true)
 		return
 	}
 	if !IsSupportClient() {
-		Log("Task", GetLangText("Error-Task_NotSupportClient"), false, currentClientType)
+		Log("Task", GetLangText("Error-Task_NotSupportClient"), true, currentClientType)
 		return
 	}
 	
