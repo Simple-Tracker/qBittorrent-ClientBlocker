@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"time"
 	"strings"
 )
@@ -14,7 +15,7 @@ var torrentMap = make(map[string]TorrentInfoStruct)
 var lastTorrentMap = make(map[string]TorrentInfoStruct)
 var lastTorrentCleanTimestamp int64 = 0
 
-func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
+func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
 	if !((config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0) || config.BanByRelativeProgressUploaded) {
 		return
 	}
@@ -39,7 +40,7 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, peerIP strin
 	}
 	peerPortMap[peerPort] = true
 
-	peers[peerIP] = PeerInfoStruct { Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
+	peers[peerIP] = PeerInfoStruct { Net: cidr, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded }
 	torrentMap[torrentInfoHash] = TorrentInfoStruct { Size: torrentTotalSize, Peers: peers }
 }
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
@@ -93,15 +94,15 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 		for torrentInfoHash, torrentInfo := range torrentMap {
 			for peerIP, peerInfo := range torrentInfo.Peers {
-				peerIP = ProcessIP(peerIP)
-
 				if IsBlockedPeer(peerIP, -1, true) {
 					continue
 				}
 
 				if config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0 {
 					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
-						Log("CheckAllTorrent_AddBlockPeer (PerTorrent-Too high uploaded)", "%s:%d (TorrentSize: %.2f MB, Uploaded: %.2f MB)", true, peerIP, -1, (float64(torrentInfo.Size) / 1024 / 1024), (float64(peerInfo.Uploaded) / 1024 / 1024))
+						if peerInfo.Net != nil {
+							blockCIDRMap[peerInfo.Net.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerInfo.Net }
+						}
 						ipBlockCount++
 						AddBlockPeer(peerIP, -1, torrentInfoHash)
 						continue
@@ -114,6 +115,9 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 							for port := range peerInfo.Port {
 								if IsBlockedPeer(peerIP, port, true) {
 									continue
+								}
+								if peerInfo.Net != nil {
+									blockCIDRMap[peerInfo.Net.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerInfo.Net }
 								}
 								blockCount++
 								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)

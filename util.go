@@ -45,7 +45,7 @@ func CheckPrivateIP(ip string) bool {
 	}
 	return ipParsed.IsPrivate()
 }
-func ParseIP(ip string) *net.IPNet {
+func ParseIPCIDR(ip string) *net.IPNet {
 	if !strings.Contains(ip, "/") {
 		if IsIPv6(ip) {
 			ip += "/128"
@@ -60,6 +60,31 @@ func ParseIP(ip string) *net.IPNet {
 	}
 
 	return cidr
+}
+func ParseIPCIDRByConfig(ip string) *net.IPNet {	
+	cidr := ""
+
+	if IsIPv6(ip) {
+		if config.BanIP6CIDR != "/128" {
+			cidr = config.BanIP6CIDR
+		}
+	} else {
+		if config.BanIPCIDR != "/32" {
+			cidr = config.BanIPCIDR
+		}
+	}
+
+	if cidr == "" {
+		return nil
+	}
+
+	cidrNet := ParseIPCIDR(ip + cidr)
+
+	if cidrNet == nil {
+		return nil
+	}
+
+	return cidrNet
 }
 func ProcessIP(ip string) string {
 	ip = strings.ToLower(ip)

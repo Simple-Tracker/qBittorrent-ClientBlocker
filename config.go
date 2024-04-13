@@ -46,7 +46,7 @@ type ConfigStruct struct {
 	SkipCertVerification          bool
 	BlockList                     []string
 	BlockListURL                  string
-	PortBlockList                 []int
+	PortBlockList                 []uint32
 	IPBlockList                   []string
 	IPBlockListURL                string
 	IPUploadedCheck               bool
@@ -131,7 +131,7 @@ var config = ConfigStruct {
 	SkipCertVerification:          false,
 	BlockList:                     []string {},
 	BlockListURL:                  "",
-	PortBlockList:                 []int {},
+	PortBlockList:                 []uint32 {},
 	IPBlockList:                   []string {},
 	IPBlockListURL:                "",
 	IPUploadedCheck:               false,
@@ -176,7 +176,7 @@ func SetIPBlockListFromURL() bool {
 		}
 
 		Log("Debug-SetIPBlockListFromURL_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
-		cidr := ParseIP(ipBlockListLine)
+		cidr := ParseIPCIDR(ipBlockListLine)
 		if cidr == nil {
 			Log("SetIPBlockListFromURL_Compile", GetLangText("Error-SetIPBlockListFromURL_Compile"), true, ipBlockListLineNum, ipBlockListLine)
 			continue
@@ -392,7 +392,7 @@ func InitConfig() {
 	for k, v := range config.IPBlockList {
 		Log("Debug-LoadConfig_CompileIPBlockList", "%s", false, v)
 
-		cidr := ParseIP(v)
+		cidr := ParseIPCIDR(v)
 		if cidr == nil {
 			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), true, v)
 			continue

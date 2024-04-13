@@ -24,19 +24,20 @@ type ReleaseStruct struct {
 	PreRelease bool `json:"prerelease`
 }
 
-func ProcessVersion(version string) (int, int, int, int) {
-	versionSplit := strings.SplitN(strings.SplitN(version, " ", 2)[0], ".", 2)
+func ProcessVersion(version string) (int, int, int, int, string) {
+	version = strings.SplitN(version, " ", 2)[0]
+	versionSplit := strings.SplitN(version, ".", 2)
 
 	if versionSplit[0] == "Unknown" || len(versionSplit) != 2 {
-		return -1, 0, 0, 0
+		return -1, 0, 0, 0, ""
 	}
 
 	if strings.Contains(version, "(Nightly)") {
-		return -2, 0, 0, 0
+		return -2, 0, 0, 0, ""
 	}
 
 	if strings.Contains(version, "-") {
-		return -3, 0, 0, 0
+		return -3, 0, 0, 0, ""
 	}
 
 	mainVersion, err1 := strconv.Atoi(versionSplit[0])
@@ -61,10 +62,10 @@ func ProcessVersion(version string) (int, int, int, int) {
 	sub2Version, err3 := strconv.Atoi(sub2VersionStr)
 
 	if err1 != nil || err2 != nil || err3 != nil {
-		return -3, 0, 0, 0
+		return -3, 0, 0, 0, ""
 	}
  
-	return versionType, mainVersion, subVersion, sub2Version
+	return versionType, mainVersion, subVersion, sub2Version, version
 }
 func CheckUpdate() {
 	if (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
@@ -73,7 +74,7 @@ func CheckUpdate() {
 
 	lastCheckUpdateTimestamp = currentTimestamp
 
-	currentVersionType, currentMainVersion, currentSubVersion, currentSub2Version := ProcessVersion(programVersion)
+	currentVersionType, currentMainVersion, currentSubVersion, currentSub2Version, currentVersion := ProcessVersion(programVersion)
 
 	if currentVersionType == -1 {
 		Log("CheckUpdate", GetLangText("CheckUpdate-Ignore_UnknownVersion"), false)
@@ -130,7 +131,7 @@ func CheckUpdate() {
 	hasNewPreReleaseVersion := false
 
 	if matchLatestReleaseVersion {
-		versionType, mainVersion, subVersion, sub2Version := ProcessVersion(latestReleaseStruct.TagName)
+		versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestReleaseStruct.TagName)
 
 		if versionType == 0 {
 			if mainVersion > currentMainVersion {
@@ -146,7 +147,7 @@ func CheckUpdate() {
 	}
 
 	if matchLatestPreReleaseVersion {
-		versionType, mainVersion, subVersion, sub2Version := ProcessVersion(latestPreReleaseStruct.TagName)
+		versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestPreReleaseStruct.TagName)
 
 		if versionType == 1 {
 			if versionType == currentVersionType {
@@ -163,7 +164,7 @@ func CheckUpdate() {
 		}
 	}
 
-	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, programVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
+	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, currentVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
 
 	if hasNewReleaseVersion {
 		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, strings.Replace(latestReleaseStruct.Body, "\r", "", -1))

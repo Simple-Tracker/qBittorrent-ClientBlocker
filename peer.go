@@ -6,6 +6,7 @@ import (
 )
 
 type PeerInfoStruct struct {
+	Net      *net.IPNet
 	Port     map[int]bool
 	Progress float64
 	Uploaded int64
@@ -31,23 +32,10 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 	blockPeerPortMap[peerPort] = true
 	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
 
-	cidr := ""
-	if IsIPv6(peerIP) {
-		if config.BanIP6CIDR != "/128" {
-			cidr = config.BanIP6CIDR
-		}
-	} else {
-		if config.BanIPCIDR != "/32" {
-			cidr = config.BanIPCIDR
-		}
-	}
-
-	if cidr != "" {
-		peerNet := ParseIP(peerIP + cidr)
-		if peerNet != nil {
-			peerNetStr := peerNet.String()
-			blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
-		}
+	peerNet := ParseIPCIDRByConfig(peerIP)
+	if peerNet != nil {
+		peerNetStr := peerNet.String()
+		blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
 	}
 }
 func ClearBlockPeer() int {
@@ -58,29 +46,17 @@ func ClearBlockPeer() int {
 				cleanCount++
 				delete(blockPeerMap, clientIP)
 
-				cidr := ""
-				if IsIPv6(clientIP) {
-					if config.BanIP6CIDR != "/128" {
-						cidr = config.BanIP6CIDR
-					}
-				} else {
-					if config.BanIPCIDR != "/32" {
-						cidr = config.BanIPCIDR
-					}
-				}
+				peerNet := ParseIPCIDRByConfig(clientIP)
 
-				if cidr != "" {
-					peerNet := ParseIP(clientIP + cidr)
-					if peerNet != nil {
-						peerNetStr := peerNet.String()
-						if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
-							if blockCIDRInfo.Timestamp > currentTimestamp {
-								clientInfo.Timestamp = blockCIDRInfo.Timestamp
-								blockPeerMap[clientIP] = clientInfo
-								continue
-							}
-							delete(blockCIDRMap, peerNetStr)
+				if peerNet != nil {
+					peerNetStr := peerNet.String()
+					if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
+						if blockCIDRInfo.Timestamp > currentTimestamp {
+							clientInfo.Timestamp = blockCIDRInfo.Timestamp
+							blockPeerMap[clientIP] = clientInfo
+							continue
 						}
+						delete(blockCIDRMap, peerNetStr)
 					}
 				}
 			}
@@ -113,9 +89,9 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	
 	return false
 }
-func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) int {
+func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
 	if peerIP == "" || CheckPrivateIP(peerIP) {
-		return -1
+		return -1, nil
 	}
 
 	if IsBlockedPeer(peerIP, peerPort, true) {
@@ -126,24 +102,24 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		}
 		*/
 		if peerPort == -1 {
-			return 3
+			return 3, nil
 		}
-		return 2
+		return 2, nil
 	}
 
 	for port := range config.PortBlockList {
 		if port == peerPort {
 			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-			return 1
+			return 1, nil
 		}
 	}
 
-	peerNetStr := IsMatchCIDR(peerIP)
-	if peerNetStr != "" {
-		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNetStr)
+	matchCIDR, peerNet := IsMatchCIDR(peerIP)
+	if matchCIDR {
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNet.String())
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-		return 1
+		return 1, peerNet
 	}
 
 	hasPeerClient := (peerID != "" || peerClient != "")
@@ -151,7 +127,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	if (!config.IgnoreEmptyPeer || hasPeerClient) && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
 		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-		return 1
+		return 1, peerNet
 	}
 
 	if hasPeerClient {
@@ -162,7 +138,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-				return 1
+				return 1, peerNet
 			}
 		}
 		for _, v := range blockListFromURLCompiled {
@@ -172,7 +148,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_List)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-				return 1
+				return 1, peerNet
 			}
 		}
 	}
@@ -188,7 +164,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, -1, torrentInfoHash)
-				return 3
+				return 3, peerNet
 			}
 		}
 		for _, v := range ipBlockListFromURLCompiled {
@@ -198,20 +174,20 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, -1, torrentInfoHash)
-				return 3
+				return 3, peerNet
 			}
 		}
 	}
 
 	if (config.IgnoreEmptyPeer && !hasPeerClient) {
-		return -2
+		return -2, peerNet
 	}
 
-	return 0
+	return 0, peerNet
 }
 func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	peerIP = ProcessIP(peerIP)
-	peerStatus := CheckPeer(peerIP, peerPort, peerID, peerClient, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
+	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
 	if config.Debug_CheckPeer {
 		Log("Debug-CheckPeer", "%s:%d %s|%s (Status: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), peerStatus)
 	}
@@ -226,7 +202,12 @@ func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, 
 		case -2:
 			*emptyPeersCount++
 		case 0:
-			AddIPInfo(peerIP, peerPort, torrentInfoHash, peerUploaded)
-			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerIP, peerPort, peerProgress, peerUploaded)
+			if peerNet == nil {
+				AddIPInfo(nil, peerIP, peerPort, torrentInfoHash, peerUploaded)
+				AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peerPort, peerProgress, peerUploaded)
+			} else {
+				AddIPInfo(peerNet, peerNet.String(), peerPort, torrentInfoHash, peerUploaded)
+				AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peerPort, peerProgress, peerUploaded)
+			}
 	}
 }

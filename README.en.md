@@ -109,64 +109,56 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+), which i
 
 ## 参数 Flag
 
-| Parameter | Default | Note |
-| ----- | ----- | ----- |
-| -v/--version | false | Show program version and exit  |
-| -c/--config | config.json | Config path |
-| -ca/--config_additional | config_additional.json | Additional config path |
-| --debug | false | Debug mode. Effective before loading config file |
-| --nochdir | false | Don't change working directory. Change to the program directory by default |
-
 ## 配置 Config
 
 Docker version is configured through the same name variable configuration, which actually is implemented by automatically conversion environment variable as config file.
 
-| Parameter | Default | Note |
-| ----- | ----- | ----- |
-| debug | false | Debug mode. Enable you can see more information, but it may disrupt the field of vision |
-| debug_CheckTorrent | false | Debug mode (CheckTorrent, must enable debug). If it's enabled, debug info will include each Torrent Hash, but the amount of information will be large |
-| debug_CheckPeer | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
-| interval | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from Web UI for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
-| cleanInterval | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
-| updateInterval | 86400 (Sec) | List URL update interval (ipFilterURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
-| torrentMapCleanInterval | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
-| banTime | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
-| banAllPort | false | Block IP all port. Setting is currently not supported |
-| banIPCIDR | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
-| banIP6CIDR | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
-| ignoreEmptyPeer | true | Ignore peers without PeerID and UserAgent. Usually occurs on clients where connection is not fully established |
-| ignorePTTorrent | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
-| startDelay | 0 (Sec, Disable) | Start delay. Special uses for some user |
-| sleepTime | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
-| timeout | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
-| longConnection | true | Long connection. Enable to reduce resource consumption |
-| logToFile | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
-| logDebug | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
-| listen | :26262 | Listen port. Used to provide BlockPeerList to some client |
-| clientType | Empty | Client type. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission``` |
-| clientURL | Empty | Web UI or RPC Address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
-| clientUsername | Empty | Web UI Username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
-| clientPassword | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
-| useBasicAuth | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
-| skipCertVerification | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
-| blockList | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
-| blockListURL | Empty | Block client list URL. Support format is same as blockList, one rule per line |
-| portBlockList | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
-| ipBlockList | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
-| ipBlockListURL | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
-| ipUploadedCheck | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
-| ipUpCheckInterval | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
-| ipUpCheckIncrementMB | 38000 (MB) | IP upload incremental detection/Increment size. If the IP global upload increment size is greater than the set increment size, Peer will be automatically block |
-| ipUpCheckPerTorrentRatio | 3 (X) | IP upload incremental detection/Increment ratio. If the IP single torrent upload increment size is greater than the product of the set increment ratio and the torrent size, Peer will be automatically block |
-| maxIPPortCount | 0 (Disable) | Maximum number of ports per IP. If the number of IP ports is greater than the set value, Peer will be automatically block |
-| banByProgressUploaded | false | Enhanced automatic blocking (blocking Peer based on progress and uploaded, not verified by testing). After the following enhanced automatic blocking conditions are met, Peer will be automatically blocked |
-| banByPUStartMB | 20 (MB) | Enhanced automatic blocking/Start size. If the client uploaded is greater than the set initial size, Peer will be automatically block |
-| banByPUStartPrecent | 2 (%) | Enhanced automatic blocking/Start progress. If the client upload progress is greater than the set start progress, Peer will be automatically block |
-| banByPUAntiErrorRatio | 3 (X) | Enhanced automatic blocking/Lag anti-misjudgment ratio. If the downloaded obtained by the Peer's reported download progress multiplied by the set ratio and the torrent size is lower than Peer's uploaded, Peer will be automatically block |
-| banByRelativeProgressUploaded | false | Enhanced automatic blocking_Relative (Block Peer based on relative progress and relative uploaded, not verified by testing). After the following Enhanced automatic blocking_Relative conditions are met, Peer will be automatically block |
-| banByRelativePUStartMB | 20 (MB) | Enhanced automatic blocking_Relative/Start size. If the relative uploaded of the client is greater than the set start size, Peer will be automatically block |
-| banByRelativePUStartPrecent | 2 (%) | Enhanced automatic blocking_Relative/Start progress. If the relative upload progress of the client is greater than the set start progress, Peer will be automatically block |
-| banByRelativePUAntiErrorRatio | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
+| Parameter | Type | Default | Note |
+| ----- | ----- | ----- | ----- |
+| debug | bool | false | Debug mode. Enable you can see more information, but it may disrupt the field of vision |
+| debug_CheckTorrent | string | false | Debug mode (CheckTorrent, must enable debug). If it's enabled, debug info will include each Torrent Hash, but the amount of information will be large |
+| debug_CheckPeer | string | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
+| interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from Web UI for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
+| cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
+| updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipFilterURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
+| torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
+| banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
+| banAllPort | bool | false | Block IP all port. Setting is currently not supported |
+| banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
+| banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
+| ignoreEmptyPeer | bool | true | Ignore peers without PeerID and UserAgent. Usually occurs on clients where connection is not fully established |
+| ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
+| startDelay | uint32 | 0 (Sec, Disable) | Start delay. Special uses for some user |
+| sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
+| timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
+| longConnection | bool | true | Long connection. Enable to reduce resource consumption |
+| logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
+| logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
+| listen | string | :26262 | Listen port. Used to provide BlockPeerList to some client |
+| clientType | string | Empty | Client type. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission``` |
+| clientURL | string | Empty | Web UI or RPC Address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
+| clientUsername | string | Empty | Web UI Username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
+| clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
+| useBasicAuth | bool | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
+| skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
+| blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
+| blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
+| portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
+| ipBlockList | []string | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
+| ipBlockListURL | string | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
+| ipUploadedCheck | bool | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
+| ipUpCheckInterval | uint32 | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
+| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP upload incremental detection/Increment size. If the IP global upload increment size is greater than the set increment size, Peer will be automatically block |
+| ipUpCheckPerTorrentRatio | float64 | 3 (X) | IP upload incremental detection/Increment ratio. If the IP single torrent upload increment size is greater than the product of the set increment ratio and the torrent size, Peer will be automatically block |
+| maxIPPortCount | uint32 | 0 (Disable) | Maximum number of ports per IP. If the number of IP ports is greater than the set value, Peer will be automatically block |
+| banByProgressUploaded | bool | false | Enhanced automatic blocking (blocking Peer based on progress and uploaded, not verified by testing). After the following enhanced automatic blocking conditions are met, Peer will be automatically blocked |
+| banByPUStartMB | uint32 | 20 (MB) | Enhanced automatic blocking/Start size. If the client uploaded is greater than the set initial size, Peer will be automatically block |
+| banByPUStartPrecent | float64 | 2 (%) | Enhanced automatic blocking/Start progress. If the client upload progress is greater than the set start progress, Peer will be automatically block |
+| banByPUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking/Lag anti-misjudgment ratio. If the downloaded obtained by the Peer's reported download progress multiplied by the set ratio and the torrent size is lower than Peer's uploaded, Peer will be automatically block |
+| banByRelativeProgressUploaded | bool | false | Enhanced automatic blocking_Relative (Block Peer based on relative progress and relative uploaded, not verified by testing). After the following Enhanced automatic blocking_Relative conditions are met, Peer will be automatically block |
+| banByRelativePUStartMB | uint32 | 20 (MB) | Enhanced automatic blocking_Relative/Start size. If the relative uploaded of the client is greater than the set start size, Peer will be automatically block |
+| banByRelativePUStartPrecent | float64 | 2 (%) | Enhanced automatic blocking_Relative/Start progress. If the relative upload progress of the client is greater than the set start progress, Peer will be automatically block |
+| banByRelativePUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
 
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), ask/discuss/share usage through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions), contribute code improvement to blocker through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls).  
