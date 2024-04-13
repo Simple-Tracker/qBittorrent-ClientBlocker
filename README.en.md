@@ -166,5 +166,5 @@ Note: Should be based on dev branch. When opening a Pull Request for a Feature, 
 
 ## 致谢 Credit
 
-1. We partially referenced [jinliming2/qbittorrent-ban-xunlei](https://github.com/jinliming2/qbittorrent-ban-xunlei) during early development of blocker;
+1. We partially referenced [jinliming2/qbittorrent-ban-xunlei](https://github.com/jinliming2/qbittorrent-ban-xunlei) during early development of blocker. We may also refer to other similar project to optimize this project, but they will not be listed separately here;
 2. We will thank the user and developer who contributed code improvement to blocker through Pull Request in Release Note;
