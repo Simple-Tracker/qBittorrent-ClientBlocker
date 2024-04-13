@@ -167,11 +167,11 @@ func CheckUpdate() {
 	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, currentVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
 
 	if hasNewReleaseVersion {
-		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
+		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestReleaseStruct.TagName), strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
 	}
 
 	if hasNewPreReleaseVersion {
-		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewBetaVersion"), true, latestPreReleaseStruct.TagName, strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
+		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewBetaVersion"), true, latestPreReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestPreReleaseStruct.TagName), strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
 	}
 }
 func Task() {

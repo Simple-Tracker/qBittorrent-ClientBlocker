@@ -67,8 +67,7 @@ func Tr_SetURL() bool {
 	return false
 }
 func Tr_DetectVersion() bool {
-	getStruct := Tr_GetStruct { Field: []string { "version" } }
-	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: getStruct })
+	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: Tr_GetStruct { Field: []string { "version" } } })
 	if err != nil {
 		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
@@ -99,8 +98,7 @@ func Tr_SetCSRFToken(csrfToken string) {
 	Log("SetCSRFToken", GetLangText("Success-SetCSRFToken"), true, csrfToken)
 }
 func Tr_FetchTorrents() *Tr_TorrentsStruct {
-	getStruct := Tr_GetStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } }
-	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: getStruct })
+	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: Tr_GetStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } } })
 	if err != nil {
 		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
 		return nil
@@ -178,8 +176,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 	blocklistURL += "/ipfilter.dat?t=" + strconv.FormatInt(currentTimestamp, 10)
 
-	sessionSetStruct := Tr_SessionSetStruct { BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL }
-	sessionSetJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-set", Args: sessionSetStruct })
+	sessionSetJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-set", Args: Tr_SessionSetStruct { BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL } })
 	if err != nil {
 		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
