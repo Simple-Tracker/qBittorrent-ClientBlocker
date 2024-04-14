@@ -141,6 +141,8 @@ Docker version is configured through the same name variable configuration, which
 | clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
 | useBasicAuth | bool | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
 | skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
+| execCommand_Ban | string | Empty | Execute external command (Unban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| execCommand_Unban | string | Empty | Execute external command (Ban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
