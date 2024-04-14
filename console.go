@@ -15,6 +15,7 @@ var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
 var lastCheckUpdateTimestamp int64 = 0
 var githubAPIHeader = map[string]string { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
+var isRunning bool
 
 type ReleaseStruct struct {
 	URL        string `json:"html_url"`
@@ -284,18 +285,9 @@ func WaitStop() {
 
 	<-signalChan
 		Log("WaitStop", GetLangText("WaitStop_Stoping"), true)
-		if loopTicker != nil {
-			loopTicker.Stop()
-		}
-		httpClient.CloseIdleConnections()
-		httpClientWithoutCookie.CloseIdleConnections()
-		StopServer()
-		Platform_Stop()
-		os.Exit(0)
+		isRunning = false
 }
-
 func RunConsole() {
-	go WaitStop()
 	if config.StartDelay > 0 {
 		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, config.StartDelay)
 		time.Sleep(time.Duration(config.StartDelay) * time.Second)
@@ -304,13 +296,27 @@ func RunConsole() {
 		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
 		os.Exit(1)
 	}
+	isRunning = true
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
-	loopTicker = time.NewTicker(time.Duration(config.Interval) * time.Second)
+	go WaitStop()
+	loopTicker = time.NewTicker(1 * time.Second)
 	for ; true; <- loopTicker.C {
-		currentTimestamp = time.Now().Unix()
-		LoadInitConfig(false)
-		go CheckUpdate()
-		Task()
-		GC()
+		if !isRunning {
+			loopTicker.Stop()
+			SubmitBlockPeer(nil)
+			httpClient.CloseIdleConnections()
+			httpClientWithoutCookie.CloseIdleConnections()
+			StopServer()
+			Platform_Stop()
+			break
+		}
+		tmpCurrentTimestamp := time.Now().Unix()
+		if (currentTimestamp + int64(config.Interval)) <= tmpCurrentTimestamp {
+			currentTimestamp = tmpCurrentTimestamp
+			LoadInitConfig(false)
+			go CheckUpdate()
+			Task()
+			GC()
+		}
 	}
 }

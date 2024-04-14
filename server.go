@@ -28,7 +28,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("404: Not Found."))
 }
 func StartServer() {
-	if Server_httpListen != nil {
+	if Server_Status {
 		return
 	}
 
@@ -43,8 +43,8 @@ func StartServer() {
 	    return
 	}
 
-	Server_httpListen = httpListen
 	Server_Status = true
+	Server_httpListen = httpListen
 
 	httpServer.SetKeepAlivesEnabled(false)
 	if err := httpServer.Serve(Server_httpListen); err != http.ErrServerClosed {
