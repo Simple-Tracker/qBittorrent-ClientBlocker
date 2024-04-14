@@ -324,11 +324,6 @@ func LoadAdditionalConfig() int {
 	return 0
 }
 func InitConfig() {
-	if !LoadLog() && logFile != nil {
-		logFile.Close()
-		logFile = nil
-	}
-
 	if config.Interval < 1 {
 		config.Interval = 1
 	}
@@ -378,7 +373,7 @@ func InitConfig() {
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
 	for k := 0; k < t.NumField(); k++ {
-		Log("LoadConfig_Current", "%v: %v", true, t.Field(k).Name, v.Field(k).Interface())
+		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
 
 	blockListCompiled = make([]*regexp.Regexp, len(config.BlockList))
@@ -387,7 +382,7 @@ func InitConfig() {
 
 		reg, err := regexp.Compile("(?i)" + v)
 		if err != nil {
-			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), true, v)
+			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, v)
 			continue
 		}
 
@@ -400,7 +395,7 @@ func InitConfig() {
 
 		cidr := ParseIPCIDR(v)
 		if cidr == nil {
-			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), true, v)
+			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), false, v)
 			continue
 		}
 
@@ -418,6 +413,11 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 	} else {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
+	}
+
+	if !LoadLog() && logFile != nil {
+		logFile.Close()
+		logFile = nil
 	}
 
 	if firstLoad && config.ClientURL == "" {
