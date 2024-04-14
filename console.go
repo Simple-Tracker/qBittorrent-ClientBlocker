@@ -21,7 +21,7 @@ type ReleaseStruct struct {
 	TagName    string `json:"tag_name"`
 	Name       string `json:"name"`
 	Body       string `json:"body"`
-	PreRelease bool `json:"prerelease`
+	PreRelease bool   `json:"prerelease`
 }
 
 func ProcessVersion(version string) (int, int, int, int, string) {
@@ -278,6 +278,22 @@ func GC() {
 		}
 	}
 }
+func WaitStop() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
+
+	<-signalChan
+		Log("WaitStop", GetLangText("WaitStop_Stoping"), true)
+		if loopTicker != nil {
+			loopTicker.Stop()
+		}
+		httpClient.CloseIdleConnections()
+		httpClientWithoutCookie.CloseIdleConnections()
+		StopServer()
+		Platform_Stop()
+		os.Exit(0)
+}
+
 func RunConsole() {
 	go WaitStop()
 	if config.StartDelay > 0 {
@@ -297,19 +313,4 @@ func RunConsole() {
 		Task()
 		GC()
 	}
-}
-func WaitStop() {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
-
-	<-signalChan
-		Log("WaitStop", GetLangText("WaitStop_Stoping"), true)
-		if loopTicker != nil {
-			loopTicker.Stop()
-		}
-		httpClient.CloseIdleConnections()
-		httpClientWithoutCookie.CloseIdleConnections()
-		StopServer()
-		Platform_Stop()
-		os.Exit(0)
 }

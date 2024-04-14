@@ -123,7 +123,7 @@ Docker version is configured through the same name variable configuration, which
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipFilterURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
-| banAllPort | bool | false | Block IP all port. Setting is currently not supported |
+| banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
 | banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
 | banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and UserAgent. Usually occurs on clients where connection is not fully established |
@@ -141,6 +141,8 @@ Docker version is configured through the same name variable configuration, which
 | clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
 | useBasicAuth | bool | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
 | skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
+| execCommand_Ban | string | Empty | Execute external command (Unban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| execCommand_Unban | string | Empty | Execute external command (Ban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |

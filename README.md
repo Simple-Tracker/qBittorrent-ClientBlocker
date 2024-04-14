@@ -134,7 +134,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (ipFilterURL/blockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
-| banAllPort | bool | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
+| banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
 | banIPCIDR | string | /32 | 封禁 IPv4 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | banIP6CIDR | string | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 UserAgent 的 Peer. 通常出现于连接未完全建立的客户端 |
@@ -152,6 +152,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | clientPassword | string | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
 | skipCertVerification | bool | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
+| execCommand_Ban | string | 空 | 执行外部命令 (Ban). 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
+| execCommand_Unban | string | 空 | 执行外部命令 (Ban). 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
 | blockListURL | string | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | portBlockList | []uint32 | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
