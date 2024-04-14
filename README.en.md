@@ -123,7 +123,7 @@ Docker version is configured through the same name variable configuration, which
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipFilterURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
-| banAllPort | bool | false | Block IP all port. Setting is currently not supported |
+| banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
 | banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
 | banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and UserAgent. Usually occurs on clients where connection is not fully established |

@@ -134,7 +134,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (ipFilterURL/blockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
-| banAllPort | bool | false (禁用) | 屏蔽 IP 所有端口. 当前不支持设置 |
+| banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
 | banIPCIDR | string | /32 | 封禁 IPv4 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | banIP6CIDR | string | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 UserAgent 的 Peer. 通常出现于连接未完全建立的客户端 |
