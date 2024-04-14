@@ -7,10 +7,11 @@ import (
 )
 
 type PeerInfoStruct struct {
-	Net      *net.IPNet
-	Port     map[int]bool
-	Progress float64
-	Uploaded int64
+	Net        *net.IPNet
+	Port       map[int]bool
+	Progress   float64
+	Downloaded int64
+	Uploaded   int64
 }
 type BlockPeerInfoStruct struct {
 	Timestamp int64
@@ -120,7 +121,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	
 	return false
 }
-func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
+func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerDownloaded int64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
 	if peerIP == "" || CheckPrivateIP(peerIP) || (peerDlSpeed <= 0 && peerUpSpeed <= 0) {
 		return -1, nil
 	}
@@ -154,11 +155,17 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	}
 
 	hasPeerClient := (peerID != "" || peerClient != "")
+	ignoreByDownloaded := false
 	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
-	if (!config.IgnoreEmptyPeer || hasPeerClient) && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
-		Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
-		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-		return 1, peerNet
+	if (!config.IgnoreEmptyPeer || hasPeerClient) {
+		if (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
+			ignoreByDownloaded = true
+		}
+		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
+			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
+			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+			return 1, peerNet
+		}
 	}
 
 	if hasPeerClient {
@@ -210,17 +217,17 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		}
 	}
 
-	if (config.IgnoreEmptyPeer && !hasPeerClient) {
+	if (config.IgnoreEmptyPeer && !hasPeerClient) || ignoreByDownloaded {
 		return -2, peerNet
 	}
 
 	return 0, peerNet
 }
-func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
+func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerDownloaded int64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	peerIP = ProcessIP(peerIP)
-	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerDlSpeed, peerUpSpeed, peerProgress, peerUploaded, torrentInfoHash, torrentTotalSize)
+	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerDlSpeed, peerUpSpeed, peerProgress, peerDownloaded, peerUploaded, torrentInfoHash, torrentTotalSize)
 	if config.Debug_CheckPeer {
-		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %d, PeerDlSpeed: %.2f%% MB/s, PeerUpSpeed: %.2f%% MB/s, Progress: %.2f%%, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, torrentTotalSize, (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024), peerStatus)
+		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %d, PeerDlSpeed: %.2f%% MB/s, PeerUpSpeed: %.2f%% MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, torrentTotalSize, (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerDownloaded) / 1024 / 1024), (float64(peerUploaded) / 1024 / 1024), peerStatus)
 	}
 
 	switch peerStatus {

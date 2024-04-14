@@ -15,14 +15,15 @@ type qB_TorrentStruct struct {
 	Tracker   string `json:"tracker"`
 }
 type qB_PeerStruct struct {
-	IP       string  `json:"ip"`
-	Port     int     `json:"port"`
-	Client   string  `json:"client"`
-	PeerID   string  `json:"peer_id_client"`
-	Progress float64 `json:"progress"`
-	Uploaded int64   `json:"uploaded"`
-	DlSpeed  int64   `json:"dl_speed"`
-	UpSpeed  int64   `json:"up_speed"`
+	IP         string  `json:"ip"`
+	Port       int     `json:"port"`
+	Client     string  `json:"client"`
+	PeerID     string  `json:"peer_id_client"`
+	Progress   float64 `json:"progress"`
+	Downloaded int64   `json:"downloaded"`
+	Uploaded   int64   `json:"uploaded"`
+	DlSpeed    int64   `json:"dl_speed"`
+	UpSpeed    int64   `json:"up_speed"`
 }
 type qB_TorrentPeersStruct struct {
 	FullUpdate bool                     `json:"full_update"`
