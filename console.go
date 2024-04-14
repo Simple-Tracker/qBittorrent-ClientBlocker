@@ -260,7 +260,18 @@ func Task() {
 	Log("Debug-Task_IgnoreEmptyPeersCount", "%d", false, emptyPeersCount)
 
 	if cleanCount != 0 || blockCount != 0 || ipBlockCount != 0 {
+		if config.GenIPDat == 1 || config.GenIPDat == 2 {
+			ipfilterCount, ipfilterStr := GenIPFilter(config.GenIPDat, blockPeerMap)
+			err := SaveIPFilter(ipfilterStr)
+			if err != "" {
+				Log("Task", GetLangText("Error-IPFilter_Write"), true, err)
+			} else {
+				Log("Task", GetLangText("Success-GenIPFilter"), true, ipfilterCount)
+			}
+		}
+
 		SubmitBlockPeer(blockPeerMap)
+
 		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockListFromURLCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
@@ -327,6 +338,7 @@ func Stop() {
 		loopTicker.Stop()
 	}
 
+	DeleteIPFilter()
 	SubmitBlockPeer(nil)
 	httpClient.CloseIdleConnections()
 	httpClientWithoutCookie.CloseIdleConnections()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"net"
 	"time"
 	"strings"
@@ -96,30 +97,51 @@ func ProcessIP(ip string) string {
 
 	return ip
 }
-func GenIPFilter_CIDR(blockPeerMap map[string]BlockPeerInfoStruct, clientType string) (int, string) {
+func GenIPFilter(datType uint32, blockPeerMap map[string]BlockPeerInfoStruct) (int, string) {
 	ipfilterCount := 0
 	ipfilterStr := ""
+
+	if datType != 1 && datType != 2 {
+		return ipfilterCount, ipfilterStr
+	}
 
 	for peerIP := range blockPeerMap {
 		if !IsIPv6(peerIP) {
 			ipfilterCount += 2
-			ipfilterStr += peerIP + "/32\n"
-			if clientType == "" {
+			if datType == 1 {
+				ipfilterStr += peerIP + "/32\n"
 				ipfilterStr += "::ffff:" + peerIP + "/128\n"
-			} else if clientType == "Transmission" {
+			} else if datType == 2 {
+				ipfilterStr += peerIP + " - " + peerIP + " , 000\n"
 				ipfilterStr += "::ffff:" + peerIP + " - ::ffff:" + peerIP + " , 000\n"
 			}
 		} else {
 			ipfilterCount++
-			if clientType == "" {
+			if datType == 1 {
 				ipfilterStr += peerIP + "/128\n"
-			} else if clientType == "Transmission" {
+			} else if datType == 2 {
 				ipfilterStr += peerIP + " - " + peerIP + " , 000\n"
 			}
 		}
 	}
 
 	return ipfilterCount, ipfilterStr
+}
+func SaveIPFilter(ipfilterStr string) string {
+	err := os.WriteFile("ipfilter.dat", []byte(ipfilterStr), 0666)
+	if err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+func DeleteIPFilter() bool {
+	err := os.Remove("ipfilter.dat")
+	if err != nil {
+		return false
+	}
+
+	return true
 }
 func ParseCommand(command string) []string {
 	var matchQuote rune = -1

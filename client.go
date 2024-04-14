@@ -113,6 +113,10 @@ func FetchTorrentPeers(infoHash string) interface{} {
 	return nil
 }
 func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	if blockPeerMap == nil {
+		return true
+	}
+
 	switch currentClientType {
 		case "qBittorrent":
 			return qB_SubmitBlockPeer(blockPeerMap)

@@ -165,6 +165,7 @@ Docker version is configured through the same name variable configuration, which
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
 | ipBlockList | []string | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
 | ipBlockListURL | string | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
+| genIPDat | uint32 | 0 (Disable) | 1: Generate IPBlockList.dat. Include All Peer IPCIDR, support format is same as ipBlockList; 2: Generate IPFilter.dat. Include All Peer IP; One rule per line |
 | ipUploadedCheck | bool | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
 | ipUpCheckInterval | uint32 | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
 | ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP upload incremental detection/Increment size. If the IP global upload increment size is greater than the set increment size, Peer will be automatically block |

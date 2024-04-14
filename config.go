@@ -57,6 +57,7 @@ type ConfigStruct struct {
 	IPBlockList                   []string
 	IPBlockListURL                string
 	IgnoreByDownloaded            uint32
+	GenIPDat                      uint32
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
@@ -158,6 +159,7 @@ var config = ConfigStruct {
 	IPBlockList:                   []string {},
 	IPBlockListURL:                "",
 	IgnoreByDownloaded:            100,
+	GenIPDat:                      0,
 	IPUploadedCheck:               false,
 	IPUpCheckInterval:             300,
 	IPUpCheckIncrementMB:          38000,

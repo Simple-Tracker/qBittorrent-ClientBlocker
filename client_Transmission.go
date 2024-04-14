@@ -162,11 +162,8 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	}
 }
 func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	ipfilterCount, ipfilterStr := GenIPFilter_CIDR(blockPeerMap, "Transmission")
+	ipfilterCount, ipfilterStr := GenIPFilter(2, blockPeerMap)
 	Tr_ipfilterStr = ipfilterStr
-	if ipfilterCount == 0 {
-		return true
-	}
 
 	blocklistURL := ""
 	if strings.Contains(config.Listen, ".") {

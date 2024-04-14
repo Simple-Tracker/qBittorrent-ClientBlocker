@@ -69,7 +69,7 @@ func AddBlockCIDR(peerIP string, peerNet *net.IPNet) {
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
-	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
+	if blockPeerMap != nil && config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
 		for peerIP, peerInfo := range blockPeerMap {
 			if currentTimestamp > (peerInfo.Timestamp + int64(config.BanTime)) {
 				cleanCount++

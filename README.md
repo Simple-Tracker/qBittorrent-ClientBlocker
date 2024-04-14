@@ -166,6 +166,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | portBlockList | []uint32 | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
 | ipBlockList | []string | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |
 | ipBlockListURL | string | 空 | 屏蔽 IP 列表 URL. 支持格式同 ipBlockList, 一行一条 |
+| genIPDat | uint32 | 0 (禁用) | 1: 生成 IPBlockList.dat. 包括所有被封禁的 Peer IPCIDR, 格式同 ipBlockList; 2: 生成 IPFilter.dat. 包括所有被封禁的 Peer IP; 一行一条 |
 | ipUploadedCheck | bool | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | uint32 | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
 | ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局上传增量大小大于设置增量大小, 则允许屏蔽 Peer |
