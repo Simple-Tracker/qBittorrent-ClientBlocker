@@ -44,6 +44,8 @@ type ConfigStruct struct {
 	ClientPassword                string
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
+	ExecCommand_Ban               string
+	ExecCommand_Unban             string
 	BlockList                     []string
 	BlockListURL                  string
 	PortBlockList                 []uint32
@@ -129,6 +131,8 @@ var config = ConfigStruct {
 	ClientPassword:                "",
 	UseBasicAuth:                  false,
 	SkipCertVerification:          false,
+	ExecCommand_Ban:               "",
+	ExecCommand_Unban:             "",
 	BlockList:                     []string {},
 	BlockListURL:                  "",
 	PortBlockList:                 []uint32 {},

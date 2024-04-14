@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"strings"
 	"strconv"
 )
 
@@ -37,26 +38,56 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 		peerNetStr := peerNet.String()
 		blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
 	}
+
+	if config.ExecCommand_Ban != "" {
+		execCommand_Ban := config.ExecCommand_Ban
+		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerIP}", peerIP, -1)
+		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerPort}", strconv.Itoa(peerPort), -1)
+		execCommand_Ban = strings.Replace(execCommand_Ban, "{torrentInfoHash}", torrentInfoHash, -1)
+		out := ExecCommand(execCommand_Ban)
+
+		if out != nil {
+			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
+		} else {
+			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true)
+		}
+	}
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
 	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
-		for clientIP, clientInfo := range blockPeerMap {
-			if currentTimestamp > (clientInfo.Timestamp + int64(config.BanTime)) {
+		for peerIP, peerInfo := range blockPeerMap {
+			if currentTimestamp > (peerInfo.Timestamp + int64(config.BanTime)) {
 				cleanCount++
-				delete(blockPeerMap, clientIP)
+				delete(blockPeerMap, peerIP)
 
-				peerNet := ParseIPCIDRByConfig(clientIP)
+				peerNet := ParseIPCIDRByConfig(peerIP)
 
 				if peerNet != nil {
 					peerNetStr := peerNet.String()
 					if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
 						if blockCIDRInfo.Timestamp > currentTimestamp {
-							clientInfo.Timestamp = blockCIDRInfo.Timestamp
-							blockPeerMap[clientIP] = clientInfo
+							peerInfo.Timestamp = blockCIDRInfo.Timestamp
+							blockPeerMap[peerIP] = peerInfo
 							continue
 						}
 						delete(blockCIDRMap, peerNetStr)
+					}
+				}
+
+				if config.ExecCommand_Unban != "" {
+					for peerPort, _ := range peerInfo.Port {
+						execCommand_Unban := config.ExecCommand_Unban
+						execCommand_Unban = strings.Replace(execCommand_Unban, "{peerIP}", peerIP, -1)
+						execCommand_Unban = strings.Replace(execCommand_Unban, "{peerPort}", strconv.Itoa(peerPort), -1)
+						execCommand_Unban = strings.Replace(execCommand_Unban, "{torrentInfoHash}", peerInfo.InfoHash, -1)
+						out := ExecCommand(execCommand_Unban)
+
+						if out != nil {
+							Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
+						} else {
+							Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true)
+						}
 					}
 				}
 			}

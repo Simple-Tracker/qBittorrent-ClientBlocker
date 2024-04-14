@@ -92,23 +92,6 @@ func FetchTorrentPeers(infoHash string) interface{} {
 
 	return nil
 }
-func GenIPFilter_CIDR(blockPeerMap map[string]BlockPeerInfoStruct) (int, string) {
-	ipfilterCount := 0
-	ipfilterStr := ""
-
-	for peerIP := range blockPeerMap {
-		if !IsIPv6(peerIP) {
-			ipfilterCount += 2
-			ipfilterStr += peerIP + "/32\n"
-			ipfilterStr += "::ffff:" + peerIP + " - ::ffff:" + peerIP + " , 000\n"
-		} else {
-			ipfilterCount++
-			ipfilterStr += peerIP + " - " + peerIP + " , 000\n"
-		}
-	}
-
-	return ipfilterCount, ipfilterStr
-}
 func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	switch currentClientType {
 		case "qBittorrent":

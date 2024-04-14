@@ -16,7 +16,7 @@ type httpServerHandler struct {
 func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(405)
-		w.Write([]byte("Method not allowed."))
+		w.Write([]byte("405: Method Not Allowed."))
 		return
 	}
 
@@ -25,6 +25,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(404)
+	w.Write([]byte("404: Not Found."))
 }
 func StartServer() {
 	if Server_httpListen != nil {

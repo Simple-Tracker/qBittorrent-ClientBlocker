@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 	"strings"
+	"os/exec"
 	"encoding/json"
 )
 
@@ -94,4 +95,39 @@ func ProcessIP(ip string) string {
 	}
 
 	return ip
+}
+func GenIPFilter_CIDR(blockPeerMap map[string]BlockPeerInfoStruct, clientType string) (int, string) {
+	ipfilterCount := 0
+	ipfilterStr := ""
+
+	for peerIP := range blockPeerMap {
+		if !IsIPv6(peerIP) {
+			ipfilterCount += 2
+			ipfilterStr += peerIP + "/32\n"
+			if clientType == "" {
+				ipfilterStr += "::ffff:" + peerIP + "/128\n"
+			} else if clientType == "Transmission" {
+				ipfilterStr += "::ffff:" + peerIP + " - ::ffff:" + peerIP + " , 000\n"
+			}
+		} else {
+			ipfilterCount++
+			if clientType == "" {
+				ipfilterStr += peerIP + "/128\n"
+			} else if clientType == "Transmission" {
+				ipfilterStr += peerIP + " - " + peerIP + " , 000\n"
+			}
+		}
+	}
+
+	return ipfilterCount, ipfilterStr
+}
+func ExecCommand(command string) []byte {
+	cmd := exec.Command(command)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil
+	}
+
+	return out
 }

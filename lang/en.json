@@ -65,6 +65,7 @@
 	"Failed-ChangeWorkingDir": "Failed to change working directory: %s",
 	"Failed-Login_BadUsernameOrPassword": "Login failed: Wrong username or password",
 	"Failed-Login_Other": "Login failed: %s",
+	"Failed-ExecCommand": "Exec command failed",
 	"Success-RegHotkey": "Registered and started listening for window hotkey: CTRL+ALT+B",
 	"Success-ChangeWorkingDir": "Change working directory: %s",
 	"Success-LoadConfig": "Loading config file successfully",
@@ -74,5 +75,6 @@
 	"Success-SetBlocklistFromURL": "%d regexp rules are set",
 	"Success-DetectClient": "Detect client type successful: %s",
 	"Success-Login": "Login successful",
-	"Success-ClearBlockPeer": "Cleaned up expired client: %d"
+	"Success-ClearBlockPeer": "Cleaned up expired client: %d",
+	"Success-ExecCommand": "Exec command success, output: %s"
 }

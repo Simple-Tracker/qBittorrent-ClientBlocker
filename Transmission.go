@@ -162,7 +162,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	}
 }
 func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	ipfilterCount, ipfilterStr := GenIPFilter_CIDR(blockPeerMap)
+	ipfilterCount, ipfilterStr := GenIPFilter_CIDR(blockPeerMap, "Transmission")
 	Tr_ipfilterStr = ipfilterStr
 	if ipfilterCount == 0 {
 		return true
