@@ -200,8 +200,14 @@ func ProcessTorrent(torrentInfoHash string, torrentTracker string, torrentLeeche
 				case "Transmission":
 					torrentPeers := torrentPeersStruct.([]Tr_PeerStruct)
 					for _, peer := range torrentPeers {
-						// Transmission 目前似乎并不提供 Peer 的 PeerID 及 Uploaded, 因此使用无效值取代.
+						// Transmission 目前似乎并不提供 Peer 的 PeerID 及 Downloaded/Uploaded, 因此使用无效值取代.
 						ProcessPeer(peer.IP, peer.Port, "", peer.Client, peer.DlSpeed, peer.UpSpeed, peer.Progress, -1, -1, torrentInfoHash, torrentTotalSize, blockCount, ipBlockCount, badPeersCount, emptyPeersCount)
+					}
+				case "BitComet":
+					torrentPeers := torrentPeersStruct.(*[]BC_PeerStruct)
+					for _, peer := range *torrentPeers {
+						// BitComet 目前不为其支持 PeerID， 因此使用无效值取代.
+						ProcessPeer(peer.IP, peer.Port, "", peer.Client, peer.DlSpeed, peer.UpSpeed, peer.Progress, peer.Downloaded, peer.Uploaded, torrentInfoHash, torrentTotalSize, blockCount, ipBlockCount, badPeersCount, emptyPeersCount)
 					}
 			}
 	}

@@ -12,7 +12,7 @@ func IsBanPort() bool {
 }
 func IsSupportClient() bool {
 	switch currentClientType {
-		case "qBittorrent", "Transmission":
+		case "qBittorrent", "Transmission", "BitComet":
 			return true
 		default:
 			return false
@@ -27,8 +27,10 @@ func InitClient() {
 }
 func SetURLFromClient() {
 	// 未设置的情况下, 应按内部客户端顺序逐个测试.
-	if !qB_SetURL() {
-		Tr_SetURL()
+	if config.ClientURL == "" {
+		if !qB_SetURL() {
+			Tr_SetURL()
+		}
 	}
 }
 func DetectClient() bool {
@@ -49,6 +51,12 @@ func DetectClient() bool {
 		return true
 	}
 
+	currentClientType = "BitComet"
+	if BC_DetectClient() {
+		Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
+		return true
+	}
+
 	currentClientType = ""
 	return false
 }
@@ -58,6 +66,8 @@ func Login() bool {
 			return qB_Login()
 		case "Transmission":
 			return Tr_Login()
+		case "BitComet":
+			return BC_Login()
 	}
 
 	return false
@@ -76,6 +86,12 @@ func FetchTorrents() interface{} {
 				return nil
 			}
 			return maindata
+		case "BitComet":
+			maindata := BC_FetchTorrents()
+			if maindata == nil {
+				return nil
+			}
+			return maindata
 	}
 
 	return nil
@@ -84,6 +100,12 @@ func FetchTorrentPeers(infoHash string) interface{} {
 	switch currentClientType {
 		case "qBittorrent":
 			torrentPeers := qB_FetchTorrentPeers(infoHash)
+			if torrentPeers == nil {
+				return nil
+			}
+			return torrentPeers
+		case "BitComet":
+			torrentPeers := BC_FetchTorrentPeers(infoHash)
 			if torrentPeers == nil {
 				return nil
 			}

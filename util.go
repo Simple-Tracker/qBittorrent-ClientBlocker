@@ -30,7 +30,7 @@ func IsIPv6(ip string) bool {
 	return (strings.Count(ip, ":") >= 2)
 }
 func StrTrim(str string) string {
-	return strings.Trim(str, " \n\r")
+	return strings.Trim(str, "  \n\r")
 }
 func GetDateTime(withTime bool) string {
 	formatStr := "2006-01-02"

@@ -422,7 +422,7 @@ func LoadInitConfig(firstLoad bool) bool {
 		logFile = nil
 	}
 
-	if firstLoad && config.ClientURL == "" {
+	if firstLoad {
 		SetURLFromClient()
 	}
 

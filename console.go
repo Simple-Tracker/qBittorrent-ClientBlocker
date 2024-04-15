@@ -226,6 +226,16 @@ func Task() {
 
 				ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 			}
+		case "BitComet":
+			// BitComet 无法通过 Torrent 列表取得 TorrentInfoHash, 因此使用 TorrentID 取代.
+			torrents2 := torrents.(*map[int]BC_TorrentStruct)
+			for torrentID, torrentInfo := range *torrents2 {
+				var leecherCount int64 = 233
+				if torrentInfo.UpSpeed > 0 {
+					leecherCount = 233
+				}
+				ProcessTorrent(strconv.Itoa(torrentID), "Unsupported", leecherCount, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+			}
 	}
 
 	currentIPBlockCount := CheckAllIP(ipMap, lastIPMap)
