@@ -39,7 +39,7 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+), which i
         | Linux    | AMD64          | 64-bit             | linux-amd64      | Common NAS and server                                                                   |
         | Linux    | i386           | 32-bit             | linux-386        | Rarely in some old NAS and server                                                       |
         | Linux    | ARM64          | 64-bit             | linux-arm64      | Common server and development board, such as Oracle or Raspberry Pi, etc                |
-        | Linux    | ARMv6          | 32-bit             | linux-arm        | Rarely in some old server and development board                                         |
+        | Linux    | ARMv*          | 32-bit             | linux-armv*        | Rarely in some old server and development board, Check /proc/cpuinfo or try which version can run from high to low |
 
         Other versions of Linux/Netbsd/FreeBSD/OpenBSD/Solaris can use this form as an example, and select one that suits you in the list.
     </details>
@@ -120,7 +120,7 @@ Docker version is configured through the same name variable configuration, which
 | debug_CheckPeer | string | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
 | interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from Web UI for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
-| updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipFilterURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
+| updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipBlockListURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |

@@ -48,10 +48,10 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHea
 
 	return request
 }
-func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, []byte) {
+func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, http.Header, []byte) {
 	request := NewRequest(false, url, "", withCookie, withHeader)
 	if request == nil {
-		return -1, nil
+		return -1, nil, nil
 	}
 
 	var response *http.Response
@@ -65,7 +65,7 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 
 	if err != nil {
 		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
-		return -2, nil
+		return -2, nil, nil
 	}
 
 	responseBody, err := ioutil.ReadAll(response.Body)
@@ -73,12 +73,12 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 
 	if err != nil {
 		Log("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
-		return -3, nil
+		return -3, nil, nil
 	}
 
 	if response.StatusCode == 401 {
 		Log("Fetch", GetLangText("Error-NoAuth"), true)
-		return 401, nil
+		return 401, response.Header, nil
 	}
 
 	if response.StatusCode == 403 {
@@ -86,7 +86,7 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 			Login()
 		}
 		Log("Fetch", GetLangText("Error-Forbidden"), true)
-		return 403, nil
+		return 403, response.Header, nil
 	}
 
 	if response.StatusCode == 409 {
@@ -95,7 +95,7 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if transmissionCSRFToken != "" {
 				Tr_SetCSRFToken(transmissionCSRFToken)
-				return 409, nil
+				return 409, nil, nil
 			}
 		}
 
@@ -104,25 +104,25 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 		}
 
 		Log("Fetch", GetLangText("Error-Forbidden"), true)
-		return 409, nil
+		return 409, response.Header, nil
 	}
 
 	if response.StatusCode == 404 {
 		Log("Fetch", GetLangText("Error-NotFound"), true)
-		return 404, nil
+		return 404, response.Header, nil
 	}
 
 	if response.StatusCode != 200 {
 		Log("Fetch", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
-		return response.StatusCode, nil
+		return response.StatusCode, response.Header, nil
 	}
 
-	return response.StatusCode, responseBody
+	return response.StatusCode, response.Header, responseBody
 }
-func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, []byte) {
+func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, http.Header, []byte) {
 	request := NewRequest(true, url, postdata, withCookie, withHeader)
 	if request == nil {
-		return -1, nil
+		return -1, nil, nil
 	}
 
 	var response *http.Response
@@ -136,19 +136,19 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
-		return -2, nil
+		return -2, nil, nil
 	}
 	responseBody, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
-		return -3, nil
+		return -3, nil, nil
 	}
 
 	if response.StatusCode == 401 {
 		Log("Submit", GetLangText("Error-NoAuth"), true)
-		return 401, nil
+		return 401, response.Header, nil
 	}
 
 	if response.StatusCode == 403 {
@@ -156,7 +156,7 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 			Login()
 		}
 		Log("Submit", GetLangText("Error-Forbidden"), true)
-		return 403, nil
+		return 403, response.Header, nil
 	}
 
 	if response.StatusCode == 409 {
@@ -165,7 +165,7 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if transmissionCSRFToken != "" {
 				Tr_SetCSRFToken(transmissionCSRFToken)
-				return 409, nil
+				return 409, response.Header, nil
 			}
 		}
 
@@ -174,18 +174,18 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 		}
 
 		Log("Fetch", GetLangText("Error-Forbidden"), true)
-		return 409, nil
+		return 409, response.Header, nil
 	}
 
 	if response.StatusCode == 404 {
 		Log("Submit", GetLangText("Error-NotFound"), true)
-		return 404, nil
+		return 404, response.Header, nil
 	}
 
 	if response.StatusCode != 200 {
 		Log("Submit", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
-		return response.StatusCode, nil
+		return response.StatusCode, response.Header, nil
 	}
 
-	return response.StatusCode, responseBody
+	return response.StatusCode, response.Header, responseBody
 }

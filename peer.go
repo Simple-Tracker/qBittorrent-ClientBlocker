@@ -139,13 +139,6 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		return 2, nil
 	}
 
-	for port := range config.PortBlockList {
-		if port == peerPort {
-			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-			return 1, nil
-		}
-	}
 
 	matchCIDR, peerNet := IsMatchCIDR(peerIP)
 	if matchCIDR {
@@ -155,18 +148,6 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	}
 
 	hasPeerClient := (peerID != "" || peerClient != "")
-	ignoreByDownloaded := false
-	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
-	if (!config.IgnoreEmptyPeer || hasPeerClient) {
-		if (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
-			ignoreByDownloaded = true
-		}
-		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
-			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
-			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-			return 1, peerNet
-		}
-	}
 
 	if hasPeerClient {
 		for _, v := range blockListCompiled {
@@ -188,6 +169,14 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet
 			}
+		}
+	}
+
+	for port := range config.PortBlockList {
+		if port == peerPort {
+			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+			return 1, nil
 		}
 	}
 
@@ -214,6 +203,19 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				AddBlockPeer(peerIP, -1, torrentInfoHash)
 				return 3, peerNet
 			}
+		}
+	}
+
+	ignoreByDownloaded := false
+	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
+	if (!config.IgnoreEmptyPeer || hasPeerClient) {
+		if (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
+			ignoreByDownloaded = true
+		}
+		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
+			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
+			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+			return 1, peerNet
 		}
 	}
 

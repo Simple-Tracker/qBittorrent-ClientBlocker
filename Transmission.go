@@ -73,7 +73,7 @@ func Tr_DetectVersion() bool {
 		return false
 	}
 
-	detectStatusCode, _ := Submit(config.ClientURL, string(detectJSON), false, false, &Tr_jsonHeader)
+	detectStatusCode, _, _ := Submit(config.ClientURL, string(detectJSON), false, false, &Tr_jsonHeader)
 	return (detectStatusCode == 200 || detectStatusCode == 409)
 }
 func Tr_Login() bool {
@@ -104,7 +104,7 @@ func Tr_FetchTorrents() *Tr_TorrentsStruct {
 		return nil
 	}
 
-	_, torrentsResponseBody := Submit(config.ClientURL, string(loginJSON), true, true, &Tr_jsonHeader)
+	_, _, torrentsResponseBody := Submit(config.ClientURL, string(loginJSON), true, true, &Tr_jsonHeader)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -140,7 +140,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 		return
 	}
 
-	stopStatusCode, _ := Submit(config.ClientURL, string(stopJSON), true, true, &Tr_jsonHeader)
+	stopStatusCode, _, _ := Submit(config.ClientURL, string(stopJSON), true, true, &Tr_jsonHeader)
 	if stopStatusCode != 200 {
 		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, err.Error())
 		return
@@ -155,7 +155,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 		return
 	}
 
-	startStatusCode, _ := Submit(config.ClientURL, string(startJSON), true, true, &Tr_jsonHeader)
+	startStatusCode, _, _ := Submit(config.ClientURL, string(startJSON), true, true, &Tr_jsonHeader)
 	if startStatusCode != 200 {
 		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, err.Error())
 		return
@@ -182,7 +182,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		return false
 	}
 
-	_, sessionResponseBody := Submit(config.ClientURL, string(sessionSetJSON), true, true, &Tr_jsonHeader)
+	_, _, sessionResponseBody := Submit(config.ClientURL, string(sessionSetJSON), true, true, &Tr_jsonHeader)
 	if sessionResponseBody == nil {
 		Log("SubmitBlockPeer", GetLangText("Error"), true)
 		return false
@@ -205,7 +205,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		return false
 	}
 
-	_, blocklistUpdateResponseBody := Submit(config.ClientURL, string(blocklistUpdateJSON), true, true, &Tr_jsonHeader)
+	_, _, blocklistUpdateResponseBody := Submit(config.ClientURL, string(blocklistUpdateJSON), true, true, &Tr_jsonHeader)
 	if blocklistUpdateResponseBody == nil {
 		Log("SubmitBlockPeer", GetLangText("Error"), true)
 		return false
