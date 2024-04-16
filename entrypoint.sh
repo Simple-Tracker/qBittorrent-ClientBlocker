@@ -35,4 +35,11 @@ if [ -n "$useENV" ]; then
     (echo $configKVPair | jq -s add) > config.json
 fi
 
-exec ./qBittorrent-ClientBlocker
+commandArgStr=''
+if [ -n "$configPath" ]; then
+    commandArgStr="-c $configPath"
+fi
+if [ -n "$additionalConfigPath" ]; then
+    commandArgStr="$commandArgStr -ca $additionalConfigPath"
+fi
+exec ./qBittorrent-ClientBlocker $commandArgStr

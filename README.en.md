@@ -3,7 +3,7 @@
 [中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
 [中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
-A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+), which is prohibited to include but not limited to clients such as Xunlei.
+A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/BitComet (2.0+, Beta, Partial), which is prohibited to include but not limited to clients such as Xunlei.
 
 -   Support many platforms
 -   Support log and hot-reload config
@@ -142,8 +142,8 @@ Docker version is configured through the same name variable configuration, which
 | clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
 | useBasicAuth | bool | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
 | skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
-| execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
-| execCommand_Unban | string | Empty | Execute external command (Unban). First parameter is regarded as an external program path, and each parameter should be separated by ```|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| execCommand_Unban | string | Empty | Execute external command (Unban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |

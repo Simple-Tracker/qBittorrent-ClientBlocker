@@ -3,7 +3,7 @@
 [中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
 [中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
-一款适用于 qBittorrent (4.1+)/Transmission (3.0+) 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端.
+一款适用于 qBittorrent (4.1+)/Transmission (3.0+, Beta)/BitComet (2.0+, Beta, Partial) 的客户端屏蔽器, 默认屏蔽包括但不限于迅雷等客户端.
 
 -   全平台支持
 -   支持记录日志及热重载配置
@@ -153,8 +153,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | clientPassword | string | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
 | skipCertVerification | bool | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
-| execCommand_Ban | string | 空 | 执行外部命令 (Ban). 首个参数被视作外部程序路径, 各参数均应使用 ```|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
-| execCommand_Unban | string | 空 | 执行外部命令 (Unban). 首个参数被视作外部程序路径, 各参数均应使用 ```|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
+| execCommand_Ban | string | 空 | 执行外部命令 (Ban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
+| execCommand_Unban | string | 空 | 执行外部命令 (Unban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 ClientName, 不区分大小写, 支持正则表达式 |
 | blockListURL | string | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | portBlockList | []uint32 | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
