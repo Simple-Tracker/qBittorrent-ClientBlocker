@@ -65,7 +65,7 @@
 	"Failed-ChangeWorkingDir": "Failed to change working directory: %s",
 	"Failed-Login_BadUsernameOrPassword": "Login failed: Wrong username or password",
 	"Failed-Login_Other": "Login failed: %s",
-	"Failed-ExecCommand": "Exec command failed",
+	"Failed-ExecCommand": "Exec command failed, output: %s, error: %s",
 	"Success-RegHotkey": "Registered and started listening for window hotkey: CTRL+ALT+B",
 	"Success-ChangeWorkingDir": "Change working directory: %s",
 	"Success-LoadConfig": "Loading config file successfully",

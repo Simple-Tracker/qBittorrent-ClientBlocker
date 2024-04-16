@@ -45,12 +45,12 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerIP}", peerIP, -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerPort}", strconv.Itoa(peerPort), -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{torrentInfoHash}", torrentInfoHash, -1)
-		out := ExecCommand(execCommand_Ban)
+		status, out, err := ExecCommand(execCommand_Ban)
 
-		if out != nil {
+		if status {
 			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true)
+			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, string(err))
 		}
 	}
 }
@@ -82,12 +82,12 @@ func ClearBlockPeer() int {
 						execCommand_Unban = strings.Replace(execCommand_Unban, "{peerIP}", peerIP, -1)
 						execCommand_Unban = strings.Replace(execCommand_Unban, "{peerPort}", strconv.Itoa(peerPort), -1)
 						execCommand_Unban = strings.Replace(execCommand_Unban, "{torrentInfoHash}", peerInfo.InfoHash, -1)
-						out := ExecCommand(execCommand_Unban)
+						status, out, err := ExecCommand(execCommand_Unban)
 
-						if out != nil {
+						if status {
 							Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 						} else {
-							Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true)
+							Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, string(err))
 						}
 					}
 				}

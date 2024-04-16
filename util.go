@@ -121,13 +121,14 @@ func GenIPFilter_CIDR(blockPeerMap map[string]BlockPeerInfoStruct, clientType st
 
 	return ipfilterCount, ipfilterStr
 }
-func ExecCommand(command string) []byte {
-	cmd := exec.Command(command)
+func ExecCommand(command string) (bool, []byte, []byte) {
+	commandSplit := strings.Split(command, "|")
+	cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil
+		return false, out, []byte(err.Error())
 	}
 
-	return out
+	return true, out, nil
 }

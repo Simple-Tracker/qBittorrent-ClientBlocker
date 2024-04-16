@@ -75,7 +75,7 @@ var defaultLangContent = map[string]string {
 	"Failed-ChangeWorkingDir": "切换工作目录失败: %s",
 	"Failed-Login_BadUsernameOrPassword": "登录失败: 账号或密码错误",
 	"Failed-Login_Other": "登录失败: %s",
-	"Failed-ExecCommand": "执行命令失败",
+	"Failed-ExecCommand": "执行命令失败, 输出: %s, 错误: %s",
 	"Success-RegHotkey": "已注册并开始监听窗口热键: CTRL+ALT+B",
 	"Success-ChangeWorkingDir": "切换工作目录: %s",
 	"Success-LoadConfig": "加载配置文件成功",
