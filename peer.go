@@ -34,11 +34,7 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 	blockPeerPortMap[peerPort] = true
 	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
 
-	peerNet := ParseIPCIDRByConfig(peerIP)
-	if peerNet != nil {
-		peerNetStr := peerNet.String()
-		blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
-	}
+	AddBlockCIDR(ParseIPCIDRByConfig(peerIP))
 
 	if config.ExecCommand_Ban != "" {
 		execCommand_Ban := config.ExecCommand_Ban
@@ -54,6 +50,13 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 		}
 	}
 }
+func AddBlockCIDR(peerNet *net.IPNet) {
+	if peerNet == nil {
+		return
+	}
+
+	blockCIDRMap[peerNet.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
+}
 func ClearBlockPeer() int {
 	cleanCount := 0
 	if config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
@@ -67,7 +70,7 @@ func ClearBlockPeer() int {
 				if peerNet != nil {
 					peerNetStr := peerNet.String()
 					if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
-						if blockCIDRInfo.Timestamp > currentTimestamp {
+						if blockCIDRInfo.Timestamp > peerInfo.Timestamp {
 							peerInfo.Timestamp = blockCIDRInfo.Timestamp
 							blockPeerMap[peerIP] = peerInfo
 							continue
@@ -213,7 +216,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			ignoreByDownloaded = true
 		}
 		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
-			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, Progress: %.2f%%, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (peerProgress * 100), (float64(peerUploaded) / 1024 / 1024))
+			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, PeerDlSpeed: %.2f MB/s, PeerUpSpeed: %.2f MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerDownloaded) / 1024 / 1024), (float64(peerUploaded) / 1024 / 1024))
 			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 			return 1, peerNet
 		}
@@ -229,7 +232,7 @@ func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, 
 	peerIP = ProcessIP(peerIP)
 	peerStatus, peerNet := CheckPeer(peerIP, peerPort, peerID, peerClient, peerDlSpeed, peerUpSpeed, peerProgress, peerDownloaded, peerUploaded, torrentInfoHash, torrentTotalSize)
 	if config.Debug_CheckPeer {
-		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %d, PeerDlSpeed: %.2f%% MB/s, PeerUpSpeed: %.2f%% MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, torrentTotalSize, (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerDownloaded) / 1024 / 1024), (float64(peerUploaded) / 1024 / 1024), peerStatus)
+		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, PeerDlSpeed: %.2f MB/s, PeerUpSpeed: %.2f MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerDownloaded) / 1024 / 1024), (float64(peerUploaded) / 1024 / 1024), peerStatus)
 	}
 
 	switch peerStatus {
