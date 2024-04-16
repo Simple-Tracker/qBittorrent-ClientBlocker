@@ -138,7 +138,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
 | banIPCIDR | string | /32 | 封禁 IPv4 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | banIP6CIDR | string | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
-| ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 UserAgent 的 Peer. 通常出现于连接未完全建立的客户端 |
+| ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 ClientName 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignorePTTorrent | bool | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |
 | startDelay | uint32 | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | sleepTime | uint32 | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成客户端卡顿, 长间隔有助于平均 CPU 资源占用 |
@@ -154,8 +154,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
 | skipCertVerification | bool | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
 | execCommand_Ban | string | 空 | 执行外部命令 (Ban). 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
-| execCommand_Unban | string | 空 | 执行外部命令 (Ban). 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
-| blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 UserAgent, 不区分大小写, 支持正则表达式 |
+| execCommand_Unban | string | 空 | 执行外部命令 (Unban). 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
+| blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 ClientName, 不区分大小写, 支持正则表达式 |
 | blockListURL | string | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | portBlockList | []uint32 | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
 | ipBlockList | []string | 空 | 屏蔽 IP 列表. 支持不包括端口的 IP (1.2.3.4) 及 IPCIDR (2.3.3.3/3) |

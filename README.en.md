@@ -127,7 +127,7 @@ Docker version is configured through the same name variable configuration, which
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
 | banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
 | banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
-| ignoreEmptyPeer | bool | true | Ignore peers without PeerID and UserAgent. Usually occurs on clients where connection is not fully established |
+| ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
 | startDelay | uint32 | 0 (Sec, Disable) | Start delay. Special uses for some user |
 | sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
@@ -142,9 +142,9 @@ Docker version is configured through the same name variable configuration, which
 | clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
 | useBasicAuth | bool | false | At the same time, authentication is performed through HTTP Basic Auth. It can be used to add/replace authentication method of Web UI through reverse proxy, etc |
 | skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
-| execCommand_Ban | string | Empty | Execute external command (Unban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
-| execCommand_Unban | string | Empty | Execute external command (Ban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
-| blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or UserAgent at the same time, case-insensitive, support regular expression |
+| execCommand_Ban | string | Empty | Execute external command (Ban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| execCommand_Unban | string | Empty | Execute external command (Unban). Command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
 | ipBlockList | []string | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
