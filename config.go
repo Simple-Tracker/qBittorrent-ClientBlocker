@@ -17,6 +17,7 @@ import (
 )
 
 type ConfigStruct struct {
+	CheckUpdate                   bool
 	Debug                         bool
 	Debug_CheckTorrent            bool
 	Debug_CheckPeer               bool
@@ -105,6 +106,7 @@ var httpServer = http.Server {
 }
 
 var config = ConfigStruct {
+	CheckUpdate:                   true,
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,

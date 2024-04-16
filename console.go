@@ -69,7 +69,7 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 	return versionType, mainVersion, subVersion, sub2Version, version
 }
 func CheckUpdate() {
-	if (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
+	if !config.CheckUpdate || (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
 		return
 	}
 

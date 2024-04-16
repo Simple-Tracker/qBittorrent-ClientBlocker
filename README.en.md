@@ -115,6 +115,7 @@ Docker version is configured through the same name variable configuration, which
 
 | Parameter | Type | Default | Note |
 | ----- | ----- | ----- | ----- |
+| checkUpdate | bool | true | Check update. Automatically checks for update by default |
 | debug | bool | false | Debug mode. Enable you can see more information, but it may disrupt the field of vision |
 | debug_CheckTorrent | string | false | Debug mode (CheckTorrent, must enable debug). If it's enabled, debug info will include each Torrent Hash, but the amount of information will be large |
 | debug_CheckPeer | string | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
