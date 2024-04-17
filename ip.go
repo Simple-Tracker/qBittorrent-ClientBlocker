@@ -7,10 +7,6 @@ type IPInfoStruct struct {
 	Port map[int]bool
 	TorrentUploaded map[string]int64
 }
-type BlockCIDRInfoStruct struct {
-	Timestamp int64
-	Net       *net.IPNet
-}
 
 var ipMap = make(map[string]IPInfoStruct)
 var lastIPMap = make(map[string]IPInfoStruct)
@@ -95,11 +91,9 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 			if config.MaxIPPortCount > 0 {
 				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
-					if ipInfo.Net != nil {
-						blockCIDRMap[ipInfo.Net.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: ipInfo.Net }
-					}
 					ipBlockCount++
 					AddBlockPeer(ip, -1, "")
+					AddBlockCIDR(ip, ipInfo.Net)
 					continue
 				}
 			}
@@ -107,11 +101,9 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 			if lastIPInfo, exist := lastIPMap[ip]; exist {
 				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
-					if ipInfo.Net != nil {
-						blockCIDRMap[ipInfo.Net.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: ipInfo.Net }
-					}
 					ipBlockCount++
 					AddBlockPeer(ip, -1, "")
+					AddBlockCIDR(ip, ipInfo.Net)
 				}
 			}
 		}

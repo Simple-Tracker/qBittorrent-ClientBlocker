@@ -18,6 +18,11 @@ type BlockPeerInfoStruct struct {
 	Port      map[int]bool
 	InfoHash  string
 }
+type BlockCIDRInfoStruct struct {
+	Timestamp int64
+	Net       *net.IPNet
+	IPs       map[string]bool
+}
 
 var lastCleanTimestamp int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
@@ -34,7 +39,7 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 	blockPeerPortMap[peerPort] = true
 	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
 
-	AddBlockCIDR(ParseIPCIDRByConfig(peerIP))
+	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
 
 	if config.ExecCommand_Ban != "" {
 		execCommand_Ban := config.ExecCommand_Ban
@@ -50,12 +55,23 @@ func AddBlockPeer(peerIP string, peerPort int, torrentInfoHash string) {
 		}
 	}
 }
-func AddBlockCIDR(peerNet *net.IPNet) {
+func AddBlockCIDR(peerIP string, peerNet *net.IPNet) {
 	if peerNet == nil {
 		return
 	}
 
-	blockCIDRMap[peerNet.String()] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet }
+	peerNetStr := peerNet.String()
+	var blockIPsMap map[string]bool
+	if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; !exist {
+		blockIPsMap = make(map[string]bool)
+	} else {
+		blockIPsMap = blockCIDRMap[peerNetStr].IPs
+		if _, exist := blockCIDRInfo.IPs[peerIP]; !exist {
+			blockIPsMap[peerIP] = true
+		}
+	}
+
+	blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet, IPs: blockIPsMap }
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
@@ -75,7 +91,14 @@ func ClearBlockPeer() int {
 							blockPeerMap[peerIP] = peerInfo
 							continue
 						}
-						delete(blockCIDRMap, peerNetStr)
+
+						delete(blockCIDRInfo.IPs, peerIP)
+						if len(blockCIDRInfo.IPs) <= 0 {
+							delete(blockCIDRMap, peerNetStr)
+							continue
+						}
+
+						blockCIDRMap[peerNetStr] = blockCIDRInfo
 					}
 				}
 
