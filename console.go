@@ -26,10 +26,9 @@ type ReleaseStruct struct {
 }
 
 func ProcessVersion(version string) (int, int, int, int, string) {
-	version = strings.SplitN(version, " ", 2)[0]
-	versionSplit := strings.SplitN(version, ".", 2)
+	versionSplit := strings.SplitN(strings.SplitN(version, " ", 2)[0], ".", 2)
 
-	if versionSplit[0] == "Unknown" || len(versionSplit) != 2 {
+	if versionSplit[0] == "Unknown" {
 		return -1, 0, 0, 0, ""
 	}
 
@@ -37,8 +36,12 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 		return -2, 0, 0, 0, ""
 	}
 
-	if strings.Contains(version, "-") {
+	if strings.Contains(version, "-") || strings.Contains(version, "_") {
 		return -3, 0, 0, 0, ""
+	}
+
+	if len(versionSplit) != 2 {
+		return -1, 0, 0, 0, ""
 	}
 
 	mainVersion, err1 := strconv.Atoi(versionSplit[0])

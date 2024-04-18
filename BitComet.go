@@ -55,7 +55,7 @@ func BC_ParseSize(sizeStr string) int64 {
 
 	matched := false
 	multipler := 1
-	switch sizeStrSplit[1] {
+	switch strings.ToUpper(sizeStrSplit[1]) {
 		case "EB":
 			multipler *= 1024
 			fallthrough
@@ -113,8 +113,8 @@ func BC_ParsePrecent(precentStr string) float64 {
 	return precent
 }
 func BC_ParseIP(ipStr string) (string, int) {
-	ipStr = StrTrim(ipStr)
-	if ipStr == "Myself" {
+	ipStr = strings.ToLower(StrTrim(ipStr))
+	if ipStr == "myself" {
 		return "", -1
 	}
 
@@ -155,7 +155,7 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 	}
 
 	torrentsMap := make(map[int]BC_TorrentStruct)
-	document.Find("table:last-child > tbody > tr").Each(func (index int, element *goquery.Selection) {
+	document.Find("table").Last().Find("tbody > tr").Each(func (index int, element *goquery.Selection) {
 		if index == 0 {
 			return
 		}
@@ -167,7 +167,7 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 		element.Find("td").EachWithBreak(func (tdIndex int, tdElement *goquery.Selection) bool {
 			switch tdIndex {
 				case 0:
-					if StrTrim(tdElement.Text()) != "BT" {
+					if strings.ToUpper(StrTrim(tdElement.Text())) != "BT" {
 						return false
 					}
 				case 1:
@@ -178,7 +178,7 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 
 					torrentID = BC_ParseTorrentLink(href)
 				case 2:
-					torrentStatus = StrTrim(tdElement.Text())
+					torrentStatus = strings.ToLower(StrTrim(tdElement.Text()))
 				case 4:
 					torrentSize = BC_ParseSize(tdElement.Text())
 				case 7:
@@ -210,8 +210,8 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 		return nil
 	}
 
-	torrentsMap := []BC_PeerStruct {}
-	document.Find("table:last-child > tbody > tr").Each(func (index int, element *goquery.Selection) {
+	torrentPeersMap := []BC_PeerStruct {}
+	document.Find("table").Last().Find("tbody > tr").Each(func (index int, element *goquery.Selection) {
 		if index == 0 {
 			return
 		}
@@ -254,8 +254,8 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 		}
 
 		peerStruct := BC_PeerStruct { IP: peerIP, Port: peerPort, Client: peerClient, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, DlSpeed: peerDlSpeed, UpSpeed: peerUpSpeed }
-		torrentsMap = append(torrentsMap, peerStruct)
+		torrentPeersMap = append(torrentPeersMap, peerStruct)
 	})
 
-	return &torrentsMap
+	return &torrentPeersMap
 }
