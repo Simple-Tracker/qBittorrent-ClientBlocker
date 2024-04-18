@@ -153,6 +153,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | clientPassword | string | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
 | skipCertVerification | bool | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
+| fetchFailedThreshold | int | 0 (禁用) | 最大获取失败次数. 当超过设定次数, 将执行设置的外部命令 |
+| execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 当获取失败次数超过设定次数后执行 |
 | execCommand_Ban | string | 空 | 执行外部命令 (Ban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | execCommand_Unban | string | 空 | 执行外部命令 (Unban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 ClientName, 不区分大小写, 支持正则表达式 |

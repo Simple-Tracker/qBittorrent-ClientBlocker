@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 )
 
+var fetchFailedCount int = 0
+
 func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
@@ -64,6 +66,19 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 	}
 
 	if err != nil {
+		if config.FetchFailedThreshold > 0 && config.ExecCommand_FetchFailed != "" {
+			fetchFailedCount++
+			if fetchFailedCount >= config.FetchFailedThreshold {
+				fetchFailedCount = 0
+				status, out, err := ExecCommand(config.ExecCommand_FetchFailed)
+
+				if status {
+					Log("Fetch", GetLangText("Success-ExecCommand"), true, out)
+				} else {
+					Log("Fetch", GetLangText("Failed-ExecCommand"), true, out, string(err))
+				}
+			}
+		}
 		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
 		return -2, nil, nil
 	}
