@@ -26,22 +26,22 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 1. Download compressed from [**GitHub Release**](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases) and decompress it;
 
     <details>
-        <summary>View common platform download version of comparison table</summary>
+    <summary>View common platform download version of comparison table</summary>
 
-        | OS       | Processor Arch | Processor Integers | Download Version | Note                                                                                    |
-        | -------- | ----------     | ----------         | -------------    | ------------------------------------------------------                                  |
-        | macOS    | ARM64          | 64-bit             | darwin-arm64     | Common in Apple M series                                                                |
-        | macOS    | AMD64          | 64-bit             | darwin-amd64     | Common in Intel series                                                                  |
-        | Windows  | AMD64          | 64-bit             | windows-amd64    | Common in most modern PC                                                                |
-        | Windows  | i386           | 32-bit             | windows-386      | Occasionally on some old PC                                                             |
-        | Windows  | ARM64          | 64-bit             | windows-arm64    | Common on new platform, it's applied to some tablet/notebooks/minority special hardware |
-        | Windows  | ARMv6          | 32-bit             | windows-arm      | Rare platform, applied to some ancient hardware, such as Surface RT, etc                |
-        | Linux    | AMD64          | 64-bit             | linux-amd64      | Common NAS and server                                                                   |
-        | Linux    | i386           | 32-bit             | linux-386        | Rarely in some old NAS and server                                                       |
-        | Linux    | ARM64          | 64-bit             | linux-arm64      | Common server and development board, such as Oracle or Raspberry Pi, etc                |
-        | Linux    | ARMv*          | 32-bit             | linux-armv*        | Rarely in some old server and development board, Check /proc/cpuinfo or try which version can run from high to low |
+    | OS       | Processor Arch | Processor Integers | Download Version | Note                                                                                    |
+    | -------- | ----------     | ----------         | -------------    | ------------------------------------------------------                                  |
+    | macOS    | ARM64          | 64-bit             | darwin-arm64     | Common in Apple M series                                                                |
+    | macOS    | AMD64          | 64-bit             | darwin-amd64     | Common in Intel series                                                                  |
+    | Windows  | AMD64          | 64-bit             | windows-amd64    | Common in most modern PC                                                                |
+    | Windows  | i386           | 32-bit             | windows-386      | Occasionally on some old PC                                                             |
+    | Windows  | ARM64          | 64-bit             | windows-arm64    | Common on new platform, it's applied to some tablet/notebooks/minority special hardware |
+    | Windows  | ARMv6          | 32-bit             | windows-arm      | Rare platform, applied to some ancient hardware, such as Surface RT, etc                |
+    | Linux    | AMD64          | 64-bit             | linux-amd64      | Common NAS and server                                                                   |
+    | Linux    | i386           | 32-bit             | linux-386        | Rarely in some old NAS and server                                                       |
+    | Linux    | ARM64          | 64-bit             | linux-arm64      | Common server and development board, such as Oracle or Raspberry Pi, etc                |
+    | Linux    | ARMv*          | 32-bit             | linux-armv*        | Rarely in some old server and development board, Check /proc/cpuinfo or try which version can run from high to low |
 
-        Other versions of Linux/Netbsd/FreeBSD/OpenBSD/Solaris can use this form as an example, and select one that suits you in the list.
+    Other versions of Linux/Netbsd/FreeBSD/OpenBSD/Solaris can use this form as an example, and select one that suits you in the list.
     </details>
 
 2. After decompression, you may need to modify the attached config file ```config.json```;
@@ -109,6 +109,15 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 
 ## 参数 Flag
 
+| Parameter | Default | Note |
+| ----- | ----- | ----- |
+| -v/--version | false | Show program version and exit  |
+| -c/--config | config.json | Config path |
+| -ca/--config_additional | config_additional.json | Additional config path |
+| --debug | false | Debug mode. Effective before loading config file |
+| --startdelay | 0 (Sec, Disable) | Start delay. Special uses for some user |
+| --nochdir | false | Don't change working directory. Change to the program directory by default |
+
 ## 配置 Config
 
 Docker version is configured through the same name variable configuration, which actually is implemented by automatically conversion environment variable as config file.
@@ -129,7 +138,6 @@ Docker version is configured through the same name variable configuration, which
 | banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
-| startDelay | uint32 | 0 (Sec, Disable) | Start delay. Special uses for some user |
 | sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
 | longConnection | bool | true | Long connection. Enable to reduce resource consumption |

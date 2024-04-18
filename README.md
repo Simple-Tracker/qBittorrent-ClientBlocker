@@ -29,22 +29,22 @@
 1. 从 [**GitHub Release**](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/releases) 下载压缩包并解压;
 
     <details>
-        <summary>查看 常见平台下载版本 对照表</summary>
+    <summary>查看 常见平台下载版本 对照表</summary>
 
-        | 操作系统 | 处理器架构 | 处理器位数 | 下载版本      | 说明 |
-        | -------- | ---------- | ---------- | ------------- | ----------------- |
-        | macOS    | ARM64      | 64 位      | darwin-arm64  | 常见于 Apple M 系列 |
-        | macOS    | AMD64      | 64 位      | darwin-amd64  | 常见于 Intel 系列 |
-        | Windows  | AMD64      | 64 位      | windows-amd64 | 常见于大部分现代 PC |
-        | Windows  | i386       | 32 位      | windows-386   | 少见于部分老式 PC |
-        | Windows  | ARM64      | 64 位      | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件 |
-        | Windows  | ARMv7      | 32 位      | windows-arm   | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等 |
-        | Linux    | AMD64      | 64 位      | linux-amd64   | 常见于大部分 NAS 及服务器 |
-        | Linux    | i386       | 32 位      | linux-386     | 少见于部分老式 NAS 及服务器 |
-        | Linux    | ARM64      | 64 位      | linux-arm64   | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
-        | Linux    | ARMv*      | 32 位      | linux-armv*   | 少见于部分老式服务器及开发板, 查看 /proc/cpuinfo 或 从高到底试哪个能跑 |
+    | 操作系统 | 处理器架构 | 处理器位数 | 下载版本      | 说明 |
+    | -------- | ---------- | ---------- | ------------- | ----------------- |
+    | macOS    | ARM64      | 64 位      | darwin-arm64  | 常见于 Apple M 系列 |
+    | macOS    | AMD64      | 64 位      | darwin-amd64  | 常见于 Intel 系列 |
+    | Windows  | AMD64      | 64 位      | windows-amd64 | 常见于大部分现代 PC |
+    | Windows  | i386       | 32 位      | windows-386   | 少见于部分老式 PC |
+    | Windows  | ARM64      | 64 位      | windows-arm64 | 常见于新型平台, 应用于部分平板/笔记本/少数特殊硬件 |
+    | Windows  | ARMv7      | 32 位      | windows-arm   | 少见于罕见平台, 应用于部分上古硬件, 如 Surface RT 等 |
+    | Linux    | AMD64      | 64 位      | linux-amd64   | 常见于大部分 NAS 及服务器 |
+    | Linux    | i386       | 32 位      | linux-386     | 少见于部分老式 NAS 及服务器 |
+    | Linux    | ARM64      | 64 位      | linux-arm64   | 常见于部分服务器及开发板, 如 Oracle 或 Raspberry Pi 等 |
+    | Linux    | ARMv*      | 32 位      | linux-armv*   | 少见于部分老式服务器及开发板, 查看 /proc/cpuinfo 或 从高到底试哪个能跑 |
 
-        其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.
+    其它版本的 Linux/NetBSD/FreeBSD/OpenBSD/Solaris 可以此类推, 并在列表中选择适合自己的.
     </details>
 
 2. 解压后, 可能需要修改随附的配置文件 ```config.json```;
@@ -118,6 +118,7 @@
 | -c/--config | config.json | 配置文件路径 |
 | -ca/--config_additional | config_additional.json | 附加配置文件路径 |
 | --debug | false (禁用) | 调试模式. 加载配置文件前生效 |
+| --startdelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | --nochdir | false (禁用) | 不切换工作目录. 默认会切换至程序目录 |
 
 ## 配置 Config
@@ -140,7 +141,6 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banIP6CIDR | string | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 ClientName 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignorePTTorrent | bool | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |
-| startDelay | uint32 | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | sleepTime | uint32 | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成客户端卡顿, 长间隔有助于平均 CPU 资源占用 |
 | timeout | uint32 | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |
 | longConnection | bool | true (启用) | 长连接. 启用可降低资源消耗 |

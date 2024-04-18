@@ -31,7 +31,6 @@ type ConfigStruct struct {
 	BanIP6CIDR                    string
 	IgnoreEmptyPeer               bool
 	IgnorePTTorrent               bool
-	StartDelay                    uint32
 	SleepTime                     uint32
 	Timeout                       uint32
 	LongConnection                bool
@@ -75,6 +74,7 @@ var programVersion = "Unknown"
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var noChdir bool
+var startDelay uint
 
 var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
@@ -84,9 +84,13 @@ var ipBlockListFromURLCompiled []*net.IPNet
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
-var configFilename string
 var configLastMod int64 = 0
-var additionConfigFilename string
+var configFilename string = "config.json"
+var shortFlag_configFilename string
+var longFlag_configFilename string
+var additionConfigFilename string = "config_additional.json"
+var shortFlag_additionConfigFilename string
+var longFlag_additionConfigFilename string
 var additionConfigLastMod int64 = 0
 var ipBlockListLastFetch int64 = 0
 var blockListLastFetch int64 = 0
@@ -122,7 +126,6 @@ var config = ConfigStruct {
 	BanIP6CIDR:                    "/128",
 	IgnoreEmptyPeer:               true,
 	IgnorePTTorrent:               true,
-	StartDelay:                    0,
 	SleepTime:                     20,
 	Timeout:                       6,
 	LongConnection:                true,
@@ -455,11 +458,12 @@ func LoadInitConfig(firstLoad bool) bool {
 func RegFlag() {
 	flag.BoolVar(&shortFlag_ShowVersion, "v", false, GetLangText("ProgramVersion"))
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, GetLangText("ProgramVersion"))
-	flag.StringVar(&configFilename, "c", "config.json", GetLangText("ConfigPath"))
-	flag.StringVar(&configFilename, "config", "config.json", GetLangText("ConfigPath"))
-	flag.StringVar(&additionConfigFilename, "ca", "config_additional.json", GetLangText("AdditionalConfigPath"))
-	flag.StringVar(&additionConfigFilename, "config_additional", "config_additional.json", GetLangText("AdditionalConfigPath"))
+	flag.StringVar(&shortFlag_configFilename, "c", "", GetLangText("ConfigPath"))
+	flag.StringVar(&longFlag_configFilename, "config", "", GetLangText("ConfigPath"))
+	flag.StringVar(&shortFlag_additionConfigFilename, "ca", "", GetLangText("AdditionalConfigPath"))
+	flag.StringVar(&longFlag_additionConfigFilename, "config_additional", "", GetLangText("AdditionalConfigPath"))
 	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
+	flag.UintVar(&startDelay, "startdelay", 0, GetLangText("StartDelay"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
 	flag.Parse()
 }
@@ -474,6 +478,19 @@ func PrepareEnv() bool {
 	if shortFlag_ShowVersion || longFlag_ShowVersion {
 		return false
 	}
+
+	if longFlag_configFilename != "" {
+		configFilename = longFlag_configFilename
+	} else if shortFlag_configFilename != "" {
+		configFilename = shortFlag_configFilename
+	}
+
+	if longFlag_additionConfigFilename != "" {
+		additionConfigFilename = longFlag_additionConfigFilename
+	} else if shortFlag_additionConfigFilename != "" {
+		additionConfigFilename = shortFlag_additionConfigFilename
+	}
+
 
 	path, err := os.Executable()
 	if err != nil {

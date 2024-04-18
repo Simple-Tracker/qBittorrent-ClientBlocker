@@ -301,12 +301,13 @@ func WaitStop() {
 		isRunning = false
 }
 func RunConsole() {
-	if config.StartDelay > 0 {
-		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, config.StartDelay)
-		time.Sleep(time.Duration(config.StartDelay) * time.Second)
+	if startDelay > 0 {
+		Log("RunConsole", GetLangText("StartDelay"), false, startDelay)
+		time.Sleep(time.Duration(startDelay) * time.Second)
 	}
 	if !LoadInitConfig(true) {
 		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
+		time.Sleep(2 * time.Second)
 		os.Exit(1)
 	}
 	isRunning = true
