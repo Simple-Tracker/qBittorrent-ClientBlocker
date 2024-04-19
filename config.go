@@ -81,7 +81,7 @@ var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
 var blockListFromURLCompiled []*regexp.Regexp
 var ipBlockListCompiled []*net.IPNet
-var ipBlockListFromURLCompiled []*net.IPNet
+var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
@@ -93,8 +93,8 @@ var additionConfigFilename string = "config_additional.json"
 var shortFlag_additionConfigFilename string
 var longFlag_additionConfigFilename string
 var additionConfigLastMod int64 = 0
-var ipBlockListLastFetch int64 = 0
 var blockListLastFetch int64 = 0
+var ipBlockListLastFetch int64 = 0
 
 var httpTransport = &http.Transport {
 	DisableKeepAlives:   true,
@@ -165,6 +165,7 @@ var config = ConfigStruct {
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
 }
+
 func SetIPBlockListFromURL() bool {
 	if config.IPBlockListURL == "" || (ipBlockListLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
 		return true
@@ -176,6 +177,8 @@ func SetIPBlockListFromURL() bool {
 		return false
 	}
 
+	ipBlockListLastFetch = currentTimestamp
+
 	// Max 8MB.
 	if len(ipBlockListContent) > 8388608 {
 		Log("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
@@ -183,12 +186,17 @@ func SetIPBlockListFromURL() bool {
 	}
 
 	ipBlockListArr := strings.Split(string(ipBlockListContent), "\n")
-	ipBlockListFromURLCompiled = make([]*net.IPNet, len(ipBlockListArr))
-	k := 0
+	tmpIPBlockListFromURLCompiled := make(map[string]*net.IPNet)
+
 	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
 		ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
 		if ipBlockListLine == "" {
 			Log("Debug-SetIPBlockListFromURL_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
+			continue
+		}
+
+		if cidr, exists := ipBlockListFromURLCompiled[ipBlockListLine]; exists {
+			tmpIPBlockListFromURLCompiled[ipBlockListLine] = cidr
 			continue
 		}
 
@@ -199,12 +207,10 @@ func SetIPBlockListFromURL() bool {
 			continue
 		}
 
-		ipBlockListFromURLCompiled[k] = cidr
-
-		k++
+		tmpIPBlockListFromURLCompiled[ipBlockListLine] = cidr
 	}
 
-	ipBlockListLastFetch = currentTimestamp
+	ipBlockListFromURLCompiled = tmpIPBlockListFromURLCompiled
 	ruleCount := len(ipBlockListFromURLCompiled)
 
 	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
@@ -225,6 +231,8 @@ func SetBlockListFromURL() bool {
 		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse"), true)
 		return false
 	}
+
+	blockListLastFetch = currentTimestamp
 
 	// Max 8MB.
 	if len(blockListContent) > 8388608 {
@@ -255,7 +263,6 @@ func SetBlockListFromURL() bool {
 		k++
 	}
 
-	blockListLastFetch = currentTimestamp
 	ruleCount := len(blockListFromURLCompiled)
 
 	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
