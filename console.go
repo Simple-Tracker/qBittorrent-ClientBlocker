@@ -305,15 +305,29 @@ func RunConsole() {
 		Log("RunConsole", GetLangText("StartDelay"), false, startDelay)
 		time.Sleep(time.Duration(startDelay) * time.Second)
 	}
+
 	if !LoadInitConfig(true) {
 		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
 		time.Sleep(2 * time.Second)
 		os.Exit(1)
 	}
+
 	isRunning = true
+
+	if config.ExecCommand_Run != "" {
+		status, out, err := ExecCommand(config.ExecCommand_Run)
+
+		if status {
+			Log("RunConsole", GetLangText("Success-ExecCommand"), true, out)
+		} else {
+			Log("RunConsole", GetLangText("Failed-ExecCommand"), true, out, string(err))
+		}
+	}
+
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
 	go WaitStop()
 	loopTicker = time.NewTicker(1 * time.Second)
+
 	for ; true; <- loopTicker.C {
 		if !isRunning {
 			loopTicker.Stop()

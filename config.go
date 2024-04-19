@@ -46,6 +46,7 @@ type ConfigStruct struct {
 	SkipCertVerification          bool
 	FetchFailedThreshold          int
 	ExecCommand_FetchFailed       string   
+	ExecCommand_Run               string   
 	ExecCommand_Ban               string
 	ExecCommand_Unban             string
 	BlockList                     []string
@@ -141,6 +142,7 @@ var config = ConfigStruct {
 	SkipCertVerification:          false,
 	FetchFailedThreshold:          0,
 	ExecCommand_FetchFailed:       "",
+	ExecCommand_Run:               "",
 	ExecCommand_Ban:               "",
 	ExecCommand_Unban:             "",
 	BlockList:                     []string {},
