@@ -28,6 +28,6 @@ WORKDIR /app
 
 COPY --from=go /app ./
 RUN chmod +x ./entrypoint.sh
-RUN apk update && apk add --no-cache jq
+RUN apk update && apk add --no-cache jq socat
 
 ENTRYPOINT ["./entrypoint.sh"]
