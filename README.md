@@ -13,8 +13,7 @@
 -   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
 -   在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
-我们相信, 通过即时通讯, 能够: 改善问题跟踪及处理的速度和流程 及 更好的加快想法流转.  
-因此, 我们创建了一个 QQ 用户群 (临时): [857326151](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=edXDN0Dk0kFfgS6t2Uc1MeqUD4NLx76_&authKey=u2Cm6up4ctiHrLTSwCvIo%2FxETz5xYa6%2BBWK187BSGHlgEng6ZRIuv8OC870QGoGq&noverify=0&group_code=857326151)
+另: 我们相信, 通过即时通讯, 能够: 改善问题跟踪及处理的速度和流程 及 更好的加快想法流转. 因此, 我们创建了一个 QQ 用户群 (临时): [857326151](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=edXDN0Dk0kFfgS6t2Uc1MeqUD4NLx76_&authKey=u2Cm6up4ctiHrLTSwCvIo%2FxETz5xYa6%2BBWK187BSGHlgEng6ZRIuv8OC870QGoGq&noverify=0&group_code=857326151)
 
 ![Preview](Preview.png)
 
@@ -180,7 +179,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 
 ## 反馈 Feedback
 用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
-注意: 应基于 dev 分支. 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue.
+注意: 应基于 dev 分支. 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue. 由于人手有限, 开发进度可能较为缓慢.
 
 ## 致谢 Credit
 
