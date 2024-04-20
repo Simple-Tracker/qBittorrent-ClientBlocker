@@ -156,6 +156,8 @@ Docker version is configured through the same name variable configuration, which
 | execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | execCommand_Unban | string | Empty | Execute external command (Unban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
+| syncServerURL | string | Empty | Sync server URL. Sync server will submit TorrentMap to server and receive BlockIPCIDR from server |
+| syncServerToken | string | Empty | Sync server Token. Some sync server may require authentication |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |

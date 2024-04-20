@@ -24,6 +24,7 @@ var defaultLangContent = map[string]string {
 	"GC_TorrentMap": "触发垃圾回收 (torrentMap): %s/%d",
 	"GetConfig_UseConfig": "使用客户端配置文件: %s",
 	"LoadLog_HotReload": "发现日志目录更改, 正在进行热重载 (%s)",
+	"SyncWithServer_Compile-BlockByReason": "封禁原因: %s",
 	"CheckUpdate-ShowVersion": "当前版本: %s, 最新版本: %s, 最新版本 (Beta): %s",
 	"CheckUpdate-DetectNewVersion": "检测到新的版本: %s, 可访问 %s 以进行更新, 更新内容如下: \n%s",
 	"CheckUpdate-DetectNewBetaVersion": "检测到新的版本 (Beta): %s, 可访问 %s 以进行更新, 更新内容如下: \n%s",
@@ -50,6 +51,7 @@ var defaultLangContent = map[string]string {
 	"Error-GetConfig_LoadConfigMeta": "读取客户端配置文件元数据时发生了错误: %s",
 	"Error-SetBlocklist_Compile": ":%d 表达式 %s 有错误",
 	"Error-SetIPBlockList_Compile": ":%d IP %s 有错误",
+	"Error-SyncWithServer_Compile": ":%d IP %s 有错误",
 	"Error-RestartTorrentByMap_Stop": "停止 Torrent 时发生了错误: %s",
 	"Error-RestartTorrentByMap_Start": "开始 Torrent 时发生了错误: %s",
 	"Error-LargeFile": "解析时发生了错误: 目标大小大于 8MB",
@@ -69,6 +71,7 @@ var defaultLangContent = map[string]string {
 	"Error-LoadLog_Close": "关闭日志时发生了错误: %s",
 	"Error-Task_EmptyURL": "检测到 URL 为空, 可能是未配置且未能自动读取客户端配置文件",
 	"Error-Task_NotSupportClient": "检测到不支持的客户端, 可能是未配置且未能自动检测客户端: %s",
+	"Error-SyncWithServer_ServerError": "同步服务器错误: %s",
 	"Error-Debug-EmptyLine": ":%d 为空",
 	"Error-Debug-GetConfigPath_GetUserHomeDir": "获取 User Home 目录时发生了错误: %s",
 	"Error-Debug-GetConfigPath_GetUserConfigDir": "获取 User Config 目录时发生了错误: %s",
@@ -88,6 +91,7 @@ var defaultLangContent = map[string]string {
 	"Success-Login": "登录成功",
 	"Success-ClearBlockPeer": "已清理过期客户端: %d 个",
 	"Success-ExecCommand": "执行命令成功, 输出: %s",
+	"Success-SyncWithServer": "成功与同步服务器同步",
 }
 
 func LoadLang(langCode string) bool {

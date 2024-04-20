@@ -14,6 +14,7 @@
 	"GC_TorrentMap": "Trigger GC (torrentMap): %s/%d",
 	"GetConfig_UseConfig": "Use client config: %s",
 	"LoadLog_HotReload": "Log directory change found, hot reload in progress (%s)",
+	"SyncWithServer_Compile-BlockByReason": "Ban reason: %s",
 	"CheckUpdate-ShowVersion": "Current version: %s, Latest version: %s, Latest version (Beta): %s",
 	"CheckUpdate-DetectNewVersion": "Detected new version: %s, you can update it by visit %s, update content are below: \n%s",
 	"CheckUpdate-DetectNewBetaVersion": "Detected new version (Beta): %s, you can update it by visit %s, update content are below: \n%s",
@@ -40,6 +41,7 @@
 	"Error-GetConfig_LoadConfigMeta": "An error occurred while reading client config file: %s",
 	"Error-SetBlocklist_Compile": ":%d regexp %s has error",
 	"Error-SetIPBlockList_Compile": ":%d IP %s has error",
+	"Error-SyncWithServer_Compile": ":%d IP %s has error",
 	"Error-RestartTorrentByMap_Stop": "An error occurred while stop torrent: %s",
 	"Error-RestartTorrentByMap_Start": "An error occurred while start torrent: %s",
 	"Error-LargeFile": "An error occurred while parsing: Target size is greater than 8MB",
@@ -59,6 +61,7 @@
 	"Error-LoadLog_Close": "An error occurred while closing log: %s",
 	"Error-Task_EmptyURL": "Detected ClientURL is empty, may not be configured and failed to automatically read client config file",
 	"Error-Task_NotSupportClient": "Detected unsupport client, may not be configured and failed to automatically detect client type: %s",
+	"Error-SyncWithServer_ServerError": "Sync server error: %s",
 	"Error-Debug-EmptyLine": ":%d is empty",
 	"Error-Debug-GetConfigPath_GetUserHomeDir": "An error occurred while retrieving the User Home directory: %s",
 	"Error-Debug-GetConfigPath_GetUserConfigDir": "An error occurred while retrieving the User Config directory: %s",
@@ -77,5 +80,6 @@
 	"Success-DetectClient": "Detect client type successful: %s",
 	"Success-Login": "Login successful",
 	"Success-ClearBlockPeer": "Cleaned up expired client: %d",
-	"Success-ExecCommand": "Exec command success, output: %s"
+	"Success-ExecCommand": "Exec command success, output: %s",
+	"Success-SyncWithServer": "Sync with server success"
 }

@@ -261,6 +261,8 @@ func Task() {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
 		}
 	}
+
+	SyncWithServer()
 }
 func GC() {
 	ipMapGCCount := (len(ipMap) - 23333333)

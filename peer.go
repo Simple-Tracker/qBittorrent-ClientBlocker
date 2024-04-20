@@ -6,13 +6,6 @@ import (
 	"strconv"
 )
 
-type PeerInfoStruct struct {
-	Net        *net.IPNet
-	Port       map[int]bool
-	Progress   float64
-	Downloaded int64
-	Uploaded   int64
-}
 type BlockPeerInfoStruct struct {
 	Timestamp int64
 	Result    string
@@ -221,6 +214,16 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_FromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
+				return 3, peerNet
+			}
+		}
+		for _, v := range ipBlockCIDRMapFromSyncServerCompiled {
+			if v == nil {
+				continue
+			}
+			if v.Contains(ip) {
+				Log("CheckPeer_AddBlockPeer (Bad-IP_FromSyncServer)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
 				return 3, peerNet
 			}

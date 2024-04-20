@@ -10,13 +10,20 @@ type TorrentInfoStruct struct {
 	Size  int64
 	Peers map[string]PeerInfoStruct
 }
+type PeerInfoStruct struct {
+	Net        *net.IPNet
+	Port       map[int]bool
+	Progress   float64
+	Downloaded int64
+	Uploaded   int64
+}
 
 var torrentMap = make(map[string]TorrentInfoStruct)
 var lastTorrentMap = make(map[string]TorrentInfoStruct)
 var lastTorrentCleanTimestamp int64 = 0
 
 func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
-	if !((config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0) || config.BanByRelativeProgressUploaded) {
+	if !((config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0) || config.BanByRelativeProgressUploaded || config.SyncServerURL != "") {
 		return
 	}
 

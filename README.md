@@ -157,6 +157,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | execCommand_Run | string | 空 | 执行外部命令 (Run). 首个参数被视作外部程序路径, 当程序启动后执行 |
 | execCommand_Ban | string | 空 | 执行外部命令 (Ban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | execCommand_Unban | string | 空 | 执行外部命令 (Unban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
+| syncServerURL | string | 空 | 同步服务器 URL. 同步服务器会将 TorrentMap 提交至服务器, 并从服务器接收屏蔽 IPCIDR 列表 |
+| syncServerToken | string | 空 | 同步服务器 Token. 部分同步服务器可能需要认证 |
 | blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 ClientName, 不区分大小写, 支持正则表达式 |
 | blockListURL | string | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | portBlockList | []uint32 | 空 | 屏蔽端口列表. 若 Peer 端口与列表内任意端口匹配, 则允许屏蔽 Peer |
