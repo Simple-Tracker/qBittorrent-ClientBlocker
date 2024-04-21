@@ -24,6 +24,12 @@ jobs:
             goarch: 'arm'
             goarm: '5'
           - goos: linux
+            goarch: '386'
+            pre_command: 'export CGO_ENABLED=0'
+          - goos: linux
+            goarch: 'amd64'
+            pre_command: 'export CGO_ENABLED=0'
+          - goos: linux
             goarch: 'arm'
             goarm: '7'
           - goos: linux
