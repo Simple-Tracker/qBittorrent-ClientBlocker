@@ -46,7 +46,8 @@
 		"240e:90e:2000:2006::/60",
 		"240e:918:8008::/48"
 	],
-	"_blockList": [ // 可选 blockList, 合并以屏蔽媒体播放器.
+	"_blockList": [
+		// 可选 blockList, 合并以屏蔽媒体播放器.
 		"^-UW\\w{4}-", // uTorrent Web.
 		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-", "StellarPlayer", // 恒星播放器.
 		"dandanplay" // 弹弹 Play.
