@@ -85,14 +85,13 @@ var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
-var configLastMod int64 = 0
+var configLastMod = make(map[string]int64)
 var configFilename string = "config.json"
 var shortFlag_configFilename string
 var longFlag_configFilename string
 var additionConfigFilename string = "config_additional.json"
 var shortFlag_additionConfigFilename string
 var longFlag_additionConfigFilename string
-var additionConfigLastMod int64 = 0
 var blockListLastFetch int64 = 0
 var ipBlockListLastFetch int64 = 0
 
@@ -275,71 +274,43 @@ func SetIPBlockListFromURL() bool {
 
 	return true
 }
-func LoadConfig() int {
-	configFileStat, err := os.Stat(configFilename)
+func LoadConfig(filename string, notExistErr bool) int {
+	configFileStat, err := os.Stat(filename)
 	if err != nil {
-		Log("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
+		notExist := os.IsNotExist(err)
+		if notExistErr || !notExist {
+			Log("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, filename, err.Error())
+		}
+		if notExist {
+			return -5
+		}
+
 		return -2
 	}
 
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
-	if tmpConfigLastMod <= configLastMod {
+	if tmpConfigLastMod <= configLastMod[filename] {
 		return -1
 	}
 
-	if configLastMod != 0 {
-		Log("Debug-LoadConfig", GetLangText("Debug-LoadConfig_HotReload"), false)
+	if configLastMod[filename] != 0 {
+		Log("Debug-LoadConfig", GetLangText("Debug-LoadConfig_HotReload"), false, filename)
 	}
 
-	configFile, err := os.ReadFile(configFilename)
+	configFile, err := os.ReadFile(filename)
 	if err != nil {
-		Log("LoadConfig", GetLangText("Error-LoadConfig"), true, err.Error())
+		Log("LoadConfig", GetLangText("Error-LoadConfig"), true, filename, err.Error())
 		return -3
 	}
 
-	configLastMod = tmpConfigLastMod
+	configLastMod[filename] = tmpConfigLastMod
 
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
-		Log("LoadConfig", GetLangText("Error-ParseConfig"), true, err.Error())
+		Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 		return -4
 	}
 
-	Log("LoadConfig", GetLangText("Success-LoadConfig"), true)
-
-	return 0
-}
-func LoadAdditionalConfig() int {
-	additionalConfigFileStat, err := os.Stat(additionConfigFilename)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			Log("Debug-LoadAdditionalConfig", GetLangText("Error-LoadConfigMeta"), false, err.Error())
-		}
-		return -2
-	}
-
-	tmpAdditionalConfigLastMod := additionalConfigFileStat.ModTime().Unix()
-	if tmpAdditionalConfigLastMod <= additionConfigLastMod {
-		return -1
-	}
-
-	if additionConfigLastMod != 0 {
-		Log("Debug-LoadAdditionalConfig", GetLangText("Debug-LoadConfig_HotReload"), false)
-	}
-
-	additionalConfigFile, err := os.ReadFile(additionConfigFilename)
-	if err != nil {
-		Log("LoadAdditionalConfig", GetLangText("Error-LoadConfig"), true, err.Error())
-		return -3
-	}
-
-	additionConfigLastMod = tmpAdditionalConfigLastMod
-
-	if err := json.Unmarshal(jsonc.ToJSON(additionalConfigFile), &config); err != nil {
-		Log("LoadAdditionalConfig", GetLangText("Error-ParseConfig"), true, err.Error())
-		return -4
-	}
-
-	Log("LoadAdditionalConfig", GetLangText("Success-LoadConfig"), true)
+	Log("LoadConfig", GetLangText("Success-LoadConfig"), true, filename)
 
 	return 0
 }
@@ -425,14 +396,19 @@ func InitConfig() {
 func LoadInitConfig(firstLoad bool) bool {
 	lastURL = config.ClientURL
 
-	loadConfigStatus := LoadConfig()
-	if loadConfigStatus >= -1 {
-		loadAdditionalConfigStatus := LoadAdditionalConfig()
+	loadConfigStatus := LoadConfig(configFilename, true)
+
+	if loadConfigStatus < -1 {
+		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
+	} else {
+		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false)
+		if loadAdditionalConfigStatus == -5 && additionConfigFilename == "config_additional.json" {
+			loadAdditionalConfigStatus = LoadConfig("config/" + additionConfigFilename, false)
+		}
+
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
 			InitConfig()
 		}
-	} else {
-		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
 	}
 
 	if !LoadLog() && logFile != nil {

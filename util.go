@@ -121,8 +121,48 @@ func GenIPFilter_CIDR(blockPeerMap map[string]BlockPeerInfoStruct, clientType st
 
 	return ipfilterCount, ipfilterStr
 }
+func ParseCommand(command string) []string {
+	var matchQuote rune = -1
+	escaped := false
+	commandPart := []string { "" }
+	commandIndex := 0
+
+	for _, char := range command {
+		if char == '\\' && matchQuote == -1 {
+			escaped = true
+			continue
+		} else if char == ' ' && matchQuote == -1 {
+			if escaped {
+				commandPart[commandIndex] += "\\"
+				escaped = false
+			}
+			if commandPart[commandIndex] != "" {
+				commandIndex++
+				commandPart = append(commandPart, "")
+			}
+			continue
+		} else if !escaped && char == '\'' || char == '"' {
+			if char == matchQuote {
+				matchQuote = -1
+				continue
+			} else if matchQuote == -1 {
+				matchQuote = char
+				continue
+			}
+		}
+		if escaped {
+			commandPart[commandIndex] += "\\"
+			escaped = false
+		}
+		commandPart[commandIndex] += string(char)
+	}
+
+	return commandPart
+}
 func ExecCommand(command string) (bool, []byte, []byte) {
-	commandSplit := strings.Split(command, "|")
+	commandSplit := ParseCommand(command)
+	Log("Debug-ExecCommand", "Raw: %s, Split (|): %s", false, command, strings.Join(commandSplit, "|"))
+
 	cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
 
 	out, err := cmd.CombinedOutput()
