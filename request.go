@@ -23,17 +23,24 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHea
 		return nil
 	}
 
-	request.Header.Set("User-Agent", programName + "/" + programVersion)
-
+	setUserAgent := false
 	setContentType := false
 
 	if withHeader != nil {
 		for k, v := range *withHeader {
-			if strings.ToLower(k) == "content-type" {
-				setContentType = true
+			switch strings.ToLower(k) {
+				case "user-agent":
+					setUserAgent = true
+				case "content-type":
+					setContentType = true
 			}
+
 			request.Header.Set(k, v)
 		}
+	}
+
+	if !setUserAgent {
+		request.Header.Set("User-Agent", programName + "/" + programVersion)
 	}
 
 	if !setContentType && isPOST {

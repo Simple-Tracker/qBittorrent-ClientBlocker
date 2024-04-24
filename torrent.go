@@ -100,8 +100,9 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 				if config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0 {
 					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
+						Log("CheckAllTorrent_AddBlockPeer (Torrent-Too high uploaded)", "%s (Uploaded: %.2f MB)", true, peerIP, (float64(peerInfo.Uploaded) / 1024 / 1024))
 						ipBlockCount++
-						AddBlockPeer(peerIP, -1, torrentInfoHash)
+						AddBlockPeer("Torrent-Too high uploaded", peerIP, -1, torrentInfoHash)
 						AddBlockCIDR(peerIP, peerInfo.Net)
 						continue
 					}
@@ -116,7 +117,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 								}
 								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
 								blockCount++
-								AddBlockPeer(peerIP, port, torrentInfoHash)
+								AddBlockPeer("Bad-Relative_Progress_Uploaded", peerIP, port, torrentInfoHash)
 								AddBlockCIDR(peerIP, peerInfo.Net)
 							}
 							continue

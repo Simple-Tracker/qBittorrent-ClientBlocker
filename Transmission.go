@@ -48,7 +48,7 @@ type Tr_PeerStruct struct {
 
 var Tr_csrfToken = ""
 var Tr_ipfilterStr = ""
-var Tr_jsonHeader = map[string]string { "Content-Type": "application.json" }
+var Tr_jsonHeader = map[string]string { "Content-Type": "application/json" }
 
 func Tr_InitClient() {
 	go StartServer()

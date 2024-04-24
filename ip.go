@@ -88,7 +88,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
-					AddBlockPeer(ip, -1, "")
+					AddBlockPeer("Too many ports", ip, -1, "")
 					AddBlockCIDR(ip, ipInfo.Net)
 					continue
 				}
@@ -98,7 +98,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
 					ipBlockCount++
-					AddBlockPeer(ip, -1, "")
+					AddBlockPeer("Global-Too high uploaded", ip, -1, "")
 					AddBlockCIDR(ip, ipInfo.Net)
 				}
 			}
