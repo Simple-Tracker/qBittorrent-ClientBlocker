@@ -79,7 +79,7 @@ var startDelay uint
 
 var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
-var blockListFromURLCompiled []*regexp.Regexp
+var blockListFromURLCompiled = make(map[string]*regexp.Regexp)
 var ipBlockListCompiled []*net.IPNet
 var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
 var cookieJar, _ = cookiejar.New(nil)
@@ -166,60 +166,76 @@ var config = ConfigStruct {
 	BanByRelativePUAntiErrorRatio: 3,
 }
 
-func SetIPBlockListFromURL() bool {
-	if config.IPBlockListURL == "" || (ipBlockListLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
-		return true
+func SetBlockList(blockListContent []byte, blockListCompiled map[string]*regexp.Regexp) int {
+	// Max 8MB.
+	if len(blockListContent) > 8388608 {
+		Log("SetBlockList", GetLangText("Error-LargeFile"), true)
+		return 0
 	}
 
-	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
-	if ipBlockListContent == nil {
-		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse"), true)
-		return false
+	blockListArr := strings.Split(string(blockListContent), "\n")
+	tmpBlockListCompiled := make(map[string]*regexp.Regexp)
+
+	for blockListLineNum, blockListLine := range blockListArr {
+		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
+		if blockListLine == "" {
+			Log("Debug-SetBlockList_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
+			continue
+		}
+
+		if reg, exists := blockListCompiled[blockListLine]; exists {
+			tmpBlockListCompiled[blockListLine] = reg
+			continue
+		}
+
+		Log("Debug-SetBlockList_Compile", ":%d %s", false, blockListLineNum, blockListLine)
+
+		reg, err := regexp.Compile("(?i)" + blockListLine)
+		if err != nil {
+			Log("SetBlockList_Compile", GetLangText("Error-SetBlockList_Compile"), true, blockListLineNum, blockListLine)
+			continue
+		}
+
+		tmpBlockListCompiled[blockListLine] = reg
 	}
 
-	ipBlockListLastFetch = currentTimestamp
-
+	blockListCompiled = tmpBlockListCompiled
+	return len(blockListCompiled)
+}
+func SetIPBlockList(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
 	// Max 8MB.
 	if len(ipBlockListContent) > 8388608 {
-		Log("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
-		return false
+		Log("SetIPBlockList", GetLangText("Error-LargeFile"), true)
+		return 0
 	}
 
 	ipBlockListArr := strings.Split(string(ipBlockListContent), "\n")
-	tmpIPBlockListFromURLCompiled := make(map[string]*net.IPNet)
+	tmpIPBlockListCompiled := make(map[string]*net.IPNet)
 
 	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
 		ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
 		if ipBlockListLine == "" {
-			Log("Debug-SetIPBlockListFromURL_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
+			Log("Debug-SetIPBlockList_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
 			continue
 		}
 
-		if cidr, exists := ipBlockListFromURLCompiled[ipBlockListLine]; exists {
-			tmpIPBlockListFromURLCompiled[ipBlockListLine] = cidr
+		if cidr, exists := ipBlockListCompiled[ipBlockListLine]; exists {
+			tmpIPBlockListCompiled[ipBlockListLine] = cidr
 			continue
 		}
 
-		Log("Debug-SetIPBlockListFromURL_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
+		Log("Debug-SetIPBlockList_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
 		cidr := ParseIPCIDR(ipBlockListLine)
 		if cidr == nil {
-			Log("SetIPBlockListFromURL_Compile", GetLangText("Error-SetIPBlockListFromURL_Compile"), true, ipBlockListLineNum, ipBlockListLine)
+			Log("SetIPBlockList_Compile", GetLangText("Error-SetIPBlockList_Compile"), true, ipBlockListLineNum, ipBlockListLine)
 			continue
 		}
 
-		tmpIPBlockListFromURLCompiled[ipBlockListLine] = cidr
+		tmpIPBlockListCompiled[ipBlockListLine] = cidr
 	}
 
-	ipBlockListFromURLCompiled = tmpIPBlockListFromURLCompiled
-	ruleCount := len(ipBlockListFromURLCompiled)
-
-	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
-
-	if ruleCount > 0 {
-		return true
-	}
-
-	return false
+	ipBlockListCompiled = tmpIPBlockListCompiled
+	return len(ipBlockListCompiled)
 }
 func SetBlockListFromURL() bool {
 	if config.BlockListURL == "" || (blockListLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
@@ -234,44 +250,30 @@ func SetBlockListFromURL() bool {
 
 	blockListLastFetch = currentTimestamp
 
-	// Max 8MB.
-	if len(blockListContent) > 8388608 {
-		Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
-		return false
-	}
-
-	blockListArr := strings.Split(string(blockListContent), "\n")
-	blockListFromURLCompiled = make([]*regexp.Regexp, len(blockListArr))
-	k := 0
-	for blockListLineNum, blockListLine := range blockListArr {
-		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
-		if blockListLine == "" {
-			Log("Debug-SetBlockListFromURL_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
-			continue
-		}
-
-		Log("Debug-SetBlockListFromURL_Compile", "%s", false, blockListLine)
-
-		reg, err := regexp.Compile("(?i)" + blockListLine)
-		if err != nil {
-			Log("SetBlockListFromURL_Compile", GetLangText("Error-SetBlockListFromURL_Compile"), true, blockListLineNum, blockListLine)
-			continue
-		}
-
-		blockListFromURLCompiled[k] = reg
-
-		k++
-	}
-
-	ruleCount := len(blockListFromURLCompiled)
+	ruleCount := SetBlockList(blockListContent, blockListFromURLCompiled)
 
 	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
 
-	if ruleCount > 0 {
+	return true
+}
+func SetIPBlockListFromURL() bool {
+	if config.IPBlockListURL == "" || (ipBlockListLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
-	return false
+	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
+	if ipBlockListContent == nil {
+		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse"), true)
+		return false
+	}
+
+	ipBlockListLastFetch = currentTimestamp
+
+	ruleCount := SetIPBlockList(ipBlockListContent, ipBlockListFromURLCompiled)
+
+	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
+
+	return true
 }
 func LoadConfig() int {
 	configFileStat, err := os.Stat(configFilename)
