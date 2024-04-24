@@ -148,7 +148,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	return false
 }
 func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerDownloaded int64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
-	if peerIP == "" || CheckPrivateIP(peerIP) || (peerDlSpeed <= 0 && peerUpSpeed <= 0) {
+	if peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1, nil
 	}
 
@@ -230,6 +230,10 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNet.String())
 		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
 		return 1, peerNet
+	}
+
+	if peerDlSpeed <= 0 && peerUpSpeed <= 0 {
+		return -2, peerNet
 	}
 
 	ignoreByDownloaded := false
