@@ -59,18 +59,14 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 
 	return 0
 }
-func IsMatchCIDR(ip string) (bool, *net.IPNet) {
-	peerNet := ParseIPCIDRByConfig(ip)
-
+func IsMatchCIDR(peerNet *net.IPNet) bool {
 	if peerNet != nil {
-		peerNetStr := peerNet.String()
-		if _, exist := blockCIDRMap[peerNetStr]; exist {
-			return true, peerNet
+		if _, exist := blockCIDRMap[peerNet.String()]; exist {
+			return true
 		}
-		return false, peerNet
 	}
 
-	return false, nil
+	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
 	if (config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {

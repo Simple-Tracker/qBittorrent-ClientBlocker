@@ -166,13 +166,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	}
 
 
-	matchCIDR, peerNet := IsMatchCIDR(peerIP)
-	if matchCIDR {
-		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNet.String())
-		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-		return 1, peerNet
-	}
-
+	peerNet := ParseIPCIDRByConfig(peerIP)
 	hasPeerClient := (peerID != "" || peerClient != "")
 
 	if hasPeerClient {
@@ -202,7 +196,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 		if port == peerPort {
 			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 			AddBlockPeer(peerIP, peerPort, torrentInfoHash)
-			return 1, nil
+			return 1, peerNet
 		}
 	}
 
@@ -225,11 +219,17 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				continue
 			}
 			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_Filter)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				Log("CheckPeer_AddBlockPeer (Bad-IP_FromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer(peerIP, -1, torrentInfoHash)
 				return 3, peerNet
 			}
 		}
+	}
+
+	if IsMatchCIDR(peerNet) {
+		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, Net: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNet.String())
+		AddBlockPeer(peerIP, peerPort, torrentInfoHash)
+		return 1, peerNet
 	}
 
 	ignoreByDownloaded := false
