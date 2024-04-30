@@ -20,7 +20,7 @@ if [ -n "$useENV" ]; then
     # Convert "true" to true, "false" to false, digital string to number
     configKVPair=$(echo $envKVPair | jq --argjson tmpBlockList "$tmpBlockList" --argjson tmpIPBlockList "$tmpIPBlockList" '{
         (.key): (
-            if (.key|ascii_downcase) == "qbusername" or (.key|ascii_downcase) == "qbpassword" then .value
+            if (.key|ascii_downcase) == "clientusername" or (.key|ascii_downcase) == "clientpassword" then .value
             elif (.key|ascii_downcase) == "blocklist" then $tmpBlockList
             elif (.key|ascii_downcase) == "ipblocklist" then $tmpIPBlockList
             else .value|(
@@ -32,7 +32,7 @@ if [ -n "$useENV" ]; then
         )
     }')
 
-    (echo $configKVPair | jq -s add) > config.json
+    (echo $configKVPair | jq -s add) > config_additional.json
 fi
 
 commandArgStr=''

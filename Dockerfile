@@ -1,7 +1,7 @@
 FROM --platform=${BUILDPLATFORM} golang:1.20.13-alpine AS go
 WORKDIR /app
 
-ARG BUILDOS BUILDARCH TARGETOS TARGETARCH PROGRAM_NIGHTLY
+ARG BUILDOS BUILDARCH TARGETOS TARGETARCH GITHUB_REF PROGRAM_NIGHTLY
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=7
 
 RUN PROGRAM_VERSION="$(basename ${GITHUB_REF})"; \
@@ -13,14 +13,14 @@ RUN PROGRAM_VERSION="$(basename ${GITHUB_REF})"; \
 	if [ "${PROGRAM_NIGHTLY}" == 'true' ]; then \
 		PROGRAM_VERSION="${PROGRAM_VERSION} (Nightly)"; \
 	fi; \
-	export PROGRAM_VERSION
+	echo "export PROGRAM_VERSION='${PROGRAM_VERSION}'" > /envfile
 
-RUN echo "Running on ${BUILDOS}/${BUILDARCH}, Building for ${TARGETOS}/${TARGETARCH}, Version: ${PROGRAM_VERSION}"
+RUN . /envfile; echo "Running on ${BUILDOS}/${BUILDARCH}, Building for ${TARGETOS}/${TARGETARCH}, Version: ${PROGRAM_VERSION}"
 
 ADD lang/ *LICENSE* *.md *.go *.sh go.mod go.sum config.json ./
 
 RUN go mod download
-RUN go build -ldflags "-w -X \"main.programVersion=${PROGRAM_VERSION}\"" -o qBittorrent-ClientBlocker
+RUN . /envfile; go build -ldflags "-w -X \"main.programVersion=${PROGRAM_VERSION}\"" -o qBittorrent-ClientBlocker
 RUN rm -f *.go go.mod go.sum
 
 FROM alpine

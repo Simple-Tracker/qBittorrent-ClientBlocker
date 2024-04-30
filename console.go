@@ -26,7 +26,8 @@ type ReleaseStruct struct {
 }
 
 func ProcessVersion(version string) (int, int, int, int, string) {
-	versionSplit := strings.SplitN(strings.SplitN(version, " ", 2)[0], ".", 2)
+	realVersion := strings.SplitN(version, " ", 2)[0]
+	versionSplit := strings.SplitN(realVersion, ".", 2)
 
 	if versionSplit[0] == "Unknown" {
 		return -1, 0, 0, 0, ""
@@ -69,7 +70,7 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 		return -3, 0, 0, 0, ""
 	}
  
-	return versionType, mainVersion, subVersion, sub2Version, version
+	return versionType, mainVersion, subVersion, sub2Version, realVersion
 }
 func CheckUpdate() {
 	if !config.CheckUpdate || (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
@@ -241,7 +242,7 @@ func Task() {
 			}
 	}
 
-	currentIPBlockCount := CheckAllIP(ipMap, lastIPMap)
+	ipBlockCount += CheckAllIP(ipMap, lastIPMap)
 	torrentBlockCount, torrentIPBlockCount := CheckAllTorrent(torrentMap, lastTorrentMap)
 	blockCount += torrentBlockCount
 	ipBlockCount += torrentIPBlockCount
@@ -253,12 +254,12 @@ func Task() {
 	Log("Debug-Task_IgnoreBadPeersCount", "%d", false, badPeersCount)
 	Log("Debug-Task_IgnoreEmptyPeersCount", "%d", false, emptyPeersCount)
 
-	if cleanCount != 0 || blockCount != 0 {
+	if cleanCount != 0 || blockCount != 0 || ipBlockCount != 0 {
 		SubmitBlockPeer(blockPeerMap)
 		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockListFromURLCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
-			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, len(blockPeerMap), currentIPBlockCount, ipBlockCount)
+			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, ipBlockCount, len(blockPeerMap))
 		}
 	}
 
@@ -299,8 +300,15 @@ func WaitStop() {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
 
 	<-signalChan
-		Log("WaitStop", GetLangText("WaitStop_Stoping"), true)
-		isRunning = false
+		ReqStop()
+}
+func ReqStop() {
+	if !isRunning {
+		return
+	}
+
+	Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
+	isRunning = false
 }
 func RunConsole() {
 	if startDelay > 0 {

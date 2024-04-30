@@ -4,7 +4,7 @@ var currentClientType = ""
 
 // 重复判断 nil 是因为输出的类型转换 (qB_MainDataStruct -> interface{}) 会导致 nil 比较失效.
 func IsBanPort() bool {
-	if qB_useNewBanPeersMethod {
+	if currentClientType == "qBittorrent" && qB_useNewBanPeersMethod {
 		return true
 	}
 
@@ -14,8 +14,6 @@ func IsSupportClient() bool {
 	switch currentClientType {
 		case "qBittorrent", "Transmission", "BitComet":
 			return true
-		default:
-			return false
 	}
 
 	return false

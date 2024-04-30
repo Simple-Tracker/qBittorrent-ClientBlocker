@@ -34,5 +34,6 @@ jobs:
           platforms: 'linux/386,linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le'
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args:
+          build-args: |
+            "GITHUB_REF=${{ github.ref }}"
             "PROGRAM_NIGHTLY=${{ github.event_name != 'release' && 'true' || 'false' }}"
