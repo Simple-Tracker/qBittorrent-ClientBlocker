@@ -145,7 +145,7 @@ Docker version is configured through the same name variable configuration, which
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | :26262 | Listen port. Used to provide BlockPeerList to some client |
-| clientType | string | Empty | Client type. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission``` |
+| clientType | string | Empty | Client type. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
 | clientURL | string | Empty | Web UI or RPC Address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | Empty | Web UI Username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
 | clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
