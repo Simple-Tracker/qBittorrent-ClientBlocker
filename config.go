@@ -76,8 +76,9 @@ var programName = "qBittorrent-ClientBlocker"
 var programVersion = "Unknown"
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
-var noChdir bool
 var startDelay uint
+var noChdir bool
+var needHideWindow bool
 
 var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
 var blockListCompiled []*regexp.Regexp
@@ -456,6 +457,7 @@ func RegFlag() {
 	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
 	flag.UintVar(&startDelay, "startdelay", 0, GetLangText("StartDelay"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
+	flag.BoolVar(&needHideWindow, "hidewindow", false, GetLangText("HideWindow"))
 	flag.Parse()
 }
 func ShowVersion() {

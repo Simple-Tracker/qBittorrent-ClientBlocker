@@ -1,6 +1,8 @@
 //go:build !windows
 package main
 
+func Platform_Stop() {
+}
 func main() {
 	/*
 	torrentMap2 := make(map[string]TorrentInfoStruct)
@@ -27,6 +29,4 @@ func main() {
 	if PrepareEnv() {
 		RunConsole()
 	}
-}
-func Platform_Stop() {
 }

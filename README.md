@@ -119,6 +119,7 @@
 | --debug | false (禁用) | 调试模式. 加载配置文件前生效 |
 | --startdelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | --nochdir | false (禁用) | 不切换工作目录. 默认会切换至程序目录 |
+| --hidewindow | false (禁用) | 默认隐藏窗口. 仅 Windows 可用 |
 
 ## 配置 Config
 

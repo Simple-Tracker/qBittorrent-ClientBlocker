@@ -10,7 +10,7 @@ import (
 var showWindow = true
 var qBCBHotkey = hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
 
-func ShowOrHiddenWindow() {
+func Platform_ShowOrHiddenWindow() {
 	consoleWindow := win.GetConsoleWindow()
 	if showWindow {
 		Log("Debug-ShowOrHiddenWindow", GetLangText("Debug-ShowOrHiddenWindow_HideWindow"), false)
@@ -22,6 +22,10 @@ func ShowOrHiddenWindow() {
 		win.ShowWindow(consoleWindow, win.SW_SHOW)
 	}
 }
+func Platform_Stop() {
+	qBCBHotkey.Unregister()
+	systray.Quit()
+}
 func RegHotKey() {
 	err := qBCBHotkey.Register()
 	if err != nil {
@@ -31,7 +35,7 @@ func RegHotKey() {
 	Log("RegHotKey", GetLangText("Success-RegHotkey"), false)
 
 	for range qBCBHotkey.Keydown() {
-		ShowOrHiddenWindow()
+		Platform_ShowOrHiddenWindow()
 	}
 }
 func RegSysTray() {
@@ -44,7 +48,7 @@ func RegSysTray() {
 		for {
 			select {
 				case <-mShow.ClickedCh:
-					ShowOrHiddenWindow()
+					Platform_ShowOrHiddenWindow()
 				case <-mQuit.ClickedCh:
 					systray.Quit()
 			}
@@ -57,10 +61,9 @@ func main() {
 	if PrepareEnv() {
 		go RegHotKey()
 		go RegSysTray()
+		if needHideWindow && showWindow {
+			Platform_ShowOrHiddenWindow()
+		}
 		RunConsole()
 	}
-}
-func Platform_Stop() {
-	qBCBHotkey.Unregister()
-	systray.Quit()
 }
