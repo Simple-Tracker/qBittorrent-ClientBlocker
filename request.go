@@ -82,7 +82,7 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 				if status {
 					Log("Fetch", GetLangText("Success-ExecCommand"), true, out)
 				} else {
-					Log("Fetch", GetLangText("Failed-ExecCommand"), true, out, string(err))
+					Log("Fetch", GetLangText("Failed-ExecCommand"), true, out, err)
 				}
 			}
 		}

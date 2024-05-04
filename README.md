@@ -147,7 +147,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | logDebug | bool | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
 | listen | string | :26262 | 监听端口. 用于向部分客户端提供 BlockPeerList |
 | clientType | string | 空 | 客户端类型. 使用客户端屏蔽器的前提条件, 若未能自动检测客户端类型, 则须正确填入. 目前支持 ```qBittorrent```/```Transmission``` |
-| clientURL | string | 空 | Web UI 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990``` 或 ```http://127.0.0.1:9091/transmission/rpc```. |
+| clientURL | string | 空 | Web UI 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990``` 或 ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | 空 | Web UI 账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
 | clientPassword | string | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth 或通过反向代理等方式 增加/换用 认证方式的 Web UI |

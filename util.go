@@ -159,16 +159,21 @@ func ParseCommand(command string) []string {
 
 	return commandPart
 }
-func ExecCommand(command string) (bool, []byte, []byte) {
+func ExecCommand(command string) (bool, string, string) {
 	commandSplit := ParseCommand(command)
 	Log("Debug-ExecCommand", "Raw: %s, Split (|): %s", false, command, strings.Join(commandSplit, "|"))
 
-	cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
+	var cmd *exec.Cmd
+	if len(commandSplit) == 1 {
+		cmd = exec.Command(commandSplit[0])
+	} else {
+		cmd = exec.Command(commandSplit[0], commandSplit[1:]...)
+	}
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, out, []byte(err.Error())
+		return false, string(out), err.Error()
 	}
 
-	return true, out, nil
+	return true, string(out), ""
 }

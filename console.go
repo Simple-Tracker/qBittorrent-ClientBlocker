@@ -330,7 +330,7 @@ func RunConsole() {
 		if status {
 			Log("RunConsole", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("RunConsole", GetLangText("Failed-ExecCommand"), true, out, string(err))
+			Log("RunConsole", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
 	}
 

@@ -45,7 +45,7 @@ func AddBlockPeer(result string, peerIP string, peerPort int, torrentInfoHash st
 		if status {
 			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, string(err))
+			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
 	}
 }
@@ -107,7 +107,7 @@ func ClearBlockPeer() int {
 						if status {
 							Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 						} else {
-							Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, string(err))
+							Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
 						}
 					}
 				}
