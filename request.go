@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 )
 
-var fetchFailedCount int = 0
+var fetchFailedCount = 0
 
 func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
@@ -40,7 +40,7 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHea
 	}
 
 	if !setUserAgent {
-		request.Header.Set("User-Agent", programName + "/" + programVersion)
+		request.Header.Set("User-Agent", programUserAgent)
 	}
 
 	if !setContentType && isPOST {

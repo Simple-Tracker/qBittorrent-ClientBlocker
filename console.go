@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"syscall"
 	"runtime"
+	"runtime/debug"
 	"os/signal"
 	"encoding/json"
 )
@@ -29,7 +30,7 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 	realVersion := strings.SplitN(version, " ", 2)[0]
 	versionSplit := strings.SplitN(realVersion, ".", 2)
 
-	if versionSplit[0] == "Unknown" {
+	if strings.Contains(version, "Unknown") {
 		return -1, 0, 0, 0, ""
 	}
 
@@ -310,6 +311,23 @@ func ReqStop() {
 	Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
 	isRunning = false
 }
+func Stop() {
+	if loopTicker != nil {
+		loopTicker.Stop()
+	}
+
+	SubmitBlockPeer(nil)
+	httpClient.CloseIdleConnections()
+	httpClientWithoutCookie.CloseIdleConnections()
+	StopServer()
+	Platform_Stop()
+	
+	if err := recover(); err != nil {
+		Log("LogPanic", "Caught program panic: %s", true, err)
+		Log("LogPanic", "Stacktrace from panic: %s", true, string(debug.Stack()))
+		os.Exit(2)
+	}
+}
 func RunConsole() {
 	if startDelay > 0 {
 		Log("RunConsole", GetLangText("StartDelay"), false, startDelay)
@@ -335,17 +353,12 @@ func RunConsole() {
 	}
 
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
-	go WaitStop()
 	loopTicker = time.NewTicker(1 * time.Second)
+	go WaitStop()
+	defer Stop()
 
 	for ; true; <- loopTicker.C {
 		if !isRunning {
-			loopTicker.Stop()
-			SubmitBlockPeer(nil)
-			httpClient.CloseIdleConnections()
-			httpClientWithoutCookie.CloseIdleConnections()
-			StopServer()
-			Platform_Stop()
 			break
 		}
 		tmpCurrentTimestamp := time.Now().Unix()

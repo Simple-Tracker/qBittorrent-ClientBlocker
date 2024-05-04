@@ -8,7 +8,7 @@ import (
 )
 
 var showWindow = true
-var qBCBHotkey = hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
+var programHotkey = hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
 
 func Platform_ShowOrHiddenWindow() {
 	consoleWindow := win.GetConsoleWindow()
@@ -23,18 +23,18 @@ func Platform_ShowOrHiddenWindow() {
 	}
 }
 func Platform_Stop() {
-	qBCBHotkey.Unregister()
+	programHotkey.Unregister()
 	systray.Quit()
 }
 func RegHotKey() {
-	err := qBCBHotkey.Register()
+	err := programHotkey.Register()
 	if err != nil {
 		Log("RegHotKey", GetLangText("Error-RegHotkey"), false, err.Error())
 		return
 	}
 	Log("RegHotKey", GetLangText("Success-RegHotkey"), false)
 
-	for range qBCBHotkey.Keydown() {
+	for range programHotkey.Keydown() {
 		Platform_ShowOrHiddenWindow()
 	}
 }
@@ -45,25 +45,27 @@ func RegSysTray() {
 		mShow := systray.AddMenuItem("显示/隐藏", "显示/隐藏程序")
 		mQuit := systray.AddMenuItem("退出", "退出程序")
 
-		for {
-			select {
-				case <-mShow.ClickedCh:
-					Platform_ShowOrHiddenWindow()
-				case <-mQuit.ClickedCh:
-					systray.Quit()
+		go func() {
+			for {
+				select {
+					case <-mShow.ClickedCh:
+						Platform_ShowOrHiddenWindow()
+					case <-mQuit.ClickedCh:
+						systray.Quit()
+				}
 			}
-		}
+		}()
 	}, func () {
 		ReqStop()
 	})
 }
 func main() {
 	if PrepareEnv() {
-		go RegHotKey()
-		go RegSysTray()
 		if needHideWindow && showWindow {
 			Platform_ShowOrHiddenWindow()
 		}
+		go RegHotKey()
+		go RegSysTray()
 		RunConsole()
 	}
 }

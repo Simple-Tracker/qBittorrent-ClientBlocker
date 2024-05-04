@@ -243,7 +243,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	ignoreByDownloaded := false
 	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
 	if (!config.IgnoreEmptyPeer || hasPeerClient) {
-		if (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
+		if config.IgnoreByDownloaded > 0 && (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
 			ignoreByDownloaded = true
 		}
 		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {

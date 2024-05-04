@@ -40,13 +40,13 @@ func SyncWithServer() bool {
 		return false
 	}
 
+	lastSync = currentTimestamp
+
 	_, _, syncServerContent := Submit(config.SyncServerURL, string(syncJSON), false, false, nil)
 	if syncServerContent == nil {
 		Log("SyncWithServer", GetLangText("Error-FetchResponse"), true)
 		return false
 	}
-
-	lastSync = currentTimestamp
 
 	// Max 8MB.
 	if len(syncServerContent) > 8388608 {

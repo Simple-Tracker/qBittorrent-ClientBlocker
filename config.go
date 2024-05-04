@@ -74,6 +74,8 @@ type ConfigStruct struct {
 
 var programName = "qBittorrent-ClientBlocker"
 var programVersion = "Unknown"
+var programUserAgent = programName + "/" + programVersion
+
 var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var startDelay uint
@@ -246,13 +248,13 @@ func SetBlockListFromURL() bool {
 		return true
 	}
 
+	blockListLastFetch = currentTimestamp
+
 	_, _, blockListContent := Fetch(config.BlockListURL, false, false, nil)
 	if blockListContent == nil {
 		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse"), true)
 		return false
 	}
-
-	blockListLastFetch = currentTimestamp
 
 	ruleCount := SetBlockList(blockListContent, blockListFromURLCompiled)
 
@@ -265,13 +267,13 @@ func SetIPBlockListFromURL() bool {
 		return true
 	}
 
+	ipBlockListLastFetch = currentTimestamp
+
 	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
 	if ipBlockListContent == nil {
 		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse"), true)
 		return false
 	}
-
-	ipBlockListLastFetch = currentTimestamp
 
 	ruleCount := SetIPBlockList(ipBlockListContent, ipBlockListFromURLCompiled)
 
