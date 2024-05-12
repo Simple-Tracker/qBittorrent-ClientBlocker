@@ -312,6 +312,13 @@ func ReqStop() {
 	isRunning = false
 }
 func Stop() {
+	recoverErr := recover()
+
+	if recoverErr != nil {
+		Log("Stop", GetLangText("Stop_CaughtPanic"), true, recoverErr)
+		Log("Stop", GetLangText("Stop_StacktraceWhenPanic"), true, string(debug.Stack()))
+	}
+
 	if loopTicker != nil {
 		loopTicker.Stop()
 	}
@@ -322,9 +329,7 @@ func Stop() {
 	StopServer()
 	Platform_Stop()
 	
-	if err := recover(); err != nil {
-		Log("LogPanic", "Caught program panic: %s", true, err)
-		Log("LogPanic", "Stacktrace from panic: %s", true, string(debug.Stack()))
+	if recoverErr != nil {
 		os.Exit(2)
 	}
 }
@@ -361,6 +366,7 @@ func RunConsole() {
 		if !isRunning {
 			break
 		}
+
 		tmpCurrentTimestamp := time.Now().Unix()
 		if (currentTimestamp + int64(config.Interval)) <= tmpCurrentTimestamp {
 			currentTimestamp = tmpCurrentTimestamp
