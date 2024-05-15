@@ -72,6 +72,7 @@ var defaultLangContent = map[string]string {
 	"Error-Log_Write": "写入日志时发生了错误: %s",
 	"Error-LoadLog_Mkdir": "创建日志目录时发生了错误: %s",
 	"Error-LoadLog_Close": "关闭日志时发生了错误: %s",
+	"Error-MatchRegexpErr": "正则匹配过程中发生了错误: %s",
 	"Error-Task_EmptyURL": "检测到 URL 为空, 可能是未配置且未能自动读取客户端配置文件",
 	"Error-Task_NotSupportClient": "检测到不支持的客户端, 可能是未配置且未能自动检测客户端: %s",
 	"Error-SyncWithServer_ServerError": "同步服务器错误: %s",

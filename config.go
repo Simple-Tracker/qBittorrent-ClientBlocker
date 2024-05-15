@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 	"flag"
-	"regexp"
 	"reflect"
 	"strings"
 	"crypto/tls"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"github.com/tidwall/jsonc"
+	"github.com/dlclark/regexp2"
 )
 
 type ConfigStruct struct {
@@ -82,9 +82,9 @@ var startDelay uint
 var noChdir bool
 var needHideWindow bool
 
-var randomStrRegexp = regexp.MustCompile("[a-zA-Z0-9]{32}")
-var blockListCompiled []*regexp.Regexp
-var blockListFromURLCompiled = make(map[string]*regexp.Regexp)
+var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
+var blockListCompiled []*regexp2.Regexp
+var blockListFromURLCompiled = make(map[string]*regexp2.Regexp)
 var ipBlockListCompiled []*net.IPNet
 var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
 var cookieJar, _ = cookiejar.New(nil)
@@ -172,7 +172,7 @@ var config = ConfigStruct {
 	BanByRelativePUAntiErrorRatio: 3,
 }
 
-func SetBlockList(blockListContent []byte, blockListCompiled map[string]*regexp.Regexp) int {
+func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[string]*regexp2.Regexp) int {
 	// Max 8MB.
 	if len(blockListContent) > 8388608 {
 		Log("SetBlockList", GetLangText("Error-LargeFile"), true)
@@ -180,7 +180,7 @@ func SetBlockList(blockListContent []byte, blockListCompiled map[string]*regexp.
 	}
 
 	blockListArr := strings.Split(string(blockListContent), "\n")
-	tmpBlockListCompiled := make(map[string]*regexp.Regexp)
+	tmpBlockListCompiled := make(map[string]*regexp2.Regexp)
 
 	for blockListLineNum, blockListLine := range blockListArr {
 		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
@@ -196,11 +196,13 @@ func SetBlockList(blockListContent []byte, blockListCompiled map[string]*regexp.
 
 		Log("Debug-SetBlockList_Compile", ":%d %s", false, blockListLineNum, blockListLine)
 
-		reg, err := regexp.Compile("(?i)" + blockListLine)
+		reg, err := regexp2.Compile("(?i)" + blockListLine, 0)
 		if err != nil {
 			Log("SetBlockList_Compile", GetLangText("Error-SetBlockList_Compile"), true, blockListLineNum, blockListLine)
 			continue
 		}
+
+		reg.MatchTimeout = 50 * time.Millisecond
 
 		tmpBlockListCompiled[blockListLine] = reg
 	}
@@ -208,7 +210,7 @@ func SetBlockList(blockListContent []byte, blockListCompiled map[string]*regexp.
 	blockListCompiled = tmpBlockListCompiled
 	return len(blockListCompiled)
 }
-func SetIPBlockList(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
+func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
 	// Max 8MB.
 	if len(ipBlockListContent) > 8388608 {
 		Log("SetIPBlockList", GetLangText("Error-LargeFile"), true)
@@ -256,7 +258,7 @@ func SetBlockListFromURL() bool {
 		return false
 	}
 
-	ruleCount := SetBlockList(blockListContent, blockListFromURLCompiled)
+	ruleCount := SetBlockListFromContent(blockListContent, blockListFromURLCompiled)
 
 	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
 
@@ -275,7 +277,7 @@ func SetIPBlockListFromURL() bool {
 		return false
 	}
 
-	ruleCount := SetIPBlockList(ipBlockListContent, ipBlockListFromURLCompiled)
+	ruleCount := SetIPBlockListFromContent(ipBlockListContent, ipBlockListFromURLCompiled)
 
 	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
 
@@ -374,15 +376,17 @@ func InitConfig() {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
 
-	blockListCompiled = make([]*regexp.Regexp, len(config.BlockList))
+	blockListCompiled = make([]*regexp2.Regexp, len(config.BlockList))
 	for k, v := range config.BlockList {
 		Log("Debug-LoadConfig_CompileBlockList", "%s", false, v)
 
-		reg, err := regexp.Compile("(?i)" + v)
+		reg, err := regexp2.Compile("(?i)" + v, 0)
 		if err != nil {
 			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, v)
 			continue
 		}
+
+		reg.MatchTimeout = 50 * time.Millisecond
 
 		blockListCompiled[k] = reg
 	}

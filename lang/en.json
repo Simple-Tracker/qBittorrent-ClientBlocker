@@ -62,6 +62,7 @@
 	"Error-Log_Write": "An error occurred while writing to log: %s",
 	"Error-LoadLog_Mkdir": "An error occurred while creating log directory: %s",
 	"Error-LoadLog_Close": "An error occurred while closing log: %s",
+	"Error-RegexpMatchErr": "An error occurred while matching regexp: %s",
 	"Error-Task_EmptyURL": "Detected ClientURL is empty, may not be configured and failed to automatically read client config file",
 	"Error-Task_NotSupportClient": "Detected unsupport client, may not be configured and failed to automatically detect client type: %s",
 	"Error-SyncWithServer_ServerError": "Sync server error: %s",

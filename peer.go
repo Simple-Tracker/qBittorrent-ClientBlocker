@@ -168,7 +168,30 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if v == nil {
 				continue
 			}
-			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
+
+			isMatchedPeer := false
+
+			if peerClient != "" {
+				isMatchPeerClient, err := v.MatchString(peerClient)
+
+				if err != nil {
+					Log("CheckPeer_MatchPeerClient", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+				} else if isMatchPeerClient {
+					isMatchedPeer = isMatchPeerClient
+				}
+			}
+
+			if peerID != "" && !isMatchedPeer {
+				isMatchPeerID, err := v.MatchString(peerID)
+
+				if err != nil {
+					Log("CheckPeer_MatchPeerID", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+				} else if isMatchPeerID {
+					isMatchedPeer = isMatchPeerID
+				}
+			}
+
+			if isMatchedPeer {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-Client_Normal", peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet
@@ -178,7 +201,30 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if v == nil {
 				continue
 			}
-			if (peerClient != "" && v.MatchString(peerClient)) || (peerID != "" && v.MatchString(peerID)) {
+
+			isMatchedPeer := false
+
+			if peerClient != "" {
+				isMatchPeerClient, err := v.MatchString(peerClient)
+
+				if err != nil {
+					Log("CheckPeer_MatchPeerClient", GetLangText("Error-CheckPeer_MatchPeerErr"), true, err.Error())
+				} else if isMatchPeerClient {
+					isMatchedPeer = isMatchPeerClient
+				}
+			}
+
+			if peerID != "" && !isMatchedPeer {
+				isMatchPeerID, err := v.MatchString(peerID)
+
+				if err != nil {
+					Log("CheckPeer_MatchPeerID", GetLangText("Error-CheckPeer_MatchPeerErr"), true, err.Error())
+				} else if isMatchPeerID {
+					isMatchedPeer = isMatchPeerID
+				}
+			}
+
+			if isMatchedPeer {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_ListFromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-Client_ListFromURL", peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet

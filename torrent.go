@@ -153,7 +153,14 @@ func CheckTorrent(torrentInfoHash string, torrentTracker string, torrentLeecherC
 		}
 
 		lowerTorrentTracker := strings.ToLower(torrentTracker)
-		if strings.Contains(lowerTorrentTracker, "?passkey=") || strings.Contains(lowerTorrentTracker, "?authkey=") || strings.Contains(lowerTorrentTracker, "?secure=") || randomStrRegexp.MatchString(lowerTorrentTracker) {
+		if strings.Contains(lowerTorrentTracker, "?passkey=") || strings.Contains(lowerTorrentTracker, "?authkey=") || strings.Contains(lowerTorrentTracker, "?secure=") {
+			return -4, nil
+		}
+
+		randomStrMatched, err := randomStrRegexp.MatchString(lowerTorrentTracker)
+		if err != nil {
+			Log("CheckTorrent_MatchTracker", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+		} else if randomStrMatched {
 			return -4, nil
 		}
 	}
