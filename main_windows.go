@@ -39,6 +39,10 @@ func RegHotKey() {
 	}
 }
 func RegSysTray() {
+	if needHideSystray {
+		return
+	}
+
 	systray.Run(func () {
 		systray.SetIcon(icon_Windows)
 		systray.SetTitle(programName)

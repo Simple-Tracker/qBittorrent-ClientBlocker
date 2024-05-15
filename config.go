@@ -81,6 +81,7 @@ var longFlag_ShowVersion bool
 var startDelay uint
 var noChdir bool
 var needHideWindow bool
+var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
 var blockListCompiled []*regexp2.Regexp
@@ -464,6 +465,7 @@ func RegFlag() {
 	flag.UintVar(&startDelay, "startdelay", 0, GetLangText("StartDelay"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
 	flag.BoolVar(&needHideWindow, "hidewindow", false, GetLangText("HideWindow"))
+	flag.BoolVar(&needHideSystray, "hidesystray", false, GetLangText("HideSystray"))
 	flag.Parse()
 }
 func ShowVersion() {

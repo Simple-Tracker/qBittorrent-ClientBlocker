@@ -15,6 +15,7 @@ var defaultLangContent = map[string]string {
 	"StartDelay": "启动延迟",
 	"NoChdir": "不切换工作目录",
 	"HideWindow": "默认隐藏窗口 (仅 Windows)",
+	"HideSystray": "默认隐藏托盘图标 (仅 Windows)",
 	"RunConsole_StartDelay": "启动延迟: %d 秒",
 	"RunConsole_AuthFailed": "认证失败",
 	"RunConsole_ProgramHasStarted": "程序已启动",

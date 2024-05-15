@@ -118,6 +118,7 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 | --startdelay | 0 (Sec, Disable) | Start delay. Special uses for some user |
 | --nochdir | false | Don't change working directory. Change to the program directory by default |
 | --hidewindow | false | Hide window by default. Only available on Windows |
+| --hidesystray | false | Hide systray by default. Only available on Windows |
 
 ## 配置 Config
 

@@ -5,6 +5,7 @@
 	"StartDelay": "Start delay",
 	"NoChdir": "Don't change working directory",
 	"HideWindow": "Hide window by default (Only Windows)",
+	"HideSystray": "Hide systray by default (Only Windows)",
 	"RunConsole_StartDelay": "Start delay: %d Sec",
 	"RunConsole_AuthFailed": "Authentication failed",
 	"RunConsole_ProgramHasStarted": "Program has started",
