@@ -8,7 +8,7 @@ import (
 
 type BlockPeerInfoStruct struct {
 	Timestamp int64
-	Result    string
+	Reason    string
 	Port      map[int]bool
 	InfoHash  string
 }
@@ -22,7 +22,7 @@ var lastCleanTimestamp int64 = 0
 var blockPeerMap = make(map[string]BlockPeerInfoStruct)
 var blockCIDRMap = make(map[string]BlockCIDRInfoStruct)
 
-func AddBlockPeer(result string, peerIP string, peerPort int, torrentInfoHash string) {
+func AddBlockPeer(reason string, peerIP string, peerPort int, torrentInfoHash string) {
 	var blockPeerPortMap map[int]bool
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
 		blockPeerPortMap = make(map[int]bool)
@@ -31,7 +31,7 @@ func AddBlockPeer(result string, peerIP string, peerPort int, torrentInfoHash st
 	}
 
 	blockPeerPortMap[peerPort] = true
-	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Result: result, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
+	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Reason: reason, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
 
 	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
 
