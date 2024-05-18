@@ -15,6 +15,8 @@ import (
 var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
 var lastCheckUpdateTimestamp int64 = 0
+var lastCheckUpdateReleaseVer = ""
+var lastCheckUpdateBetaVer = ""
 var githubAPIHeader = map[string]string { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
 var isRunning bool
 
@@ -136,6 +138,24 @@ func CheckUpdate() {
 	hasNewReleaseVersion := false
 	hasNewPreReleaseVersion := false
 
+	if matchLatestPreReleaseVersion {
+		if currentVersionType == 1 {
+			versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestPreReleaseStruct.TagName)
+
+			if versionType == currentVersionType {
+				if mainVersion > currentMainVersion {
+					hasNewPreReleaseVersion = true
+				} else if mainVersion == currentMainVersion {
+					if subVersion > currentSubVersion {
+						hasNewPreReleaseVersion = true
+					} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
+						hasNewPreReleaseVersion = true
+					}
+				}
+			}
+		}
+	}
+
 	if matchLatestReleaseVersion {
 		versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestReleaseStruct.TagName)
 
@@ -152,31 +172,15 @@ func CheckUpdate() {
 		}
 	}
 
-	if matchLatestPreReleaseVersion {
-		versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestPreReleaseStruct.TagName)
-
-		if versionType == 1 {
-			if versionType == currentVersionType {
-				if mainVersion > currentMainVersion {
-					hasNewPreReleaseVersion = true
-				} else if mainVersion == currentMainVersion {
-					if subVersion > currentSubVersion {
-						hasNewPreReleaseVersion = true
-					} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
-						hasNewPreReleaseVersion = true
-					}
-				}
-			}
-		}
-	}
-
 	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, currentVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
 
-	if hasNewReleaseVersion {
+	if hasNewReleaseVersion && lastCheckUpdateReleaseVer != latestReleaseStruct.TagName {
+		lastCheckUpdateReleaseVer = latestReleaseStruct.TagName
 		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestReleaseStruct.TagName), strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
 	}
 
-	if hasNewPreReleaseVersion {
+	if hasNewPreReleaseVersion && lastCheckUpdateBetaVer != latestPreReleaseStruct.TagName {
+		lastCheckUpdateBetaVer = latestPreReleaseStruct.TagName
 		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewBetaVersion"), true, latestPreReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestPreReleaseStruct.TagName), strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
 	}
 }
