@@ -139,6 +139,7 @@ Docker version is configured through the same name variable configuration, which
 | banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
 | banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
+| ignoreNoLeechersTorrent | bool | true | Ignore torrent without leechers. Enabling can improve performance |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
 | sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |

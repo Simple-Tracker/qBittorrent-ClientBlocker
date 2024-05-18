@@ -165,7 +165,7 @@ func CheckTorrent(torrentInfoHash string, torrentTracker string, torrentLeecherC
 		}
 	}
 
-	if torrentLeecherCount <= 0 {
+	if config.IgnoreNoLeechersTorrent && torrentLeecherCount <= 0 {
 		return -2, nil
 	}
 

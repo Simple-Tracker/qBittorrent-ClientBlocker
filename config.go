@@ -30,6 +30,7 @@ type ConfigStruct struct {
 	BanIPCIDR                     string
 	BanIP6CIDR                    string
 	IgnoreEmptyPeer               bool
+	IgnoreNoLeechersTorrent       bool
 	IgnorePTTorrent               bool
 	SleepTime                     uint32
 	Timeout                       uint32
@@ -132,6 +133,7 @@ var config = ConfigStruct {
 	BanIPCIDR:                     "/32",
 	BanIP6CIDR:                    "/128",
 	IgnoreEmptyPeer:               true,
+	IgnoreNoLeechersTorrent:       true,
 	IgnorePTTorrent:               true,
 	SleepTime:                     20,
 	Timeout:                       6,
