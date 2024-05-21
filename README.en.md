@@ -9,9 +9,9 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 -   Support log and hot-reload config
 -   Support ignore private ip
 -   Support custom blockList (Case-Inensitive, Support regular expression)
--   Support client authentication
+-   Supports a variety of clients and their authentication, and can automatically detect some clients (errors that occur when detecting clients can be ignored)
 -   Support enhanced automatic ban (Default disable): Automatically ban peer based on the default or set related parameter
--   Under Windows, support show and hide window through the Ctrl+Alt+B window hotkey (Some users [feedback](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10) it may affect ban. Due to unknown reason, the function can be avoided if related problem are encountered)
+-   Under Windows, support show and hide window through systray or window hotkey (Ctrl+Alt+B) (Some users [feedback](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10) it may affect ban. Due to unknown reason, the function can be avoided if related problem are encountered)
 
 ![Preview](Preview.png)
 

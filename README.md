@@ -9,9 +9,9 @@
 -   支持记录日志及热重载配置
 -   支持忽略私有 IP 地址
 -   支持自定义屏蔽列表 (不区分大小写, 支持正则表达式)
--   支持客户端认证
+-   支持多种客户端及其认证, 同时可自动检测部分客户端 (可以忽略检测客户端时发生的错误)
 -   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
--   在 Windows 下支持通过 CTRL+ALT+B 窗口热键显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
+-   在 Windows 下支持通过系统托盘或窗口热键 (CTRL+ALT+B) 显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
 另: 我们相信, 通过即时通讯, 能够: 改善问题跟踪及处理的速度和流程 及 更好的加快想法流转. 因此, 我们创建了一个 QQ 用户群 (临时): [857326151](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=edXDN0Dk0kFfgS6t2Uc1MeqUD4NLx76_&authKey=u2Cm6up4ctiHrLTSwCvIo%2FxETz5xYa6%2BBWK187BSGHlgEng6ZRIuv8OC870QGoGq&noverify=0&group_code=857326151)
 
