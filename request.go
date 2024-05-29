@@ -114,9 +114,9 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 	if response.StatusCode == 409 {
 		// 尝试获取并设置 CSRF Token.
 		if currentClientType == "Transmission" {
-			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
-			if transmissionCSRFToken != "" {
-				Tr_SetCSRFToken(transmissionCSRFToken)
+			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
+			if trCSRFToken != "" {
+				Tr_SetCSRFToken(trCSRFToken)
 				return 409, nil, nil
 			}
 		}
@@ -160,6 +160,7 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
 		return -2, nil, nil
 	}
+
 	responseBody, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
 
@@ -184,9 +185,9 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 	if response.StatusCode == 409 {
 		// 尝试获取并设置 CSRF Token.
 		if currentClientType == "Transmission" {
-			transmissionCSRFToken := response.Header.Get("X-Transmission-Session-Id")
-			if transmissionCSRFToken != "" {
-				Tr_SetCSRFToken(transmissionCSRFToken)
+			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
+			if trCSRFToken != "" {
+				Tr_SetCSRFToken(trCSRFToken)
 				return 409, response.Header, nil
 			}
 		}
