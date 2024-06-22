@@ -45,7 +45,7 @@ func CheckPrivateIP(ip string) bool {
 	if ipParsed == nil {
 		return false
 	}
-	return ipParsed.IsPrivate()
+	return (ipParsed.IsLoopback() || ipParsed.IsPrivate())
 }
 func ParseIPCIDR(ip string) *net.IPNet {
 	if !strings.Contains(ip, "/") {
