@@ -13,14 +13,22 @@
 	"skipCertVerification": false,
 	"blockList": [
 		"^-(SD|XF|QD|BN|DL)",
-		"^-XL(?!0019)", "Xunlei(?! ?0019)", "cacao_torrent",
+		"^-XL(?!0019)",
+		"Xun[lL]ei(?! ?0019)",
+		"cacao_torrent",
 		"anacrolix[ /]torrent v?([0-1]\\.(([0-9]|[0-4][0-9]|[0-5][0-2])\\.[0-9]+|(53\\.[0-2]( |$)))|unknown)",
-		"^-DT", "dt[ /]torrent", "^-HP", "hp[ /]torrent",
-		"trafficConsume", "\u07ad__",
-		"^-GT0002", "go[ \\.]torrent",
+		"^-DT",
+		"dt[ /]torrent",
+		"^-HP",
+		"hp[ /]torrent",
+		"trafficConsume",
+		"\u07ad__",
+		"^-GT0002",
+		"go[ \\.]torrent",
 		"Taipei-Torrent dev",
 		"qBittorrent[ /]3\\.3\\.15",
-		"gobind", "offline-download",
+		"gobind",
+		"offline-download",
 		"ljyun.cn"
 	],
 	"ipBlockList": [
@@ -53,7 +61,8 @@
 	"_blockList": [
 		// 可选 blockList, 合并以屏蔽媒体播放器.
 		"^-UW\\w{4}-", // uTorrent Web.
-		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-", "StellarPlayer", // 恒星播放器.
+		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-",
+		"StellarPlayer", // 恒星播放器.
 		"dandanplay" // 弹弹 Play.
 	]
 }
