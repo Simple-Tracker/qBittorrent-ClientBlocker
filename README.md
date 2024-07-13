@@ -132,7 +132,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | debug | bool | false (禁用) | 调试模式. 启用可看到更多信息, 但可能扰乱视野 |
 | debug_CheckTorrent | string | false (禁用) | 调试模式 (CheckTorrent, 须先启用 debug). 启用后调试信息会包括每个 Torrent Hash, 但信息量较大 |
 | debug_CheckPeer | string | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
-| interval | uint32 | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从 Web UI 获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
+| interval | uint32 | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从后端获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | uint32 | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (ipBlockListURL/blockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
@@ -150,11 +150,11 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | logDebug | bool | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
 | listen | string | :26262 | 监听端口. 用于向部分客户端提供 BlockPeerList |
 | clientType | string | 空 | 客户端类型. 使用客户端屏蔽器的前提条件, 若未能自动检测客户端类型, 则须正确填入. 目前支持 ```qBittorrent```/```Transmission```/```BitComet``` |
-| clientURL | string | 空 | Web UI 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990``` 或 ```http://127.0.0.1:9091/transmission/rpc``` |
-| clientUsername | string | 空 | Web UI 账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
-| clientPassword | string | 空 | Web UI 密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
-| useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission) 或通过反向代理等方式 增加/换用 认证方式的 Web UI |
-| skipCertVerification | bool | false (禁用) | 跳过 Web UI 证书校验. 适合自签及过期证书 |
+| clientURL | string | 空 | 客户端地址. 可用 Web API 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990/api``` 或 ```http://127.0.0.1:9091/transmission/rpc``` |
+| clientUsername | string | 空 | 客户端账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
+| clientPassword | string | 空 | 客户端密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
+| useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission) 或通过反向代理等方式 增加/换用 认证方式的后端 |
+| skipCertVerification | bool | false (禁用) | 跳过 Web API 证书校验. 适合自签及过期证书 |
 | fetchFailedThreshold | int | 0 (禁用) | 最大获取失败次数. 当超过设定次数, 将执行设置的外部命令 |
 | execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 首个参数被视作外部程序路径, 当获取失败次数超过设定次数后执行 |
 | execCommand_Run | string | 空 | 执行外部命令 (Run). 首个参数被视作外部程序路径, 当程序启动后执行 |

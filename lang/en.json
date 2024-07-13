@@ -25,6 +25,7 @@
 	"CheckUpdate-Ignore_UnknownVersion": "Skip auto check update: Unknwon version",
 	"CheckUpdate-Ignore_NightlyVersion": "Skip auto check update: Nightly version",
 	"CheckUpdate-Ignore_BadVersion": "Skip auto check update: Error version %s",
+	"ClientQB_Detect-OldClientURL": "Detected ClientURL (Web UI), automatically changed to ClientURL (Web API): %s",
 	"Debug-LoadConfig_HotReload": "Config (%s) change found, hot reload in progress",
 	"Debug-ShowOrHiddenWindow_HideWindow": "Hide window",
 	"Debug-ShowOrHiddenWindow_ShowWindow": "Show window",

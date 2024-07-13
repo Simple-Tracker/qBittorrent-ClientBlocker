@@ -135,19 +135,29 @@ func qB_SetURL() bool {
 			config.ClientURL += ":" + strconv.Itoa(qBPort)
 		}
 	}
+	config.ClientURL += "/api"
 	config.ClientUsername = Username
 	Log("SetURL", GetLangText("Success-SetURL"), true, qBWebUIEnabled, config.ClientURL, config.ClientUsername)
 	return true
 }
 func qB_GetAPIVersion() bool {
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL + "/api/v2/app/webapiVersion", false, false, nil)
+	if !strings.HasSuffix(config.ClientURL, "/api") {
+		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL + "/api/v2/app/webapiVersion", false, false, nil)
+		if apiResponseStatusCodeWithSuffix == 200 || apiResponseStatusCodeWithSuffix == 403 {
+			config.ClientURL += "/api"
+			Log("qB_GetAPIVersion", GetLangText("ClientQB_Detect-OldClientURL"), true, config.ClientURL)
+			return true
+		}
+	}
+
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL + "/v2/app/webapiVersion", false, false, nil)
 	return (apiResponseStatusCode == 200 || apiResponseStatusCode == 403)
 }
 func qB_Login() bool {
 	loginParams := url.Values {}
 	loginParams.Set("username", config.ClientUsername)
 	loginParams.Set("password", config.ClientPassword)
-	_, _, loginResponseBody := Submit(config.ClientURL + "/api/v2/auth/login", loginParams.Encode(), false, true, nil)
+	_, _, loginResponseBody := Submit(config.ClientURL + "/v2/auth/login", loginParams.Encode(), false, true, nil)
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
@@ -165,7 +175,7 @@ func qB_Login() bool {
 	return false
 }
 func qB_FetchTorrents() *[]qB_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL + "/api/v2/torrents/info?filter=active", true, true, nil)
+	_, _, torrentsResponseBody := Fetch(config.ClientURL + "/v2/torrents/info?filter=active", true, true, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -180,7 +190,7 @@ func qB_FetchTorrents() *[]qB_TorrentStruct {
 	return &torrentsResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL + "/api/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true, nil)
+	_, _, torrentPeersResponseBody := Fetch(config.ClientURL + "/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
@@ -238,10 +248,10 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(config.ClientURL + "/api/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(config.ClientURL + "/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		_, _, banResponseBody = Submit(config.ClientURL + "/api/v2/app/setPreferences", "json=" + banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(config.ClientURL + "/v2/app/setPreferences", "json=" + banIPPortsStr, true, true, nil)
 	}
 
 	if banResponseBody == nil {

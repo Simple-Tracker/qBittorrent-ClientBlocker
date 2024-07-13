@@ -130,7 +130,7 @@ Docker version is configured through the same name variable configuration, which
 | debug | bool | false | Debug mode. Enable you can see more information, but it may disrupt the field of vision |
 | debug_CheckTorrent | string | false | Debug mode (CheckTorrent, must enable debug). If it's enabled, debug info will include each Torrent Hash, but the amount of information will be large |
 | debug_CheckPeer | string | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
-| interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from Web UI for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
+| interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from backend for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipBlockListURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
@@ -147,12 +147,12 @@ Docker version is configured through the same name variable configuration, which
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | :26262 | Listen port. Used to provide BlockPeerList to some client |
-| clientType | string | Empty | Client type. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
-| clientURL | string | Empty | Web UI or RPC Address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
-| clientUsername | string | Empty | Web UI Username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
-| clientPassword | string | Empty | Web UI Password. If client "Skip local client authentication" is enabled, it can be left blank by default |
-| useBasicAuth | bool | false | Also authenticates via HTTP Basic Auth. Suitable for Web UI that only support Basic Auth (such as Transmission) or add/change authentication methods via reverse proxy, etc |
-| skipCertVerification | bool | false | Skip Web UI certificate verification. Suitable for self-signed and expired certificates |
+| clientType | string | Empty | Client type. Available Web API or RPC address. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
+| clientURL | string | Empty | Client address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
+| clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
+| clientPassword | string | Empty | Client password. If client "Skip local client authentication" is enabled, it can be left blank by default |
+| useBasicAuth | bool | false | Also authenticates via HxTTP Basic Auth. Suitable for backend that only support Basic Auth (such as Transmission) or add/change authentication methods via reverse proxy, etc |
+| skipCertVerification | bool | false | Skip Web API certificate verification. Suitable for self-signed and expired certificates |
 | fetchFailedThreshold | int | 0 (Disable) | Maximum number of fetch failures. When set number is exceeded, execCommand_FetchFailed will be executed |
 | execCommand_FetchFailed | string | Empty | Execute external command (FetchFailed). First parameter is regarded as an external program path, execute the command when number of fetch failures exceeds set threshold |
 | execCommand_Run | string | Empty | Execute external command (Run). First parameter is regarded as an external program path, execute the command when program starts |

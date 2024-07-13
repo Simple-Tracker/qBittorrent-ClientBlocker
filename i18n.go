@@ -35,6 +35,7 @@ var defaultLangContent = map[string]string {
 	"CheckUpdate-Ignore_UnknownVersion": "跳过自动检查更新: 未知版本",
 	"CheckUpdate-Ignore_NightlyVersion": "跳过自动检查更新: 夜间构建版本",
 	"CheckUpdate-Ignore_BadVersion": "跳过自动检查更新: 错误版本 %s",
+	"ClientQB_Detect-OldClientURL": "检测到 ClientURL (Web UI), 已自动修改至 ClientURL (Web API): %s",
 	"Debug-LoadConfig_HotReload": "发现配置文件 (%s) 更改, 正在进行热重载",
 	"Debug-ShowOrHiddenWindow_HideWindow": "窗口隐藏",
 	"Debug-ShowOrHiddenWindow_ShowWindow": "窗口显示",
