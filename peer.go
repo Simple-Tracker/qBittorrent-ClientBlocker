@@ -4,6 +4,7 @@ import (
 	"net"
 	"strings"
 	"strconv"
+	"github.com/dlclark/regexp2"
 )
 
 type BlockPeerInfoStruct struct {
@@ -141,6 +142,31 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 	
 	return false
 }
+func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, peerID string, peerClient string) bool {
+	if blockRegex != nil {
+		if peerClient != "" {
+			isMatchPeerClient, err := blockRegex.MatchString(peerClient)
+
+			if err != nil {
+				Log("MatchBlockList_PeerClient", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+			} else if isMatchPeerClient {
+				return true
+			}
+		}
+
+		if peerID != "" {
+			isMatchPeerID, err := blockRegex.MatchString(peerID)
+
+			if err != nil {
+				Log("MatchBlockList_PeerID", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+			} else if isMatchPeerID {
+				return true
+			}
+		}
+	}
+
+	return false
+}
 func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerDownloaded int64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
 	if peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1, nil
@@ -165,68 +191,23 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 
 	if hasPeerClient {
 		for _, v := range blockListCompiled {
-			if v == nil {
-				continue
-			}
-
-			isMatchedPeer := false
-
-			if peerClient != "" {
-				isMatchPeerClient, err := v.MatchString(peerClient)
-
-				if err != nil {
-					Log("CheckPeer_MatchPeerClient", GetLangText("Error-MatchRegexpErr"), true, err.Error())
-				} else if isMatchPeerClient {
-					isMatchedPeer = isMatchPeerClient
-				}
-			}
-
-			if peerID != "" && !isMatchedPeer {
-				isMatchPeerID, err := v.MatchString(peerID)
-
-				if err != nil {
-					Log("CheckPeer_MatchPeerID", GetLangText("Error-MatchRegexpErr"), true, err.Error())
-				} else if isMatchPeerID {
-					isMatchedPeer = isMatchPeerID
-				}
-			}
-
-			if isMatchedPeer {
-				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-Client_Normal", peerIP, peerPort, torrentInfoHash)
+			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
+				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockList)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-Client_Normal|BlockList", peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet
 			}
 		}
 		for _, v := range blockListFromURLCompiled {
-			if v == nil {
-				continue
+			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
+				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockListFromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-Client_Normal|BlockListFromURL", peerIP, peerPort, torrentInfoHash)
+				return 1, peerNet
 			}
-
-			isMatchedPeer := false
-
-			if peerClient != "" {
-				isMatchPeerClient, err := v.MatchString(peerClient)
-
-				if err != nil {
-					Log("CheckPeer_MatchPeerClient", GetLangText("Error-CheckPeer_MatchPeerErr"), true, err.Error())
-				} else if isMatchPeerClient {
-					isMatchedPeer = isMatchPeerClient
-				}
-			}
-
-			if peerID != "" && !isMatchedPeer {
-				isMatchPeerID, err := v.MatchString(peerID)
-
-				if err != nil {
-					Log("CheckPeer_MatchPeerID", GetLangText("Error-CheckPeer_MatchPeerErr"), true, err.Error())
-				} else if isMatchPeerID {
-					isMatchedPeer = isMatchPeerID
-				}
-			}
-
-			if isMatchedPeer {
-				Log("CheckPeer_AddBlockPeer (Bad-Client_ListFromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-Client_ListFromURL", peerIP, peerPort, torrentInfoHash)
+		}
+		for _, v := range blockListFromFileCompiled {
+			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
+				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockListFromFile)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-Client_Normal|BlockListFromFile", peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet
 			}
 		}
@@ -255,6 +236,16 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 		}
 		for _, v := range ipBlockListFromURLCompiled {
+			if v == nil {
+				continue
+			}
+			if v.Contains(ip) {
+				Log("CheckPeer_AddBlockPeer (Bad-IP_FromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
+				return 3, peerNet
+			}
+		}
+		for _, v := range ipBlockListFromFileCompiled {
 			if v == nil {
 				continue
 			}
