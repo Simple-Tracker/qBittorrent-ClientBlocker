@@ -62,6 +62,7 @@ var defaultLangContent = map[string]string {
 	"Error-LargeFile": "解析时发生了错误: 目标大小大于 8MB",
 	"Error-NewRequest": "请求时发生了错误: %s",
 	"Error-FetchResponse": "获取时发生了错误: %s",
+	"Error-FetchResponse2": "获取时发生了错误",
 	"Error-ReadResponse": "读取时发生了错误: %s",
 	"Error-NoAuth": "请求时发生了错误: 认证失败",
 	"Error-Forbidden": "请求时发生了错误: 禁止访问",

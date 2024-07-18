@@ -52,6 +52,7 @@
 	"Error-LargeFile": "An error occurred while parsing: Target size is greater than 8MB",
 	"Error-NewRequest": "An error occurred while requesting: %s",
 	"Error-FetchResponse": "An error occurred while fetching: %s",
+	"Error-FetchResponse2": "An error occurred while fetching",
 	"Error-ReadResponse": "An error occurred while reading: %s",
 	"Error-NoAuth": "An error occurred while requesting: Authentication failed",
 	"Error-Forbidden": "An error occurred while requesting: Forbidden",
