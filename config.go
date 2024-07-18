@@ -530,6 +530,8 @@ func LoadInitConfig(firstLoad bool) bool {
 	if !firstLoad {
 		SetIPBlockListFromURL()
 		SetBlockListFromURL()
+		SetIPBlockListFromFile()
+		SetBlockListFromFile()
 	}
 
 	return true
