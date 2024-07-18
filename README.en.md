@@ -132,7 +132,7 @@ Docker version is configured through the same name variable configuration, which
 | debug_CheckPeer | string | false | Debug mode (CheckPeer, must enable debug). If it's enabled, debug info will include each Torrent Peer, but the amount of information will be large |
 | interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from backend for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
-| updateInterval | uint32 | 86400 (Sec) | List URL update interval (ipBlockListURL/blockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
+| updateInterval | uint32 | 86400 (Sec) | List URL update interval (blockListURL/ipBlockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
@@ -163,9 +163,11 @@ Docker version is configured through the same name variable configuration, which
 | syncServerToken | string | Empty | Sync server Token. Some sync server may require authentication |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
+| blockListFile | string | Empty | Block client list File. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
 | ipBlockList | []string | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
 | ipBlockListURL | string | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
+| ipBlockListFile | string | Empty | Block IP list File. Support format is same as ipBlockList, one rule per line |
 | genIPDat | uint32 | 0 (Disable) | 1: Generate IPBlockList.dat. Include All Peer IPCIDR, support format is same as ipBlockList; 2: Generate IPFilter.dat. Include All Peer IP; One rule per line |
 | ipUploadedCheck | bool | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
 | ipUpCheckInterval | uint32 | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
