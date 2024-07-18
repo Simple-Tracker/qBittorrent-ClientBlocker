@@ -13,7 +13,7 @@
 	"skipCertVerification": false,
 	"blockList": [
 		"^-(SD|XF|QD|BN|DL)",
-		"^-XL(?!0019)", "Xunlei(?! ?0019)", "cacao_torrent",
+		"^-XL", "Xunlei", "cacao_torrent",
 		"anacrolix[ /]torrent v?([0-1]\\.(([0-9]|[0-4][0-9]|[0-5][0-2])\\.[0-9]+|(53\\.[0-2]( |$)))|unknown)",
 		"^-DT", "dt[ /]torrent", "^-HP", "hp[ /]torrent", "^-XM", "xm[ /]torrent",
 		"trafficConsume", "\u07ad__",
@@ -25,7 +25,6 @@
 	],
 	"_blockList": [
 		// 可选 blockList.
-		"^-XL0019", "Xunlei 0019", // 无吸血特征的新版本迅雷.
 		"^-UW\\w{4}-", // uTorrent Web.
 		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-", "StellarPlayer", // 恒星播放器.
 		"dandanplay" // 弹弹 Play.
