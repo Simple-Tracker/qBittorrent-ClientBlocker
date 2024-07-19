@@ -32,26 +32,32 @@ func SetURLFromClient() {
 	}
 }
 func DetectClient() bool {
-	if config.ClientType != "" {
-		currentClientType = config.ClientType
-		return true
-	}
-
 	currentClientType = "qBittorrent"
-	if qB_GetAPIVersion() {
-		Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
-		return true
+	if config.ClientType == "" || config.ClientType == currentClientType {
+		if qB_GetAPIVersion() {
+			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
+			return true
+		}
 	}
 
 	currentClientType = "Transmission"
-	if Tr_DetectVersion() {
-		Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
-		return true
+	if config.ClientType == "" || config.ClientType == currentClientType {
+		if Tr_DetectVersion() {
+			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
+			return true
+		}
 	}
 
 	currentClientType = "BitComet"
-	if BC_DetectClient() {
-		Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
+	if config.ClientType == "" || config.ClientType == currentClientType {
+		if BC_DetectClient() {
+			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
+			return true
+		}
+	}
+
+	if config.ClientType != "" {
+		currentClientType = config.ClientType
 		return true
 	}
 
