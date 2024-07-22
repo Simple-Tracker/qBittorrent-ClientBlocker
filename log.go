@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"fmt"
 	"strings"
@@ -9,21 +10,39 @@ import (
 var todayStr = ""
 var lastLogPath = ""
 var logFile *os.File
+var logwriter = LogWriter {}
 
+type LogWriter struct {
+    w io.Writer
+}
+
+func (w LogWriter) Write(p []byte) (n int, err error) {
+	Log("LogWriter", string(p), true)
+	return len(p), nil
+}
 func Log(module string, str string, logToFile bool, args ...interface {}) {
-	if strings.HasPrefix(module, "Debug") {
-		if !config.Debug {
-			return
-		} else if config.LogDebug {
+	if !strings.HasPrefix(module, "Debug") {
+		if module == "LogWriter" {
+			str = StrTrim(str)
+			if strings.HasPrefix(str, "[proxy.Provider") {
+				return
+			}
+		}
+	} else if config.Debug {
+		if config.LogDebug {
 			logToFile = true
 		}
+	} else {
+		return
 	}
+
 	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
 	if config.LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", GetLangText("Error-Log_Write"), false, err.Error())
 		}
 	}
+
 	fmt.Print(logStr)
 }
 func LoadLog() bool {

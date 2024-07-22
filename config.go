@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"net"
+	"log"
 	"time"
 	"flag"
 	"reflect"
@@ -562,6 +563,8 @@ func PrepareEnv() bool {
 	LoadLang(GetLangCode())
 	RegFlag()
 	ShowVersion()
+	log.SetFlags(0)
+	log.SetOutput(logwriter)
 
 	if shortFlag_ShowVersion || longFlag_ShowVersion {
 		return false
