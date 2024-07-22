@@ -110,15 +110,21 @@ var blockListFileLastMod int64 = 0
 var ipBlockListFileLastMod int64 = 0
 
 var httpTransport = &http.Transport {
-	DisableKeepAlives:   true,
-	ForceAttemptHTTP2:   false,
-	MaxConnsPerHost:     32,
-	MaxIdleConns:        32,
-	MaxIdleConnsPerHost: 32,
-	TLSClientConfig:     &tls.Config { InsecureSkipVerify: false },
+	DisableKeepAlives:     true,
+	ForceAttemptHTTP2:     false,
+	MaxConnsPerHost:       32,
+	MaxIdleConns:          32,
+	MaxIdleConnsPerHost:   32,
+	IdleConnTimeout:       60 * time.Second,
+	TLSHandshakeTimeout:   12 * time.Second,
+	ResponseHeaderTimeout: 60 * time.Second,
+	TLSClientConfig:       &tls.Config { InsecureSkipVerify: false },
+	Proxy:                 GetProxy,
 }
+
 var httpClient http.Client
 var httpClientWithoutCookie http.Client
+
 var httpServer = http.Server {
 	ReadTimeout:  30,
 	WriteTimeout: 30,
@@ -423,8 +429,6 @@ func InitConfig() {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
 	}
 
-	httpTransportWithoutCookie := httpTransport.Clone()
-
 	if config.LongConnection {
 		httpTransport.DisableKeepAlives = false
 	}
@@ -442,7 +446,7 @@ func InitConfig() {
 
 	httpClientWithoutCookie = http.Client {
 		Timeout:   currentTimeout,
-		Transport: httpTransportWithoutCookie,
+		Transport: httpTransport,
 		CheckRedirect: func (req *http.Request, via []*http.Request) error {
 	        return http.ErrUseLastResponse
 	    },
@@ -509,6 +513,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	}
 
 	if firstLoad {
+		GetProxy(nil)
 		SetURLFromClient()
 	}
 
