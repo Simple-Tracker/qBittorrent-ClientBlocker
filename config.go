@@ -195,7 +195,7 @@ var config = ConfigStruct {
 func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[string]*regexp2.Regexp) int {
 	// Max 8MB.
 	if len(blockListContent) > 8388608 {
-		Log("SetBlockList", GetLangText("Error-LargeFile"), true)
+		Log("SetBlockListFromContent", GetLangText("Error-LargeFile"), true)
 		return 0
 	}
 
@@ -205,7 +205,7 @@ func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[stri
 	for blockListLineNum, blockListLine := range blockListArr {
 		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
 		if blockListLine == "" {
-			Log("Debug-SetBlockList_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
+			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
 			continue
 		}
 
@@ -214,11 +214,11 @@ func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[stri
 			continue
 		}
 
-		Log("Debug-SetBlockList_Compile", ":%d %s", false, blockListLineNum, blockListLine)
+		Log("Debug-SetBlockListFromContent_Compile", ":%d %s", false, blockListLineNum, blockListLine)
 
 		reg, err := regexp2.Compile("(?i)" + blockListLine, 0)
 		if err != nil {
-			Log("SetBlockList_Compile", GetLangText("Error-SetBlockList_Compile"), true, blockListLineNum, blockListLine)
+			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, blockListLineNum, blockListLine)
 			continue
 		}
 
@@ -233,7 +233,7 @@ func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[stri
 func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
 	// Max 8MB.
 	if len(ipBlockListContent) > 8388608 {
-		Log("SetIPBlockList", GetLangText("Error-LargeFile"), true)
+		Log("SetIPBlockListFromContent", GetLangText("Error-LargeFile"), true)
 		return 0
 	}
 
@@ -243,7 +243,7 @@ func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled ma
 	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
 		ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
 		if ipBlockListLine == "" {
-			Log("Debug-SetIPBlockList_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
+			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
 			continue
 		}
 
@@ -252,10 +252,10 @@ func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled ma
 			continue
 		}
 
-		Log("Debug-SetIPBlockList_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
+		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
 		cidr := ParseIPCIDR(ipBlockListLine)
 		if cidr == nil {
-			Log("SetIPBlockList_Compile", GetLangText("Error-SetIPBlockList_Compile"), true, ipBlockListLineNum, ipBlockListLine)
+			Log("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, ipBlockListLineNum, ipBlockListLine)
 			continue
 		}
 
