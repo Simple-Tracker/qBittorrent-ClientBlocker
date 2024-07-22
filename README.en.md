@@ -9,7 +9,7 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 -   Support log and hot-reload config
 -   Support ignore private ip
 -   Support custom blockList (Case-Inensitive, Support regular expression)
--   Supports a variety of clients and their authentication, and can automatically detect some clients (errors that occur when detecting clients can be ignored)
+-   Supports a variety of clients and their authentication, and can automatically detect some clients (Currently supports qBittorrent. Errors that occur when detecting clients can be ignored)
 -   Support enhanced automatic ban (Default disable): Automatically ban peer based on the default or set related parameter
 -   Under Windows, support show and hide window through systray or window hotkey (Ctrl+Alt+B) (Some users [feedback](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10) it may affect ban. Due to unknown reason, the function can be avoided if related problem are encountered)
 
@@ -147,7 +147,7 @@ Docker version is configured through the same name variable configuration, which
 | longConnection | bool | true | Long connection. Enable to reduce resource consumption |
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
-| listen | string | :26262 | Listen port. Used to provide BlockPeerList to some client |
+| listen | string | 127.0.0.1:26262 | Listen port. Used to provide BlockPeerList to some client (Transmission). For non-localhost, you can change to ```<Host>:<Port>``` |
 | clientType | string | Empty | Client type. Available Web API or RPC address. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
 | clientURL | string | Empty | Client address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |

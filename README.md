@@ -9,7 +9,7 @@
 -   支持记录日志及热重载配置
 -   支持忽略私有 IP 地址
 -   支持自定义屏蔽列表 (不区分大小写, 支持正则表达式)
--   支持多种客户端及其认证, 同时可自动检测部分客户端 (可以忽略检测客户端时发生的错误)
+-   支持多种客户端及其认证, 同时可自动检测部分客户端 (目前支持 qBittorrent. 可以安全忽略检测客户端时发生的错误)
 -   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
 -   在 Windows 下支持通过系统托盘或窗口热键 (CTRL+ALT+B) 显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
@@ -149,7 +149,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | longConnection | bool | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | bool | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
 | logDebug | bool | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
-| listen | string | :26262 | 监听端口. 用于向部分客户端提供 BlockPeerList |
+| listen | string | 127.0.0.1:26262 | 监听端口. 用于向部分客户端 (Transmission) 提供 BlockPeerList. 非本机使用可改为 ```<Host>:<Port>``` |
 | clientType | string | 空 | 客户端类型. 使用客户端屏蔽器的前提条件, 若未能自动检测客户端类型, 则须正确填入. 目前支持 ```qBittorrent```/```Transmission```/```BitComet``` |
 | clientURL | string | 空 | 客户端地址. 可用 Web API 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990/api``` 或 ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | 空 | 客户端账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |

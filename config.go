@@ -156,7 +156,7 @@ var config = ConfigStruct {
 	LogPath:                       "logs",
 	LogToFile:                     true,
 	LogDebug:                      false,
-	Listen:                        ":26262",
+	Listen:                        "127.0.0.1:26262",
 	ClientType:                    "",
 	ClientURL:                     "",
 	ClientUsername:                "",
