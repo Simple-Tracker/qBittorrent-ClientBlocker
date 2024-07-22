@@ -16,7 +16,7 @@ var loopTicker *time.Ticker
 var currentTimestamp int64 = 0
 var lastCheckUpdateTimestamp int64 = 0
 var lastCheckUpdateReleaseVer = ""
-var lastCheckUpdateBetaVer = ""
+var lastCheckUpdateBetaVer = "None"
 var githubAPIHeader = map[string]string { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
 var isRunning bool
 
@@ -170,6 +170,10 @@ func CheckUpdate() {
 				}
 			}
 		}
+	}
+
+	if latestPreReleaseStruct.TagName == "" {
+		latestPreReleaseStruct.TagName = "None"
 	}
 
 	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, currentVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
