@@ -32,11 +32,11 @@ type qB_TorrentPeersStruct struct {
 
 var qB_useNewBanPeersMethod = false
 
-func qB_GetConfigPath() string {
+func qB_GetClientConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserHomeDir"), true, err.Error())
+		Log("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserHomeDir"), true, err.Error())
 		return ""
 	}
 	if IsUnix(userHomeDir) {
@@ -44,15 +44,15 @@ func qB_GetConfigPath() string {
 	} else {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			Log("Debug-GetConfigPath", GetLangText("Error-Debug-GetConfigPath_GetUserConfigDir"), true, err.Error())
+			Log("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserConfigDir"), true, err.Error())
 			return ""
 		}
 		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
 	}
 	return qBConfigFilename
 }
-func qB_GetConfig() []byte {
-	qBConfigFilename := qB_GetConfigPath()
+func qB_GetClientConfig() []byte {
+	qBConfigFilename := qB_GetClientConfigPath()
 	if qBConfigFilename == "" {
 		return []byte {}
 	}
@@ -61,23 +61,23 @@ func qB_GetConfig() []byte {
 	if err != nil {
 		if !os.IsNotExist(err) {
 			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
-			Log("GetConfig", GetLangText("Error-GetConfig_LoadConfigMeta"), true, err.Error())
+			Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfigMeta"), true, err.Error())
 		}
 		return []byte {}
 	}
 
-	Log("GetConfig", GetLangText("GetConfig_UseConfig"), true, qBConfigFilename)
+	Log("GetClientConfig", GetLangText("GetClientConfig_UseConfig"), true, qBConfigFilename)
 
 	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
-		Log("GetConfig", GetLangText("Error-GetConfig_LoadConfig"), true, err.Error())
+		Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfig"), true, err.Error())
 		return []byte {}
 	}
 
 	return qBConfigFile
 }
 func qB_SetURL() bool {
-	qBConfigFile := qB_GetConfig()
+	qBConfigFile := qB_GetClientConfig()
 	if len(qBConfigFile) < 1 {
 		return false
 	}
