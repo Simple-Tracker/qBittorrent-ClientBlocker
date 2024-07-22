@@ -35,6 +35,7 @@ type ConfigStruct struct {
 	IgnorePTTorrent               bool
 	SleepTime                     uint32
 	Timeout                       uint32
+	Proxy                         string
 	LongConnection                bool
 	LogPath                       string
 	LogToFile                     bool
@@ -150,6 +151,7 @@ var config = ConfigStruct {
 	IgnorePTTorrent:               true,
 	SleepTime:                     20,
 	Timeout:                       6,
+	Proxy:                         "Auto",
 	LongConnection:                true,
 	LogPath:                       "logs",
 	LogToFile:                     true,
@@ -432,6 +434,14 @@ func InitConfig() {
 		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
 	}
 
+	if config.Proxy == "Auto" {
+		httpTransport.Proxy = GetProxy
+	} else {
+		httpTransport.Proxy = nil
+	}
+
+	httpTransportWithoutCookie := httpTransport.Clone()
+
 	if config.LongConnection {
 		httpTransport.DisableKeepAlives = false
 	}
@@ -449,7 +459,7 @@ func InitConfig() {
 
 	httpClientWithoutCookie = http.Client {
 		Timeout:   currentTimeout,
-		Transport: httpTransport,
+		Transport: httpTransportWithoutCookie,
 		CheckRedirect: func (req *http.Request, via []*http.Request) error {
 	        return http.ErrUseLastResponse
 	    },
