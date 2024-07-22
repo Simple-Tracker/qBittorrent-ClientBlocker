@@ -274,6 +274,7 @@ func SetBlockListFromURL() bool {
 
 	_, _, blockListContent := Fetch(config.BlockListURL, false, false, nil)
 	if blockListContent == nil {
+		blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
 		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 		return false
 	}
@@ -293,6 +294,7 @@ func SetIPBlockListFromURL() bool {
 
 	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
 	if ipBlockListContent == nil {
+		ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
 		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 		return false
 	}
