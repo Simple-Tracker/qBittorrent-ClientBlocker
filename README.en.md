@@ -133,6 +133,7 @@ Docker version is configured through the same name variable configuration, which
 | interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from backend for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (blockListURL/ipBlockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
+| restartInterval | uint32 | 6 (Sec) | Restart Torrent interval. This is a measure to solve the problem that the blocklist of some clients (Transmission) cannot be effective. It is implemented by restarting Torrent. Too short an interval may cause the blocking to be ineffective |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |

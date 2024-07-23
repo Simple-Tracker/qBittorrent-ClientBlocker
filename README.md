@@ -135,6 +135,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | interval | uint32 | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从后端获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | uint32 | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (blockListURL/ipBlockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
+| restartInterval | uint32 | 6 (秒) | 重启 Torrent 间隔. 用于部分客户端 (Transmission) 屏蔽列表无法立即生效的措施, 通过重启 Torrent 来实现. 过短间隔可能造成屏蔽不生效 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |

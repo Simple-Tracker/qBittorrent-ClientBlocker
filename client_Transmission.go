@@ -147,7 +147,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	}
 
 	Log("RestartTorrentByMap", GetLangText("Debug-RestartTorrentByMap_Wait"), true, config.Interval)
-	time.Sleep(time.Duration(config.Interval) * time.Second)
+	time.Sleep(time.Duration(config.RestartInterval) * time.Second)
 
 	startJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-start", Args: peerInfoHashes })
 	if err != nil {

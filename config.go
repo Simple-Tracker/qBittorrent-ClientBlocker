@@ -25,6 +25,7 @@ type ConfigStruct struct {
 	Interval                      uint32
 	CleanInterval                 uint32
 	UpdateInterval                uint32
+	RestartInterval               uint32
 	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
 	BanAllPort                    bool
@@ -141,6 +142,7 @@ var config = ConfigStruct {
 	Interval:                      6,
 	CleanInterval:                 3600,
 	UpdateInterval:                86400,
+	RestartInterval:               6,
 	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
 	BanAllPort:                    false,
