@@ -19,7 +19,11 @@ type Tr_TorrentsResponseStruct struct {
 	Result string            `json:"result"`
 	Args   Tr_TorrentsStruct `json:"arguments"`
 }
-type Tr_GetStruct struct {
+type Tr_ArgsStruct struct {
+	Field []string `json:"fields"`
+}
+type Tr_ArgTorrentsStruct struct {
+	IDs   []string `json:"ids"`
 	Field []string `json:"fields"`
 }
 type Tr_SessionSetStruct struct {
@@ -67,7 +71,7 @@ func Tr_SetURL() bool {
 	return false
 }
 func Tr_DetectVersion() bool {
-	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: Tr_GetStruct { Field: []string { "version" } } })
+	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: Tr_ArgsStruct { Field: []string { "version" } } })
 	if err != nil {
 		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
@@ -98,7 +102,7 @@ func Tr_SetCSRFToken(csrfToken string) {
 	Log("SetCSRFToken", GetLangText("Success-SetCSRFToken"), true, csrfToken)
 }
 func Tr_FetchTorrents() *Tr_TorrentsStruct {
-	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: Tr_GetStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } } })
+	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: Tr_ArgsStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } } })
 	if err != nil {
 		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
 		return nil
@@ -134,7 +138,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 		return
 	}
 
-	stopJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-stop", Args: peerInfoHashes })
+	stopJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-stop", Args: Tr_ArgTorrentsStruct { IDs: peerInfoHashes } })
 	if err != nil {
 		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
 		return
@@ -149,7 +153,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	Log("RestartTorrentByMap", GetLangText("Debug-RestartTorrentByMap_Wait"), true, config.Interval)
 	time.Sleep(time.Duration(config.RestartInterval) * time.Second)
 
-	startJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-start", Args: peerInfoHashes })
+	startJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-start", Args: Tr_ArgTorrentsStruct { IDs: peerInfoHashes } })
 	if err != nil {
 		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
 		return
