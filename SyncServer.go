@@ -2,7 +2,6 @@ package main
 
 import (
 	"net"
-	"strings"
 	"encoding/json"
 	"github.com/tidwall/jsonc"
 )
@@ -70,7 +69,7 @@ func SyncWithServer() bool {
 		logReason := false
 
 		for ipBlockListLineNum, ipBlockListLine := range ipArr {
-			ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
+			ipBlockListLine = ProcessRemark(ipBlockListLine)
 			if ipBlockListLine == "" {
 				Log("Debug-SyncWithServer_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
 				continue

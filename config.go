@@ -205,7 +205,7 @@ func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[stri
 	tmpBlockListCompiled := make(map[string]*regexp2.Regexp)
 
 	for blockListLineNum, blockListLine := range blockListArr {
-		blockListLine = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
+		blockListLine = ProcessRemark(blockListLine)
 		if blockListLine == "" {
 			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
 			continue
@@ -243,7 +243,7 @@ func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled ma
 	tmpIPBlockListCompiled := make(map[string]*net.IPNet)
 
 	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
-		ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
+		ipBlockListLine = ProcessRemark(ipBlockListLine)
 		if ipBlockListLine == "" {
 			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
 			continue

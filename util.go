@@ -30,6 +30,10 @@ func IsUnix(path string) bool {
 func IsIPv6(ip string) bool {
 	return (strings.Count(ip, ":") >= 2)
 }
+func ProcessRemark(str string) string {
+	// Remove all remarks.
+	return StrTrim(strings.SplitN(strings.SplitN(str, "#", 2)[0], "//", 2)[0])
+}
 func StrTrim(str string) string {
 	return strings.Trim(str, "  \n\r")
 }
