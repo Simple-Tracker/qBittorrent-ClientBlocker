@@ -12,8 +12,8 @@ func IsBanPort() bool {
 }
 func IsSupportClient() bool {
 	switch currentClientType {
-		case "qBittorrent", "Transmission", "BitComet":
-			return true
+	case "qBittorrent", "Transmission", "BitComet":
+		return true
 	}
 
 	return false
@@ -66,54 +66,54 @@ func DetectClient() bool {
 }
 func Login() bool {
 	switch currentClientType {
-		case "qBittorrent":
-			return qB_Login()
-		case "Transmission":
-			return Tr_Login()
-		case "BitComet":
-			return BC_Login()
+	case "qBittorrent":
+		return qB_Login()
+	case "Transmission":
+		return Tr_Login()
+	case "BitComet":
+		return BC_Login()
 	}
 
 	return false
 }
 func FetchTorrents() interface{} {
 	switch currentClientType {
-		case "qBittorrent":
-			maindata := qB_FetchTorrents()
-			if maindata == nil {
-				return nil
-			}
-			return maindata
-		case "Transmission":
-			maindata := Tr_FetchTorrents()
-			if maindata == nil {
-				return nil
-			}
-			return maindata
-		case "BitComet":
-			maindata := BC_FetchTorrents()
-			if maindata == nil {
-				return nil
-			}
-			return maindata
+	case "qBittorrent":
+		maindata := qB_FetchTorrents()
+		if maindata == nil {
+			return nil
+		}
+		return maindata
+	case "Transmission":
+		maindata := Tr_FetchTorrents()
+		if maindata == nil {
+			return nil
+		}
+		return maindata
+	case "BitComet":
+		maindata := BC_FetchTorrents()
+		if maindata == nil {
+			return nil
+		}
+		return maindata
 	}
 
 	return nil
 }
 func FetchTorrentPeers(infoHash string) interface{} {
 	switch currentClientType {
-		case "qBittorrent":
-			torrentPeers := qB_FetchTorrentPeers(infoHash)
-			if torrentPeers == nil {
-				return nil
-			}
-			return torrentPeers
-		case "BitComet":
-			torrentPeers := BC_FetchTorrentPeers(infoHash)
-			if torrentPeers == nil {
-				return nil
-			}
-			return torrentPeers
+	case "qBittorrent":
+		torrentPeers := qB_FetchTorrentPeers(infoHash)
+		if torrentPeers == nil {
+			return nil
+		}
+		return torrentPeers
+	case "BitComet":
+		torrentPeers := BC_FetchTorrentPeers(infoHash)
+		if torrentPeers == nil {
+			return nil
+		}
+		return torrentPeers
 	}
 
 	return nil
@@ -124,10 +124,10 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 
 	switch currentClientType {
-		case "qBittorrent":
-			return qB_SubmitBlockPeer(blockPeerMap)
-		case "Transmission":
-			return Tr_SubmitBlockPeer(blockPeerMap)
+	case "qBittorrent":
+		return qB_SubmitBlockPeer(blockPeerMap)
+	case "Transmission":
+		return Tr_SubmitBlockPeer(blockPeerMap)
 	}
 
 	return false

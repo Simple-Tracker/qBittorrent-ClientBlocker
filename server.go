@@ -1,19 +1,19 @@
 package main
 
 import (
-	"strings"
 	"context"
 	"net"
 	"net/http"
+	"strings"
 )
 
 var Server_Status bool = false
 var Server_httpListen net.Listener
 
-type httpServerHandler struct {
+type HttpServerHandler struct {
 }
 
-func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *HttpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(405)
 		w.Write([]byte("405: Method Not Allowed."))
@@ -39,15 +39,15 @@ func StartServer() {
 
 	httpListen, err := net.Listen(listenType, strings.SplitN(config.Listen, "/", 2)[0])
 	if err != nil {
-	    Log("StartServer", GetLangText("Error-StartServer_Listen"), true, err.Error())
-	    return
+		Log("StartServer", GetLangText("Error-StartServer_Listen"), true, err.Error())
+		return
 	}
 
 	Server_Status = true
 	Server_httpListen = httpListen
 
-	httpServer.SetKeepAlivesEnabled(false)
-	if err := httpServer.Serve(Server_httpListen); err != http.ErrServerClosed {
+	HttpServer.SetKeepAlivesEnabled(false)
+	if err := HttpServer.Serve(Server_httpListen); err != http.ErrServerClosed {
 		Log("StartServer", GetLangText("Error-StartServer_Serve"), true, err.Error())
 		Server_Status = false
 	}
@@ -57,7 +57,7 @@ func StopServer() {
 		return
 	}
 
-	if err := httpServer.Shutdown(context.Background()); err != nil {
+	if err := HttpServer.Shutdown(context.Background()); err != nil {
 		Log("StopServer", GetLangText("Error-StopServer"), true, err.Error())
 	}
 

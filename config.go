@@ -1,21 +1,80 @@
 package main
 
 import (
-	"os"
-	"net"
-	"log"
-	"time"
-	"flag"
-	"reflect"
-	"strings"
 	"crypto/tls"
 	"encoding/json"
-	"path/filepath"
+	"flag"
+	"log"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
-	"github.com/tidwall/jsonc"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/dlclark/regexp2"
+	"github.com/tidwall/jsonc"
 )
+
+var programName = "qBittorrent-ClientBlocker"
+var programVersion = "Unknown"
+var programUserAgent = programName + "/" + programVersion
+
+var shortFlag_ShowVersion bool
+var longFlag_ShowVersion bool
+var startDelay uint
+var noChdir bool
+var needHideWindow bool
+var needHideSystray bool
+
+var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
+var BlockListCompiled = mapset.NewSet[*regexp2.Regexp]()
+var ipBlockListCompiled = make(map[string]*net.IPNet)
+
+var cookieJar, _ = cookiejar.New(nil)
+
+var lastURL = ""
+var configLastMod = make(map[string]int64)
+var configFilename string = "config.json"
+var shortFlag_configFilename string
+var longFlag_configFilename string
+var additionConfigFilename string = "config_additional.json"
+var shortFlag_additionConfigFilename string
+var longFlag_additionConfigFilename string
+
+// 这几个鬼玩意可以考虑改成map
+var blockListURLLastModTime []int64 = make([]int64, len(config.BlockListURL))
+var blockListURLEtag []string = make([]string, len(config.BlockListURL))
+var blockListFileLastMod []int64 = make([]int64, len(config.BlockListFile))
+var blockListURLLastFetchTime int64 = 0
+var ipBlockListURLLastModTime []int64 = make([]int64, len(config.IPBlockListURL))
+var ipBlockListURLEtag []string = make([]string, len(config.IPBlockListURL))
+var ipBlockListFileLastMod []int64 = make([]int64, len(config.IPBlockListFile))
+var ipblockListURLLastFetchTime int64 = 0
+
+var httpTransport = &http.Transport{
+	DisableKeepAlives:     true,
+	ForceAttemptHTTP2:     false,
+	MaxConnsPerHost:       32,
+	MaxIdleConns:          32,
+	MaxIdleConnsPerHost:   32,
+	IdleConnTimeout:       60 * time.Second,
+	TLSHandshakeTimeout:   12 * time.Second,
+	ResponseHeaderTimeout: 60 * time.Second,
+	TLSClientConfig:       &tls.Config{InsecureSkipVerify: false},
+	Proxy:                 GetProxy,
+}
+
+var httpClient http.Client
+var httpClientWithoutCookie http.Client
+var HttpServer = http.Server{
+	ReadTimeout:  30,
+	WriteTimeout: 30,
+	Handler:      &HttpServerHandler{},
+}
 
 type ConfigStruct struct {
 	CheckUpdate                   bool
@@ -42,26 +101,26 @@ type ConfigStruct struct {
 	LogToFile                     bool
 	LogDebug                      bool
 	Listen                        string
-	ClientType                    string 
+	ClientType                    string
 	ClientURL                     string
 	ClientUsername                string
 	ClientPassword                string
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	FetchFailedThreshold          int
-	ExecCommand_FetchFailed       string   
-	ExecCommand_Run               string   
+	ExecCommand_FetchFailed       string
+	ExecCommand_Run               string
 	ExecCommand_Ban               string
 	ExecCommand_Unban             string
 	SyncServerURL                 string
 	SyncServerToken               string
 	BlockList                     []string
-	BlockListURL                  string
-	BlockListFile                 string
+	BlockListURL                  []string
+	BlockListFile                 []string
 	PortBlockList                 []uint32
 	IPBlockList                   []string
-	IPBlockListURL                string
-	IPBlockListFile               string
+	IPBlockListURL                []string
+	IPBlockListFile               []string
 	IgnoreByDownloaded            uint32
 	GenIPDat                      uint32
 	IPUploadedCheck               bool
@@ -79,62 +138,7 @@ type ConfigStruct struct {
 	BanByRelativePUAntiErrorRatio float64
 }
 
-var programName = "qBittorrent-ClientBlocker"
-var programVersion = "Unknown"
-var programUserAgent = programName + "/" + programVersion
-
-var shortFlag_ShowVersion bool
-var longFlag_ShowVersion bool
-var startDelay uint
-var noChdir bool
-var needHideWindow bool
-var needHideSystray bool
-
-var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
-var blockListCompiled []*regexp2.Regexp
-var blockListFromURLCompiled = make(map[string]*regexp2.Regexp)
-var blockListFromFileCompiled = make(map[string]*regexp2.Regexp)
-var ipBlockListCompiled []*net.IPNet
-var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
-var ipBlockListFromFileCompiled = make(map[string]*net.IPNet)
-var cookieJar, _ = cookiejar.New(nil)
-
-var lastURL = ""
-var configLastMod = make(map[string]int64)
-var configFilename string = "config.json"
-var shortFlag_configFilename string
-var longFlag_configFilename string
-var additionConfigFilename string = "config_additional.json"
-var shortFlag_additionConfigFilename string
-var longFlag_additionConfigFilename string
-var blockListURLLastFetch int64 = 0
-var ipBlockListURLLastFetch int64 = 0
-var blockListFileLastMod int64 = 0
-var ipBlockListFileLastMod int64 = 0
-
-var httpTransport = &http.Transport {
-	DisableKeepAlives:     true,
-	ForceAttemptHTTP2:     false,
-	MaxConnsPerHost:       32,
-	MaxIdleConns:          32,
-	MaxIdleConnsPerHost:   32,
-	IdleConnTimeout:       60 * time.Second,
-	TLSHandshakeTimeout:   12 * time.Second,
-	ResponseHeaderTimeout: 60 * time.Second,
-	TLSClientConfig:       &tls.Config { InsecureSkipVerify: false },
-	Proxy:                 GetProxy,
-}
-
-var httpClient http.Client
-var httpClientWithoutCookie http.Client
-
-var httpServer = http.Server {
-	ReadTimeout:  30,
-	WriteTimeout: 30,
-	Handler:      &httpServerHandler {},
-}
-
-var config = ConfigStruct {
+var config = ConfigStruct{
 	CheckUpdate:                   true,
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
@@ -172,13 +176,13 @@ var config = ConfigStruct {
 	ExecCommand_Unban:             "",
 	SyncServerURL:                 "",
 	SyncServerToken:               "",
-	BlockList:                     []string {},
-	BlockListURL:                  "",
-	BlockListFile:                 "",
-	PortBlockList:                 []uint32 {},
-	IPBlockList:                   []string {},
-	IPBlockListURL:                "",
-	IPBlockListFile:               "",
+	BlockList:                     []string{},
+	BlockListURL:                  []string{},
+	BlockListFile:                 []string{},
+	PortBlockList:                 []uint32{},
+	IPBlockList:                   []string{},
+	IPBlockListURL:                []string{},
+	IPBlockListFile:               []string{},
 	IgnoreByDownloaded:            100,
 	GenIPDat:                      0,
 	IPUploadedCheck:               false,
@@ -196,185 +200,159 @@ var config = ConfigStruct {
 	BanByRelativePUAntiErrorRatio: 3,
 }
 
-func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[string]*regexp2.Regexp) int {
-	// Max 8MB.
-	if len(blockListContent) > 8388608 {
-		Log("SetBlockListFromContent", GetLangText("Error-LargeFile"), true)
+func SetBlockListFromContent(blockListContent []string) int {
+	if blockListContent == nil { // 有可能不接入内容
 		return 0
 	}
-
-	blockListArr := strings.Split(string(blockListContent), "\n")
-	tmpBlockListCompiled := make(map[string]*regexp2.Regexp)
-
-	for blockListLineNum, blockListLine := range blockListArr {
-		blockListLine = ProcessRemark(blockListLine)
-		if blockListLine == "" {
-			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
-			continue
-		}
-
-		if reg, exists := blockListCompiled[blockListLine]; exists {
-			tmpBlockListCompiled[blockListLine] = reg
-			continue
-		}
-
-		Log("Debug-SetBlockListFromContent_Compile", ":%d %s", false, blockListLineNum, blockListLine)
-
-		reg, err := regexp2.Compile("(?i)" + blockListLine, 0)
+	prev_count := BlockListCompiled.Cardinality()
+	for index, item := range blockListContent {
+		reg, err := regexp2.Compile("(?i)"+item, 0)
 		if err != nil {
-			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, blockListLineNum, blockListLine)
+			Log("Error-SetBlocklistFromContent_Compile", GetLangText("Error-SetBlockList_Compile"), true, index, item, err.Error())
 			continue
 		}
-
 		reg.MatchTimeout = 50 * time.Millisecond
-
-		tmpBlockListCompiled[blockListLine] = reg
+		BlockListCompiled.Add(reg)
 	}
 
-	blockListCompiled = tmpBlockListCompiled
-	return len(blockListCompiled)
+	return BlockListCompiled.Cardinality() - prev_count
 }
-func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
+func SetBlockListFromFile() {
+	if config.BlockListFile == nil || len(config.BlockListFile) == 0 {
+		return
+	}
+	for index, filepath := range config.BlockListFile {
+		blockListFileStat, err := os.Stat(filepath)
+		if err != nil {
+			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, filepath, err.Error())
+		}
+		if blockListFileStat.ModTime().Unix() == blockListFileLastMod[index] {
+			continue
+		}
+		blockListFileLastMod[index] = blockListFileStat.ModTime().Unix()
+		blockListFileRaw, _ := os.ReadFile(filepath)
+		var blockListContent []string
+		if filepath[len(filepath)-5:] == ".json" {
+			err = json.Unmarshal(blockListFileRaw, &blockListContent)
+			if err != nil {
+				Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, filepath, err.Error())
+				return
+			}
+		} else {
+			blockListContent = strings.Split(string(blockListFileRaw), "\n")
+			for index, blockListLine := range blockListContent {
+				blockListContent[index] = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
+			}
+		}
+		Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, SetBlockListFromContent(blockListContent))
+	}
+}
+func SetBlockListFromURL() {
+	if config.BlockListURL == nil || len(config.BlockListURL) == 0 || (blockListURLLastFetchTime+int64(config.UpdateInterval)) > CurrentTimestamp {
+		return
+	}
+	blockListURLLastFetchTime = CurrentTimestamp
+	for _, blockListURLItem := range config.BlockListURL {
+		// 这里可以拉上并发,url没必要这样等
+		// 使用 Etag 和 Date 检测 URL 内容是否刷新
+		_, HttpHeader, blockListRaw := Fetch(blockListURLItem, false, false, nil)
+		StatusCode := HttpHeader.Get("status")
+		if StatusCode != "200" || blockListRaw == nil {
+			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true, blockListURLItem)
+			continue
+		}
+		var blockListContent []string
+		if HttpHeader.Get("Content-Type")[len(HttpHeader["Content-Type"][0])-4:] == "json" {
+			err := json.Unmarshal(blockListRaw, &blockListContent)
+			if err != nil {
+				Log("SetBlockListFromURL", GetLangText("Error-Unmarshal"), true)
+				return
+			}
+		} else {
+			blockListContent = strings.Split(string(blockListRaw), "\n")
+			for index, blockListLine := range blockListContent {
+				blockListContent[index] = StrTrim(strings.SplitN(blockListLine, "#", 2)[0])
+			}
+		}
+		Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, blockListURLItem, SetBlockListFromContent(blockListContent))
+	}
+}
+
+func SetIPBlockListFromContent(ipBlockListContent []byte) int {
 	// Max 8MB.
 	if len(ipBlockListContent) > 8388608 {
 		Log("SetIPBlockListFromContent", GetLangText("Error-LargeFile"), true)
 		return 0
 	}
-
+	prev_count := len(ipBlockListCompiled)
 	ipBlockListArr := strings.Split(string(ipBlockListContent), "\n")
-	tmpIPBlockListCompiled := make(map[string]*net.IPNet)
 
 	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
-		ipBlockListLine = ProcessRemark(ipBlockListLine)
+
+		ipBlockListLine = StrTrim(strings.SplitN(ipBlockListLine, "#", 2)[0])
 		if ipBlockListLine == "" {
-			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
+			Log("Debug-SetIPBlockList_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum+1)
 			continue
 		}
-
-		if cidr, exists := ipBlockListCompiled[ipBlockListLine]; exists {
-			tmpIPBlockListCompiled[ipBlockListLine] = cidr
+		if ipBlockListCompiled[ipBlockListLine] != nil {
+			Log("Debug-SetIPBlockList_Duplicates", ":%d %s", false, ipBlockListLineNum+1, ipBlockListLine)
 			continue
 		}
-
-		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
+		Log("Debug-SetIPBlockList_Compile", ":%d %s", false, ipBlockListLineNum+1, ipBlockListLine)
 		cidr := ParseIPCIDR(ipBlockListLine)
 		if cidr == nil {
-			Log("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, ipBlockListLineNum, ipBlockListLine)
+			Log("SetIPBlockList_Compile", GetLangText("Error-SetIPBlockList_Compile"), true, ipBlockListLineNum+1, ipBlockListLine)
 			continue
 		}
 
-		tmpIPBlockListCompiled[ipBlockListLine] = cidr
+		ipBlockListCompiled[ipBlockListLine] = cidr
 	}
 
-	ipBlockListCompiled = tmpIPBlockListCompiled
-	return len(ipBlockListCompiled)
+	return len(ipBlockListCompiled) - prev_count
 }
-func SetBlockListFromURL() bool {
-	if config.BlockListURL == "" || (blockListURLLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
+func SetIPBlockListFromFile() bool {
+	if config.IPBlockListFile == nil || len(config.IPBlockListFile) == 0 {
 		return true
 	}
-
-	blockListURLLastFetch = currentTimestamp
-
-	_, _, blockListContent := Fetch(config.BlockListURL, false, false, nil)
-	if blockListContent == nil {
-		blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-		return false
+	// todo , need support array
+	for index, filepath := range config.IPBlockListFile {
+		ipBlockListFileStat, err := os.Stat(filepath)
+		if err != nil {
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filepath, err.Error())
+			continue
+		}
+		if ipBlockListFileLastMod[index] == ipBlockListFileStat.ModTime().Unix() {
+			continue
+		}
+		ipBlockListFileLastMod[index] = ipBlockListFileStat.ModTime().Unix()
+		ipBlockListFileRaw, err := os.ReadFile(filepath)
+		if err != nil {
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, config.IPBlockListFile, err.Error())
+			continue
+		}
+		AddCount := SetIPBlockListFromContent(ipBlockListFileRaw)
+		Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, filepath, AddCount)
 	}
-
-	ruleCount := SetBlockListFromContent(blockListContent, blockListFromURLCompiled)
-
-	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
-
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if config.IPBlockListURL == "" || (ipBlockListURLLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
+	if config.IPBlockListURL == nil || len(config.IPBlockListURL) == 0 || (ipblockListURLLastFetchTime+int64(config.UpdateInterval)) > CurrentTimestamp {
 		return true
 	}
 
-	ipBlockListURLLastFetch = currentTimestamp
-
-	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
-	if ipBlockListContent == nil {
-		ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-		return false
+	ipblockListURLLastFetchTime = CurrentTimestamp
+	// todo, need support array
+	// use Etag, Date test url last fetch time
+	// ipBlockListURLLastFetch = CurrentTimestamp
+	for _, IPBlockListURLItem := range config.IPBlockListURL {
+		_, HttpHeader, ipBlockListRaw := Fetch(IPBlockListURLItem, false, false, nil)
+		if HttpHeader.Get("status") != "200" || ipBlockListRaw == nil {
+			Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true, IPBlockListURLItem)
+			continue
+		}
+		AddCount := SetIPBlockListFromContent(ipBlockListRaw)
+		Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, IPBlockListURLItem, AddCount)
 	}
-
-	ruleCount := SetIPBlockListFromContent(ipBlockListContent, ipBlockListFromURLCompiled)
-
-	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
-
-	return true
-}
-func SetBlockListFromFile() bool {
-	if config.BlockListFile == "" {
-		return true
-	}
-
-	blockListFileStat, err := os.Stat(config.BlockListFile)
-	if err != nil {
-		Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, config.BlockListFile, err.Error())
-		return false
-	}
-
-	tmpBlockListFileLastMod := blockListFileStat.ModTime().Unix()
-	if tmpBlockListFileLastMod <= blockListFileLastMod {
-		return false
-	}
-
-	if blockListFileLastMod != 0 {
-		Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, config.BlockListFile)
-	}
-
-	blockListFile, err := os.ReadFile(config.BlockListFile)
-	if err != nil {
-		Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, config.BlockListFile, err.Error())
-		return false
-	}
-
-	blockListFileLastMod = tmpBlockListFileLastMod
-
-	ruleCount := SetBlockListFromContent(blockListFile, blockListFromFileCompiled)
-
-	Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, ruleCount)
-
-	return true
-}
-func SetIPBlockListFromFile() bool {
-	if config.IPBlockListFile == "" {
-		return true
-	}
-
-	ipBlockListFileStat, err := os.Stat(config.IPBlockListFile)
-	if err != nil {
-		Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, config.IPBlockListFile, err.Error())
-		return false
-	}
-
-	tmpIPBlockListFileLastMod := ipBlockListFileStat.ModTime().Unix()
-	if tmpIPBlockListFileLastMod <= ipBlockListFileLastMod {
-		return false
-	}
-
-	if ipBlockListFileLastMod != 0 {
-		Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, config.IPBlockListFile)
-	}
-
-	ipBlockListFile, err := os.ReadFile(config.IPBlockListFile)
-	if err != nil {
-		Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, config.IPBlockListFile, err.Error())
-		return false
-	}
-
-	ipBlockListFileLastMod = tmpIPBlockListFileLastMod
-
-	ruleCount := SetIPBlockListFromContent(ipBlockListFile, ipBlockListFromFileCompiled)
-
-	Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, ruleCount)
-
 	return true
 }
 func LoadConfig(filename string, notExistErr bool) int {
@@ -415,6 +393,17 @@ func LoadConfig(filename string, notExistErr bool) int {
 
 	Log("LoadConfig", GetLangText("Success-LoadConfig"), true, filename)
 
+	blockListURLLastModTime = make([]int64, len(config.BlockListURL))
+	blockListURLEtag = make([]string, len(config.BlockListURL))
+	blockListFileLastMod = make([]int64, len(config.BlockListFile))
+	blockListURLLastFetchTime = 0
+	ipBlockListURLLastModTime = make([]int64, len(config.IPBlockListURL))
+	ipBlockListURLEtag = make([]string, len(config.IPBlockListURL))
+	ipBlockListFileLastMod = make([]int64, len(config.IPBlockListFile))
+	ipblockListURLLastFetchTime = 0
+
+	SetBlockListFromContent(config.BlockList)
+	SetIPBlockListFromContent([]byte(strings.Join(config.IPBlockList, "\n")))
 	return 0
 }
 func InitConfig() {
@@ -431,9 +420,15 @@ func InitConfig() {
 	}
 
 	if config.SkipCertVerification {
-		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: true }
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	} else {
-		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
+	}
+
+	if config.Proxy == "Auto" {
+		httpTransport.Proxy = GetProxy
+	} else {
+		httpTransport.Proxy = nil
 	}
 
 	if config.Proxy == "Auto" {
@@ -450,60 +445,33 @@ func InitConfig() {
 
 	currentTimeout := time.Duration(config.Timeout) * time.Second
 
-	httpClient = http.Client {
+	httpClient = http.Client{
 		Timeout:   currentTimeout,
 		Jar:       cookieJar,
 		Transport: httpTransport,
-		CheckRedirect: func (req *http.Request, via []*http.Request) error {
-	        return http.ErrUseLastResponse
-	    },
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
-	httpClientWithoutCookie = http.Client {
+	httpClientWithoutCookie = http.Client{
 		Timeout:   currentTimeout,
 		Transport: httpTransportWithoutCookie,
-		CheckRedirect: func (req *http.Request, via []*http.Request) error {
-	        return http.ErrUseLastResponse
-	    },
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
-	httpServer.ReadTimeout = currentTimeout
-	httpServer.WriteTimeout = currentTimeout
+	HttpServer.ReadTimeout = currentTimeout
+	HttpServer.WriteTimeout = currentTimeout
 
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
 	for k := 0; k < t.NumField(); k++ {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
-
-	blockListCompiled = make([]*regexp2.Regexp, len(config.BlockList))
-	for k, v := range config.BlockList {
-		Log("Debug-LoadConfig_CompileBlockList", "%s", false, v)
-
-		reg, err := regexp2.Compile("(?i)" + v, 0)
-		if err != nil {
-			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, v)
-			continue
-		}
-
-		reg.MatchTimeout = 50 * time.Millisecond
-
-		blockListCompiled[k] = reg
-	}
-
-	ipBlockListCompiled = make([]*net.IPNet, len(config.IPBlockList))
-	for k, v := range config.IPBlockList {
-		Log("Debug-LoadConfig_CompileIPBlockList", "%s", false, v)
-
-		cidr := ParseIPCIDR(v)
-		if cidr == nil {
-			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), false, v)
-			continue
-		}
-
-		ipBlockListCompiled[k] = cidr
-	}
 }
+
 func LoadInitConfig(firstLoad bool) bool {
 	lastURL = config.ClientURL
 
@@ -514,7 +482,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	} else {
 		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false)
 		if loadAdditionalConfigStatus == -5 && additionConfigFilename == "config_additional.json" {
-			loadAdditionalConfigStatus = LoadConfig("config/" + additionConfigFilename, false)
+			loadAdditionalConfigStatus = LoadConfig("config/"+additionConfigFilename, false)
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
@@ -522,9 +490,9 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 	}
 
-	if !LoadLog() && logFile != nil {
-		logFile.Close()
-		logFile = nil
+	if !LoadLog() && LogFile != nil {
+		LogFile.Close()
+		LogFile = nil
 	}
 
 	if firstLoad {
@@ -548,6 +516,8 @@ func LoadInitConfig(firstLoad bool) bool {
 	}
 
 	if !firstLoad {
+		// 现在加载内部的配置可方便了,但是还是不要用这个的好
+
 		SetBlockListFromFile()
 		SetIPBlockListFromFile()
 		SetBlockListFromURL()
@@ -570,6 +540,7 @@ func RegFlag() {
 	flag.BoolVar(&needHideSystray, "hidesystray", false, GetLangText("HideSystray"))
 	flag.Parse()
 }
+
 func ShowVersion() {
 	Log("ShowVersion", "%s %s", false, programName, programVersion)
 }
@@ -596,13 +567,11 @@ func PrepareEnv() bool {
 		additionConfigFilename = shortFlag_additionConfigFilename
 	}
 
-
 	path, err := os.Executable()
 	if err != nil {
 		Log("PrepareEnv", GetLangText("Error-DetectProgramPath"), false, err.Error())
 		return false
 	}
-
 
 	if !noChdir {
 		programDir := filepath.Dir(path)

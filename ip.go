@@ -3,8 +3,8 @@ package main
 import "net"
 
 type IPInfoStruct struct {
-	Net  *net.IPNet
-	Port map[int]bool
+	Net             *net.IPNet
+	Port            map[int]bool
 	TorrentUploaded map[string]int64
 }
 
@@ -29,13 +29,13 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 	}
 	clientPortMap[peerPort] = true
 
-	if oldPeerUploaded, exist := clientTorrentUploadedMap[torrentInfoHash]; (!exist || oldPeerUploaded <= peerUploaded) {
+	if oldPeerUploaded, exist := clientTorrentUploadedMap[torrentInfoHash]; !exist || oldPeerUploaded <= peerUploaded {
 		clientTorrentUploadedMap[torrentInfoHash] = peerUploaded
 	} else {
 		clientTorrentUploadedMap[torrentInfoHash] += peerUploaded
 	}
 
-	ipMap[peerIP] = IPInfoStruct { Net: cidr, Port: clientPortMap, TorrentUploaded: clientTorrentUploadedMap }
+	ipMap[peerIP] = IPInfoStruct{Net: cidr, Port: clientPortMap, TorrentUploaded: clientTorrentUploadedMap}
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 	var totalUploaded int64 = 0
@@ -69,10 +69,10 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
-	if (config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp + int64(config.IPUpCheckInterval)) {
+	if (config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && CurrentTimestamp > (lastIPCleanTimestamp+int64(config.IPUpCheckInterval)) {
 		ipBlockCount := 0
 
-		ipMapLoop:
+	ipMapLoop:
 		for ip, ipInfo := range ipMap {
 			if IsBlockedPeer(ip, -1, true) || len(ipInfo.Port) <= 0 {
 				continue
@@ -104,7 +104,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 			}
 		}
 
-		lastIPCleanTimestamp = currentTimestamp
+		lastIPCleanTimestamp = CurrentTimestamp
 		DeepCopyIPMap(ipMap, lastIPMap)
 
 		return ipBlockCount

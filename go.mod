@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.9.1 // indirect
 	github.com/Xuanwo/go-locale v1.1.0 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/bdwyertech/go-get-proxied v0.0.0-20221029171534-ea033ac5f9fa // indirect
 	github.com/bdwyertech/go-scutil v0.0.0-20210306002117-b25267f54e45 // indirect
 	github.com/darren/gpac v0.0.0-20210609082804-b56d6523a3af // indirect

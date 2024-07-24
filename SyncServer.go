@@ -1,15 +1,16 @@
 package main
 
 import (
-	"net"
 	"encoding/json"
+	"net"
+
 	"github.com/tidwall/jsonc"
 )
 
 type SyncServer_ConfigStruct struct {
-	Interval     uint32              `json:"interval"`
-	Status       string              `json:"status"`
-	BlockIPRule  map[string][]string `json:"blockIPRule"`
+	Interval    uint32              `json:"interval"`
+	Status      string              `json:"status"`
+	BlockIPRule map[string][]string `json:"blockIPRule"`
 }
 type SyncServer_SubmitStruct struct {
 	Version    uint32                       `json:"version"`
@@ -19,27 +20,27 @@ type SyncServer_SubmitStruct struct {
 }
 
 var lastSync int64 = 0
-var syncConfig = SyncServer_ConfigStruct {
-	Interval: 60,
-	Status: "",
+var syncConfig = SyncServer_ConfigStruct{
+	Interval:    60,
+	Status:      "",
 	BlockIPRule: make(map[string][]string),
 }
 var ipBlockCIDRMapFromSyncServerCompiled = make(map[string]*net.IPNet)
 
 func SyncWithServer() bool {
-	if config.SyncServerURL == "" || (lastSync + int64(syncConfig.Interval)) > currentTimestamp {
+	if config.SyncServerURL == "" || (lastSync+int64(syncConfig.Interval)) > CurrentTimestamp {
 		return true
 	}
 
 	Log("Debug-SyncWithServer", "In progress..", false)
 
-	syncJSON, err := json.Marshal(SyncServer_SubmitStruct { Version: 1, Timestamp: currentTimestamp, Token: config.SyncServerToken, TorrentMap: torrentMap })
+	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: CurrentTimestamp, Token: config.SyncServerToken, TorrentMap: torrentMap})
 	if err != nil {
 		Log("SyncWithServer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
-	lastSync = currentTimestamp
+	lastSync = CurrentTimestamp
 
 	_, _, syncServerContent := Submit(config.SyncServerURL, string(syncJSON), false, false, nil)
 	if syncServerContent == nil {
