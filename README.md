@@ -155,7 +155,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | clientURL | string | 空 | 客户端地址. 可用 Web API 或 RPC 地址. 使用客户端屏蔽器的前提条件, 若未能自动读取客户端配置文件, 则须正确填入. 前缀必须指定 http 或 https 协议, 如 ```http://127.0.0.1:990/api``` 或 ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | 空 | 客户端账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
 | clientPassword | string | 空 | 客户端密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
-| useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission) 或通过反向代理等方式 增加/换用 认证方式的后端 |
+| useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission/BitComet) 或通过反向代理等方式 增加/换用 认证方式的后端 |
 | skipCertVerification | bool | false (禁用) | 跳过 Web API 证书校验. 适合自签及过期证书 |
 | fetchFailedThreshold | int | 0 (禁用) | 最大获取失败次数. 当超过设定次数, 将执行设置的外部命令 |
 | execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 首个参数被视作外部程序路径, 当获取失败次数超过设定次数后执行 |

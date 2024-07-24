@@ -153,7 +153,7 @@ Docker version is configured through the same name variable configuration, which
 | clientURL | string | Empty | Client address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
 | clientPassword | string | Empty | Client password. If client "Skip local client authentication" is enabled, it can be left blank by default |
-| useBasicAuth | bool | false | Also authenticates via HxTTP Basic Auth. Suitable for backend that only support Basic Auth (such as Transmission) or add/change authentication methods via reverse proxy, etc |
+| useBasicAuth | bool | false | Also authenticates via HxTTP Basic Auth. Suitable for backend that only support Basic Auth (such as Transmission/BitComet) or add/change authentication methods via reverse proxy, etc |
 | skipCertVerification | bool | false | Skip Web API certificate verification. Suitable for self-signed and expired certificates |
 | fetchFailedThreshold | int | 0 (Disable) | Maximum number of fetch failures. When set number is exceeded, execCommand_FetchFailed will be executed |
 | execCommand_FetchFailed | string | Empty | Execute external command (FetchFailed). First parameter is regarded as an external program path, execute the command when number of fetch failures exceeds set threshold |
