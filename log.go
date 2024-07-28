@@ -1,26 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
-	"fmt"
 	"strings"
 )
 
 var todayStr = ""
 var lastLogPath = ""
 var logFile *os.File
-var logwriter = LogWriter {}
+var logwriter = LogWriter{}
 
 type LogWriter struct {
-    w io.Writer
+	w io.Writer
 }
 
 func (w LogWriter) Write(p []byte) (n int, err error) {
 	Log("LogWriter", string(p), true)
 	return len(p), nil
 }
-func Log(module string, str string, logToFile bool, args ...interface {}) {
+func Log(module string, str string, logToFile bool, args ...interface{}) {
 	if !strings.HasPrefix(module, "Debug") {
 		if module == "LogWriter" {
 			str = StrTrim(str)
@@ -36,7 +36,7 @@ func Log(module string, str string, logToFile bool, args ...interface {}) {
 		return
 	}
 
-	logStr := fmt.Sprintf("[" + GetDateTime(true) + "][" + module + "] " + str + ".\n", args...)
+	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
 	if config.LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", GetLangText("Error-Log_Write"), false, err.Error())
@@ -74,7 +74,7 @@ func LoadLog() bool {
 		lastLogPath = config.LogPath
 	}
 
-	tLogFile, err := os.OpenFile(config.LogPath + "/" + todayStr + ".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	tLogFile, err := os.OpenFile(config.LogPath+"/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		tLogFile.Close()
 		tLogFile = nil

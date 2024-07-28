@@ -1,20 +1,21 @@
 package main
 
 import (
-	"os"
-	"net"
-	"log"
-	"time"
-	"flag"
-	"reflect"
-	"strings"
 	"crypto/tls"
 	"encoding/json"
-	"path/filepath"
+	"flag"
+	"log"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
-	"github.com/tidwall/jsonc"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/dlclark/regexp2"
+	"github.com/tidwall/jsonc"
 )
 
 type ConfigStruct struct {
@@ -42,15 +43,15 @@ type ConfigStruct struct {
 	LogToFile                     bool
 	LogDebug                      bool
 	Listen                        string
-	ClientType                    string 
+	ClientType                    string
 	ClientURL                     string
 	ClientUsername                string
 	ClientPassword                string
 	UseBasicAuth                  bool
 	SkipCertVerification          bool
 	FetchFailedThreshold          int
-	ExecCommand_FetchFailed       string   
-	ExecCommand_Run               string   
+	ExecCommand_FetchFailed       string
+	ExecCommand_Run               string
 	ExecCommand_Ban               string
 	ExecCommand_Unban             string
 	SyncServerURL                 string
@@ -112,7 +113,7 @@ var ipBlockListURLLastFetch int64 = 0
 var blockListFileLastMod int64 = 0
 var ipBlockListFileLastMod int64 = 0
 
-var httpTransport = &http.Transport {
+var httpTransport = &http.Transport{
 	DisableKeepAlives:     true,
 	ForceAttemptHTTP2:     false,
 	MaxConnsPerHost:       32,
@@ -121,20 +122,20 @@ var httpTransport = &http.Transport {
 	IdleConnTimeout:       60 * time.Second,
 	TLSHandshakeTimeout:   12 * time.Second,
 	ResponseHeaderTimeout: 60 * time.Second,
-	TLSClientConfig:       &tls.Config { InsecureSkipVerify: false },
+	TLSClientConfig:       &tls.Config{InsecureSkipVerify: false},
 	Proxy:                 GetProxy,
 }
 
 var httpClient http.Client
 var httpClientWithoutCookie http.Client
 
-var httpServer = http.Server {
+var httpServer = http.Server{
 	ReadTimeout:  30,
 	WriteTimeout: 30,
-	Handler:      &httpServerHandler {},
+	Handler:      &httpServerHandler{},
 }
 
-var config = ConfigStruct {
+var config = ConfigStruct{
 	CheckUpdate:                   true,
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
@@ -172,11 +173,11 @@ var config = ConfigStruct {
 	ExecCommand_Unban:             "",
 	SyncServerURL:                 "",
 	SyncServerToken:               "",
-	BlockList:                     []string {},
+	BlockList:                     []string{},
 	BlockListURL:                  "",
 	BlockListFile:                 "",
-	PortBlockList:                 []uint32 {},
-	IPBlockList:                   []string {},
+	PortBlockList:                 []uint32{},
+	IPBlockList:                   []string{},
 	IPBlockListURL:                "",
 	IPBlockListFile:               "",
 	IgnoreByDownloaded:            100,
@@ -220,7 +221,7 @@ func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[stri
 
 		Log("Debug-SetBlockListFromContent_Compile", ":%d %s", false, blockListLineNum, blockListLine)
 
-		reg, err := regexp2.Compile("(?i)" + blockListLine, 0)
+		reg, err := regexp2.Compile("(?i)"+blockListLine, 0)
 		if err != nil {
 			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, blockListLineNum, blockListLine)
 			continue
@@ -270,7 +271,7 @@ func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled ma
 	return len(ipBlockListCompiled)
 }
 func SetBlockListFromURL() bool {
-	if config.BlockListURL == "" || (blockListURLLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
+	if config.BlockListURL == "" || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
@@ -290,7 +291,7 @@ func SetBlockListFromURL() bool {
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if config.IPBlockListURL == "" || (ipBlockListURLLastFetch + int64(config.UpdateInterval)) > currentTimestamp {
+	if config.IPBlockListURL == "" || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
@@ -431,9 +432,9 @@ func InitConfig() {
 	}
 
 	if config.SkipCertVerification {
-		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: true }
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	} else {
-		httpTransport.TLSClientConfig = &tls.Config { InsecureSkipVerify: false }
+		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	}
 
 	if config.Proxy == "Auto" {
@@ -450,21 +451,21 @@ func InitConfig() {
 
 	currentTimeout := time.Duration(config.Timeout) * time.Second
 
-	httpClient = http.Client {
+	httpClient = http.Client{
 		Timeout:   currentTimeout,
 		Jar:       cookieJar,
 		Transport: httpTransport,
-		CheckRedirect: func (req *http.Request, via []*http.Request) error {
-	        return http.ErrUseLastResponse
-	    },
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
-	httpClientWithoutCookie = http.Client {
+	httpClientWithoutCookie = http.Client{
 		Timeout:   currentTimeout,
 		Transport: httpTransportWithoutCookie,
-		CheckRedirect: func (req *http.Request, via []*http.Request) error {
-	        return http.ErrUseLastResponse
-	    },
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	httpServer.ReadTimeout = currentTimeout
@@ -480,7 +481,7 @@ func InitConfig() {
 	for k, v := range config.BlockList {
 		Log("Debug-LoadConfig_CompileBlockList", "%s", false, v)
 
-		reg, err := regexp2.Compile("(?i)" + v, 0)
+		reg, err := regexp2.Compile("(?i)"+v, 0)
 		if err != nil {
 			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, v)
 			continue
@@ -514,7 +515,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	} else {
 		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false)
 		if loadAdditionalConfigStatus == -5 && additionConfigFilename == "config_additional.json" {
-			loadAdditionalConfigStatus = LoadConfig("config/" + additionConfigFilename, false)
+			loadAdditionalConfigStatus = LoadConfig("config/"+additionConfigFilename, false)
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
@@ -596,13 +597,11 @@ func PrepareEnv() bool {
 		additionConfigFilename = shortFlag_additionConfigFilename
 	}
 
-
 	path, err := os.Executable()
 	if err != nil {
 		Log("PrepareEnv", GetLangText("Error-DetectProgramPath"), false, err.Error())
 		return false
 	}
-
 
 	if !noChdir {
 		programDir := filepath.Dir(path)

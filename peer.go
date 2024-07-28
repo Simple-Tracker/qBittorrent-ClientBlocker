@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net"
-	"strings"
-	"strconv"
 	"github.com/dlclark/regexp2"
+	"net"
+	"strconv"
+	"strings"
 )
 
 type BlockPeerInfoStruct struct {
@@ -32,7 +32,7 @@ func AddBlockPeer(reason string, peerIP string, peerPort int, torrentInfoHash st
 	}
 
 	blockPeerPortMap[peerPort] = true
-	blockPeerMap[peerIP] = BlockPeerInfoStruct { Timestamp: currentTimestamp, Reason: reason, Port: blockPeerPortMap, InfoHash: torrentInfoHash }
+	blockPeerMap[peerIP] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Reason: reason, Port: blockPeerPortMap, InfoHash: torrentInfoHash}
 
 	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
 
@@ -66,11 +66,11 @@ func AddBlockCIDR(peerIP string, peerNet *net.IPNet) {
 		}
 	}
 
-	blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct { Timestamp: currentTimestamp, Net: peerNet, IPs: blockIPsMap }
+	blockCIDRMap[peerNetStr] = BlockCIDRInfoStruct{Timestamp: currentTimestamp, Net: peerNet, IPs: blockIPsMap}
 }
 func ClearBlockPeer() int {
 	cleanCount := 0
-	if blockPeerMap != nil && config.CleanInterval == 0 || (lastCleanTimestamp + int64(config.CleanInterval) < currentTimestamp) {
+	if blockPeerMap != nil && config.CleanInterval == 0 || (lastCleanTimestamp+int64(config.CleanInterval) < currentTimestamp) {
 		for peerIP, peerInfo := range blockPeerMap {
 			if currentTimestamp > (peerInfo.Timestamp + int64(config.BanTime)) {
 				cleanCount++
@@ -139,7 +139,7 @@ func IsBlockedPeer(peerIP string, peerPort int, updateTimestamp bool) bool {
 
 		return true
 	}
-	
+
 	return false
 }
 func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, peerID string, peerClient string) bool {
@@ -175,16 +175,15 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	if IsBlockedPeer(peerIP, peerPort, true) {
 		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient))
 		/*
-		if peerPort == -2 {
-			return 4
-		}
+			if peerPort == -2 {
+				return 4
+			}
 		*/
 		if peerPort == -1 {
 			return 3, nil
 		}
 		return 2, nil
 	}
-
 
 	peerNet := ParseIPCIDRByConfig(peerIP)
 	hasPeerClient := (peerID != "" || peerClient != "")
@@ -279,8 +278,8 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 
 	ignoreByDownloaded := false
 	// 若启用忽略且遇到空信息 Peer, 则既不会启用绝对进度屏蔽, 也不会记录 IP 及 Torrent 信息.
-	if (!config.IgnoreEmptyPeer || hasPeerClient) {
-		if config.IgnoreByDownloaded > 0 && (peerDownloaded / 1024 / 1024) >= int64(config.IgnoreByDownloaded) {
+	if !config.IgnoreEmptyPeer || hasPeerClient {
+		if config.IgnoreByDownloaded > 0 && (peerDownloaded/1024/1024) >= int64(config.IgnoreByDownloaded) {
 			ignoreByDownloaded = true
 		}
 		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
@@ -304,21 +303,21 @@ func ProcessPeer(peerIP string, peerPort int, peerID string, peerClient string, 
 	}
 
 	switch peerStatus {
-		case 1:
-			*blockCount++
-		case 3:
-			*ipBlockCount++
-		case -1:
-			*badPeersCount++
-		case -2:
-			*emptyPeersCount++
-		case 0:
-			if peerNet == nil {
-				AddIPInfo(nil, peerIP, peerPort, torrentInfoHash, peerUploaded)
-				AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peerPort, peerProgress, peerUploaded)
-			} else {
-				AddIPInfo(peerNet, peerNet.String(), peerPort, torrentInfoHash, peerUploaded)
-				AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peerPort, peerProgress, peerUploaded)
-			}
+	case 1:
+		*blockCount++
+	case 3:
+		*ipBlockCount++
+	case -1:
+		*badPeersCount++
+	case -2:
+		*emptyPeersCount++
+	case 0:
+		if peerNet == nil {
+			AddIPInfo(nil, peerIP, peerPort, torrentInfoHash, peerUploaded)
+			AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peerPort, peerProgress, peerUploaded)
+		} else {
+			AddIPInfo(peerNet, peerNet.String(), peerPort, torrentInfoHash, peerUploaded)
+			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peerPort, peerProgress, peerUploaded)
+		}
 	}
 }

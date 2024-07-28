@@ -1,9 +1,10 @@
-//go:build (!darwin && !windows && !linux)
+//go:build !darwin && !windows && !linux
+
 package main
 
 import (
-	"net/url"
 	"net/http"
+	"net/url"
 )
 
 var getproxy_notified = false

@@ -2,9 +2,9 @@ package main
 
 import (
 	"bytes"
-	"strings"
-	"strconv"
 	"github.com/PuerkitoBio/goquery"
+	"strconv"
+	"strings"
 )
 
 type BC_TorrentStruct struct {
@@ -12,10 +12,10 @@ type BC_TorrentStruct struct {
 	UpSpeed   int64
 }
 type BC_PeerStruct struct {
-	IP         string
-	Port       int
-	Client     string
-//	PeerID     string
+	IP     string
+	Port   int
+	Client string
+	//	PeerID     string
 	Progress   float64
 	Downloaded int64
 	Uploaded   int64
@@ -56,26 +56,26 @@ func BC_ParseSize(sizeStr string) int64 {
 	matched := false
 	multipler := 1
 	switch strings.ToUpper(sizeStrSplit[1]) {
-		case "EB":
-			multipler *= 1024
-			fallthrough
-		case "PB":
-			multipler *= 1024
-			fallthrough
-		case "TB":
-			multipler *= 1024
-			fallthrough
-		case "GB":
-			multipler *= 1024
-			fallthrough
-		case "MB":
-			multipler *= 1024
-			fallthrough
-		case "KB":
-			multipler *= 1024
-			fallthrough
-		case "B":
-			matched = true
+	case "EB":
+		multipler *= 1024
+		fallthrough
+	case "PB":
+		multipler *= 1024
+		fallthrough
+	case "TB":
+		multipler *= 1024
+		fallthrough
+	case "GB":
+		multipler *= 1024
+		fallthrough
+	case "MB":
+		multipler *= 1024
+		fallthrough
+	case "KB":
+		multipler *= 1024
+		fallthrough
+	case "B":
+		matched = true
 	}
 
 	if !matched {
@@ -119,7 +119,7 @@ func BC_ParseIP(ipStr string) (string, int) {
 	}
 
 	lastColonIndex := strings.LastIndex(ipStr, ":")
-	if lastColonIndex == -1 || len(ipStr) < (lastColonIndex + 2) {
+	if lastColonIndex == -1 || len(ipStr) < (lastColonIndex+2) {
 		return "", -2
 	}
 
@@ -133,16 +133,16 @@ func BC_ParseIP(ipStr string) (string, int) {
 	return ipWithoutPortStr, port
 }
 func BC_DetectClient() bool {
-	apiResponseStatusCode, apiResponseHeaders, _ := Fetch(config.ClientURL + "/panel/", false, false, nil)
+	apiResponseStatusCode, apiResponseHeaders, _ := Fetch(config.ClientURL+"/panel/", false, false, nil)
 	return (apiResponseStatusCode == 401 && strings.Contains(apiResponseHeaders.Get("WWW-Authenticate"), "BitComet"))
 }
 func BC_Login() bool {
 	// BitComet 通过 Basic Auth 进行认证, 因此此处只进行验证.
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL + "/panel/", false, true, nil)
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/panel/", false, true, nil)
 	return (apiResponseStatusCode == 200)
 }
 func BC_FetchTorrents() *map[int]BC_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL + "/panel/task_list?group=active", true, true, nil)
+	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/panel/task_list?group=active", true, true, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -155,7 +155,7 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 	}
 
 	torrentsMap := make(map[int]BC_TorrentStruct)
-	document.Find("table").Last().Find("tbody > tr").Each(func (index int, element *goquery.Selection) {
+	document.Find("table").Last().Find("tbody > tr").Each(func(index int, element *goquery.Selection) {
 		if index == 0 {
 			return
 		}
@@ -164,25 +164,25 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 		torrentID := 0
 		var torrentSize int64 = -233
 		var torrentUpSpeed int64 = -233
-		element.Find("td").EachWithBreak(func (tdIndex int, tdElement *goquery.Selection) bool {
+		element.Find("td").EachWithBreak(func(tdIndex int, tdElement *goquery.Selection) bool {
 			switch tdIndex {
-				case 0:
-					if strings.ToUpper(StrTrim(tdElement.Text())) != "BT" {
-						return false
-					}
-				case 1:
-					href, exists := tdElement.Find("a").Attr("href")
-					if !exists {
-						return false
-					}
+			case 0:
+				if strings.ToUpper(StrTrim(tdElement.Text())) != "BT" {
+					return false
+				}
+			case 1:
+				href, exists := tdElement.Find("a").Attr("href")
+				if !exists {
+					return false
+				}
 
-					torrentID = BC_ParseTorrentLink(href)
-				case 2:
-					torrentStatus = strings.ToLower(StrTrim(tdElement.Text()))
-				case 4:
-					torrentSize = BC_ParseSize(tdElement.Text())
-				case 7:
-					torrentUpSpeed = BC_ParseSpeed(tdElement.Text())
+				torrentID = BC_ParseTorrentLink(href)
+			case 2:
+				torrentStatus = strings.ToLower(StrTrim(tdElement.Text()))
+			case 4:
+				torrentSize = BC_ParseSize(tdElement.Text())
+			case 7:
+				torrentUpSpeed = BC_ParseSpeed(tdElement.Text())
 			}
 
 			return true
@@ -192,13 +192,13 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 			return
 		}
 
-		torrentsMap[torrentID] = BC_TorrentStruct { TotalSize: torrentSize, UpSpeed: torrentUpSpeed }
+		torrentsMap[torrentID] = BC_TorrentStruct{TotalSize: torrentSize, UpSpeed: torrentUpSpeed}
 	})
 
 	return &torrentsMap
 }
 func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL + "/panel/task_detail?id=" + infoHash + "&show=peers", true, true, nil)
+	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/panel/task_detail?id="+infoHash+"&show=peers", true, true, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
@@ -210,8 +210,8 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 		return nil
 	}
 
-	torrentPeersMap := []BC_PeerStruct {}
-	document.Find("table").Last().Find("tbody > tr").Each(func (index int, element *goquery.Selection) {
+	torrentPeersMap := []BC_PeerStruct{}
+	document.Find("table").Last().Find("tbody > tr").Each(func(index int, element *goquery.Selection) {
 		if index == 0 {
 			return
 		}
@@ -225,25 +225,25 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 		var peerUploaded int64 = -233
 		peerClient := ""
 		//peerID := ""
-		element.Find("td").EachWithBreak(func (tdIndex int, tdElement *goquery.Selection) bool {
+		element.Find("td").EachWithBreak(func(tdIndex int, tdElement *goquery.Selection) bool {
 			switch tdIndex {
-				case 0:
-					peerIP, peerPort = BC_ParseIP(tdElement.Text())
-				case 1:
-					peerProgress = BC_ParsePrecent(tdElement.Text())
-				case 2:
-					peerDlSpeed = BC_ParseSpeed(tdElement.Text())
-				case 3:
-					peerUpSpeed = BC_ParseSpeed(tdElement.Text())
-				case 4:
-					peerDownloaded = BC_ParseSize(tdElement.Text())
-				case 5:
-					peerUploaded = BC_ParseSize(tdElement.Text())
-				case 9:
-					peerClient = tdElement.Text()
-				case 10:
-					// 错误的信息.
-					// peerID = tdElement.Text()
+			case 0:
+				peerIP, peerPort = BC_ParseIP(tdElement.Text())
+			case 1:
+				peerProgress = BC_ParsePrecent(tdElement.Text())
+			case 2:
+				peerDlSpeed = BC_ParseSpeed(tdElement.Text())
+			case 3:
+				peerUpSpeed = BC_ParseSpeed(tdElement.Text())
+			case 4:
+				peerDownloaded = BC_ParseSize(tdElement.Text())
+			case 5:
+				peerUploaded = BC_ParseSize(tdElement.Text())
+			case 9:
+				peerClient = tdElement.Text()
+			case 10:
+				// 错误的信息.
+				// peerID = tdElement.Text()
 			}
 
 			return true
@@ -253,7 +253,7 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 			return
 		}
 
-		peerStruct := BC_PeerStruct { IP: peerIP, Port: peerPort, Client: peerClient, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, DlSpeed: peerDlSpeed, UpSpeed: peerUpSpeed }
+		peerStruct := BC_PeerStruct{IP: peerIP, Port: peerPort, Client: peerClient, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, DlSpeed: peerDlSpeed, UpSpeed: peerUpSpeed}
 		torrentPeersMap = append(torrentPeersMap, peerStruct)
 	})
 

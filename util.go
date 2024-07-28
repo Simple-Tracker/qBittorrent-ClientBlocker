@@ -1,12 +1,12 @@
 package main
 
 import (
-	"os"
-	"net"
-	"time"
-	"strings"
-	"os/exec"
 	"encoding/json"
+	"net"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
 )
 
 // Source: https://stackoverflow.com/questions/51459083/deep-copying-maps-in-golang.
@@ -67,7 +67,7 @@ func ParseIPCIDR(ip string) *net.IPNet {
 
 	return cidr
 }
-func ParseIPCIDRByConfig(ip string) *net.IPNet {	
+func ParseIPCIDRByConfig(ip string) *net.IPNet {
 	cidr := ""
 
 	if IsIPv6(ip) {
@@ -150,7 +150,7 @@ func DeleteIPFilter() bool {
 func ParseCommand(command string) []string {
 	var matchQuote rune = -1
 	escaped := false
-	commandPart := []string { "" }
+	commandPart := []string{""}
 	commandIndex := 0
 
 	for _, char := range command {

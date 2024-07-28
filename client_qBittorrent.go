@@ -1,11 +1,11 @@
 package main
 
 import (
-	"os"
-	"strings"
-	"strconv"
 	"encoding/json"
 	"net/url"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type qB_TorrentStruct struct {
@@ -54,7 +54,7 @@ func qB_GetClientConfigPath() string {
 func qB_GetClientConfig() []byte {
 	qBConfigFilename := qB_GetClientConfigPath()
 	if qBConfigFilename == "" {
-		return []byte {}
+		return []byte{}
 	}
 
 	_, err := os.Stat(qBConfigFilename)
@@ -63,7 +63,7 @@ func qB_GetClientConfig() []byte {
 			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
 			Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfigMeta"), true, err.Error())
 		}
-		return []byte {}
+		return []byte{}
 	}
 
 	Log("GetClientConfig", GetLangText("GetClientConfig_UseConfig"), true, qBConfigFilename)
@@ -71,7 +71,7 @@ func qB_GetClientConfig() []byte {
 	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
 		Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfig"), true, err.Error())
-		return []byte {}
+		return []byte{}
 	}
 
 	return qBConfigFile
@@ -95,29 +95,29 @@ func qB_SetURL() bool {
 		qbConfigLineArr[0] = strings.ToLower(StrTrim(qbConfigLineArr[0]))
 		qbConfigLineArr[1] = strings.ToLower(StrTrim(qbConfigLineArr[1]))
 		switch qbConfigLineArr[0] {
-			case "webui\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBWebUIEnabled = true
-				}
-			case "webui\\https\\enabled":
-				if qbConfigLineArr[1] == "true" {
-					qBHTTPSEnabled = true
-				}
-			case "webui\\address":
-				if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
-					qBAddress = "127.0.0.1"
-				} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
-					qBAddress = "[::1]"
-				} else {
-					qBAddress = qbConfigLineArr[1]
-				}
-			case "webui\\port":
-				tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
-				if err == nil {
-					qBPort = tmpQBPort
-				}
-			case "webui\\username":
-				Username = qbConfigLineArr[1]
+		case "webui\\enabled":
+			if qbConfigLineArr[1] == "true" {
+				qBWebUIEnabled = true
+			}
+		case "webui\\https\\enabled":
+			if qbConfigLineArr[1] == "true" {
+				qBHTTPSEnabled = true
+			}
+		case "webui\\address":
+			if qbConfigLineArr[1] == "*" || qbConfigLineArr[1] == "0.0.0.0" {
+				qBAddress = "127.0.0.1"
+			} else if qbConfigLineArr[1] == "::" || qbConfigLineArr[1] == "::1" {
+				qBAddress = "[::1]"
+			} else {
+				qBAddress = qbConfigLineArr[1]
+			}
+		case "webui\\port":
+			tmpQBPort, err := strconv.Atoi(qbConfigLineArr[1])
+			if err == nil {
+				qBPort = tmpQBPort
+			}
+		case "webui\\username":
+			Username = qbConfigLineArr[1]
 		}
 	}
 	if !qBWebUIEnabled || qBAddress == "" {
@@ -142,7 +142,7 @@ func qB_SetURL() bool {
 }
 func qB_GetAPIVersion() bool {
 	if !strings.HasSuffix(config.ClientURL, "/api") {
-		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL + "/api/v2/app/webapiVersion", false, false, nil)
+		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL+"/api/v2/app/webapiVersion", false, false, nil)
 		if apiResponseStatusCodeWithSuffix == 200 || apiResponseStatusCodeWithSuffix == 403 {
 			config.ClientURL += "/api"
 			Log("qB_GetAPIVersion", GetLangText("ClientQB_Detect-OldClientURL"), true, config.ClientURL)
@@ -150,14 +150,14 @@ func qB_GetAPIVersion() bool {
 		}
 	}
 
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL + "/v2/app/webapiVersion", false, false, nil)
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/v2/app/webapiVersion", false, false, nil)
 	return (apiResponseStatusCode == 200 || apiResponseStatusCode == 403)
 }
 func qB_Login() bool {
-	loginParams := url.Values {}
+	loginParams := url.Values{}
 	loginParams.Set("username", config.ClientUsername)
 	loginParams.Set("password", config.ClientPassword)
-	_, _, loginResponseBody := Submit(config.ClientURL + "/v2/auth/login", loginParams.Encode(), false, true, nil)
+	_, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
@@ -175,7 +175,7 @@ func qB_Login() bool {
 	return false
 }
 func qB_FetchTorrents() *[]qB_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL + "/v2/torrents/info?filter=active", true, true, nil)
+	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/v2/torrents/info?filter=active", true, true, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -190,7 +190,7 @@ func qB_FetchTorrents() *[]qB_TorrentStruct {
 	return &torrentsResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL + "/v2/sync/torrentPeers?rid=0&hash=" + infoHash, true, true, nil)
+	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
@@ -203,9 +203,9 @@ func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 	}
 
 	/*
-	if config.Debug_CheckTorrent {
-		Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
-	}
+		if config.Debug_CheckTorrent {
+			Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
+		}
 	*/
 
 	return &torrentPeersResult
@@ -248,10 +248,10 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(config.ClientURL + "/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		_, _, banResponseBody = Submit(config.ClientURL + "/v2/app/setPreferences", "json=" + banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(config.ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
 	}
 
 	if banResponseBody == nil {
