@@ -1,14 +1,15 @@
 //go:build windows
+
 package main
 
 import (
+	"github.com/getlantern/systray"
 	"github.com/lxn/win"
 	"golang.design/x/hotkey"
-	"github.com/getlantern/systray"
 )
 
 var showWindow = true
-var programHotkey = hotkey.New([]hotkey.Modifier { hotkey.ModCtrl, hotkey.ModAlt }, hotkey.KeyB)
+var programHotkey = hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModAlt}, hotkey.KeyB)
 
 func Platform_ShowOrHiddenWindow() {
 	consoleWindow := win.GetConsoleWindow()
@@ -43,7 +44,7 @@ func RegSysTray() {
 		return
 	}
 
-	systray.Run(func () {
+	systray.Run(func() {
 		systray.SetIcon(icon_Windows)
 		systray.SetTitle(programName)
 		mShow := systray.AddMenuItem("显示/隐藏", "显示/隐藏程序")
@@ -52,14 +53,14 @@ func RegSysTray() {
 		go func() {
 			for {
 				select {
-					case <-mShow.ClickedCh:
-						Platform_ShowOrHiddenWindow()
-					case <-mQuit.ClickedCh:
-						systray.Quit()
+				case <-mShow.ClickedCh:
+					Platform_ShowOrHiddenWindow()
+				case <-mQuit.ClickedCh:
+					systray.Quit()
 				}
 			}
 		}()
-	}, func () {
+	}, func() {
 		ReqStop()
 	})
 }

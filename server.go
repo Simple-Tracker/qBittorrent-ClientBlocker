@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
 	"context"
 	"net"
 	"net/http"
+	"strings"
 )
 
 var Server_Status bool = false
@@ -39,8 +39,8 @@ func StartServer() {
 
 	httpListen, err := net.Listen(listenType, strings.SplitN(config.Listen, "/", 2)[0])
 	if err != nil {
-	    Log("StartServer", GetLangText("Error-StartServer_Listen"), true, err.Error())
-	    return
+		Log("StartServer", GetLangText("Error-StartServer_Listen"), true, err.Error())
+		return
 	}
 
 	Server_Status = true

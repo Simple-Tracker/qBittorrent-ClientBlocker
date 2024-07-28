@@ -1,15 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
-	"time"
-	"strings"
-	"strconv"
-	"syscall"
+	"os/signal"
 	"runtime"
 	"runtime/debug"
-	"os/signal"
-	"encoding/json"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
 )
 
 var loopTicker *time.Ticker
@@ -17,7 +17,7 @@ var currentTimestamp int64 = 0
 var lastCheckUpdateTimestamp int64 = 0
 var lastCheckUpdateReleaseVer = ""
 var lastCheckUpdateBetaVer = "None"
-var githubAPIHeader = map[string]string { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }
+var githubAPIHeader = map[string]string{"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 var isRunning bool
 
 type ReleaseStruct struct {
@@ -72,11 +72,11 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 	if err1 != nil || err2 != nil || err3 != nil {
 		return -3, 0, 0, 0, ""
 	}
- 
+
 	return versionType, mainVersion, subVersion, sub2Version, realVersion
 }
 func CheckUpdate() {
-	if !config.CheckUpdate || (lastCheckUpdateTimestamp + 86400) > currentTimestamp {
+	if !config.CheckUpdate || (lastCheckUpdateTimestamp+86400) > currentTimestamp {
 		return
 	}
 
@@ -197,7 +197,7 @@ func Task() {
 		Log("Task", GetLangText("Error-Task_NotSupportClient"), true, currentClientType)
 		return
 	}
-	
+
 	torrents := FetchTorrents()
 	if torrents == nil {
 		return
@@ -216,39 +216,39 @@ func Task() {
 	emptyPeersCount := 0
 
 	switch currentClientType {
-		case "qBittorrent":
-			torrents2 := torrents.(*[]qB_TorrentStruct)
-			for _, torrentInfo := range *torrents2 {
-				ProcessTorrent(torrentInfo.InfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
-			}
-		case "Transmission":
-			torrents2 := torrents.(*Tr_TorrentsStruct)
-			for _, torrentInfo := range torrents2.Torrents {
-				// 手动判断有无 Peer 正在下载.
-				var leecherCount int64 = 0
-				for _, torrentPeer := range torrentInfo.Peers {
-					if torrentPeer.IsUploading {
-						leecherCount++
-					}
+	case "qBittorrent":
+		torrents2 := torrents.(*[]qB_TorrentStruct)
+		for _, torrentInfo := range *torrents2 {
+			ProcessTorrent(torrentInfo.InfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+		}
+	case "Transmission":
+		torrents2 := torrents.(*Tr_TorrentsStruct)
+		for _, torrentInfo := range torrents2.Torrents {
+			// 手动判断有无 Peer 正在下载.
+			var leecherCount int64 = 0
+			for _, torrentPeer := range torrentInfo.Peers {
+				if torrentPeer.IsUploading {
+					leecherCount++
 				}
+			}
 
-				tracker := ""
-				if torrentInfo.Private {
-					tracker = "Private"
-				}
+			tracker := ""
+			if torrentInfo.Private {
+				tracker = "Private"
+			}
 
-				ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+			ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+		}
+	case "BitComet":
+		// BitComet 无法通过 Torrent 列表取得 TorrentInfoHash, 因此使用 TorrentID 取代.
+		torrents2 := torrents.(*map[int]BC_TorrentStruct)
+		for torrentID, torrentInfo := range *torrents2 {
+			var leecherCount int64 = 233
+			if torrentInfo.UpSpeed > 0 {
+				leecherCount = 233
 			}
-		case "BitComet":
-			// BitComet 无法通过 Torrent 列表取得 TorrentInfoHash, 因此使用 TorrentID 取代.
-			torrents2 := torrents.(*map[int]BC_TorrentStruct)
-			for torrentID, torrentInfo := range *torrents2 {
-				var leecherCount int64 = 233
-				if torrentInfo.UpSpeed > 0 {
-					leecherCount = 233
-				}
-				ProcessTorrent(strconv.Itoa(torrentID), "Unsupported", leecherCount, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
-			}
+			ProcessTorrent(strconv.Itoa(torrentID), "Unsupported", leecherCount, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
+		}
 	}
 
 	ipBlockCount += CheckAllIP(ipMap, lastIPMap)
@@ -320,7 +320,7 @@ func WaitStop() {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
 
 	<-signalChan
-		ReqStop()
+	ReqStop()
 }
 func ReqStop() {
 	if !isRunning {
@@ -348,7 +348,7 @@ func Stop() {
 	httpClientWithoutCookie.CloseIdleConnections()
 	StopServer()
 	Platform_Stop()
-	
+
 	if recoverErr != nil {
 		os.Exit(2)
 	}
@@ -382,7 +382,7 @@ func RunConsole() {
 	go WaitStop()
 	defer Stop()
 
-	for ; true; <- loopTicker.C {
+	for ; true; <-loopTicker.C {
 		if !isRunning {
 			break
 		}

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"io/ioutil"
 	"net/http"
 	"strings"
-	"io/ioutil"
 )
 
 var fetchFailedCount = 0
@@ -29,10 +29,10 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHea
 	if withHeader != nil {
 		for k, v := range *withHeader {
 			switch strings.ToLower(k) {
-				case "user-agent":
-					setUserAgent = true
-				case "content-type":
-					setContentType = true
+			case "user-agent":
+				setUserAgent = true
+			case "content-type":
+				setContentType = true
 			}
 
 			request.Header.Set(k, v)

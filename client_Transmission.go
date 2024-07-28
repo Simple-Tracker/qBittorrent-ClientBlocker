@@ -1,11 +1,11 @@
 package main
 
 import (
-	"time"
-	"strings"
-	"strconv"
-	"net/http"
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type Tr_RequestStruct struct {
@@ -13,7 +13,7 @@ type Tr_RequestStruct struct {
 	Args   interface{} `json:"arguments"`
 }
 type Tr_ResponseStruct struct {
-	Result string      `json:"result"`
+	Result string `json:"result"`
 }
 type Tr_TorrentsResponseStruct struct {
 	Result string            `json:"result"`
@@ -35,10 +35,10 @@ type Tr_TorrentsStruct struct {
 	Torrents []Tr_TorrentStruct `json:"torrents"`
 }
 type Tr_TorrentStruct struct {
-	InfoHash     string          `json:"hashString"`
-	TotalSize    int64           `json:"totalSize"`
-	Private      bool            `json:"private"`
-	Peers        []Tr_PeerStruct `json:"peers"`
+	InfoHash  string          `json:"hashString"`
+	TotalSize int64           `json:"totalSize"`
+	Private   bool            `json:"private"`
+	Peers     []Tr_PeerStruct `json:"peers"`
 }
 type Tr_PeerStruct struct {
 	IP          string  `json:"address"`
@@ -52,7 +52,7 @@ type Tr_PeerStruct struct {
 
 var Tr_csrfToken = ""
 var Tr_ipfilterStr = ""
-var Tr_jsonHeader = map[string]string { "Content-Type": "application/json" }
+var Tr_jsonHeader = map[string]string{"Content-Type": "application/json"}
 
 func Tr_InitClient() {
 	go StartServer()
@@ -71,7 +71,7 @@ func Tr_SetURL() bool {
 	return false
 }
 func Tr_DetectVersion() bool {
-	detectJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get", Args: Tr_ArgsStruct { Field: []string { "version" } } })
+	detectJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get", Args: Tr_ArgsStruct{Field: []string{"version"}}})
 	if err != nil {
 		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
@@ -82,7 +82,7 @@ func Tr_DetectVersion() bool {
 }
 func Tr_Login() bool {
 	// Transmission 通过 Basic Auth 进行认证, 因此实际处理 CSRF 请求以避免 409 响应.
-	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-get" })
+	loginJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get"})
 	if err != nil {
 		Log("Login", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
@@ -102,7 +102,7 @@ func Tr_SetCSRFToken(csrfToken string) {
 	Log("SetCSRFToken", GetLangText("Success-SetCSRFToken"), true, csrfToken)
 }
 func Tr_FetchTorrents() *Tr_TorrentsStruct {
-	loginJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-get", Args: Tr_ArgsStruct { Field: []string { "hashString", "totalSize", "isPrivate", "peers" } } })
+	loginJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-get", Args: Tr_ArgsStruct{Field: []string{"hashString", "totalSize", "isPrivate", "peers"}}})
 	if err != nil {
 		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
 		return nil
@@ -129,7 +129,7 @@ func Tr_FetchTorrents() *Tr_TorrentsStruct {
 }
 
 func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
-	peerInfoHashes := []string {}
+	peerInfoHashes := []string{}
 	for _, peerInfo := range blockPeerMap {
 		peerInfoHashes = append(peerInfoHashes, peerInfo.InfoHash)
 	}
@@ -138,7 +138,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 		return
 	}
 
-	stopJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-stop", Args: Tr_ArgTorrentsStruct { IDs: peerInfoHashes } })
+	stopJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-stop", Args: Tr_ArgTorrentsStruct{IDs: peerInfoHashes}})
 	if err != nil {
 		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
 		return
@@ -153,7 +153,7 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	Log("RestartTorrentByMap", GetLangText("Debug-RestartTorrentByMap_Wait"), true, config.Interval)
 	time.Sleep(time.Duration(config.RestartInterval) * time.Second)
 
-	startJSON, err := json.Marshal(Tr_RequestStruct { Method: "torrent-start", Args: Tr_ArgTorrentsStruct { IDs: peerInfoHashes } })
+	startJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-start", Args: Tr_ArgTorrentsStruct{IDs: peerInfoHashes}})
 	if err != nil {
 		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
 		return
@@ -177,7 +177,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 	blocklistURL += "/ipfilter.dat?t=" + strconv.FormatInt(currentTimestamp, 10)
 
-	sessionSetJSON, err := json.Marshal(Tr_RequestStruct { Method: "session-set", Args: Tr_SessionSetStruct { BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL } })
+	sessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL}})
 	if err != nil {
 		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
@@ -200,7 +200,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		return false
 	}
 
-	blocklistUpdateJSON, err := json.Marshal(Tr_RequestStruct { Method: "blocklist-update" })
+	blocklistUpdateJSON, err := json.Marshal(Tr_RequestStruct{Method: "blocklist-update"})
 	if err != nil {
 		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
