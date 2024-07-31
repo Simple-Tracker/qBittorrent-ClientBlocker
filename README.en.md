@@ -122,7 +122,8 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 
 ## 配置 Config
 
-Docker version is configured through the same name variable configuration, which actually is implemented by automatically conversion environment variable as config file.
+Docker version is configured through the same name variable configuration, which actually is implemented by automatically conversion environment variable as config file.  
+There's a full json configuration available at [here](doc/config.full.json), you can edit then use it directly, or use as a reference.  
 
 | Parameter | Type | Default | Note |
 | ----- | ----- | ----- | ----- |
