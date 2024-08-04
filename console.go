@@ -276,7 +276,7 @@ func Task() {
 
 		SubmitBlockPeer(blockPeerMap)
 
-		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockListFromURLCompiled) <= 0 && len(ipBlockListFromFileCompiled) <= 0 && len(ipBlockCIDRMapFromSyncServerCompiled) <= 0 {
+		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockCIDRMapFromSyncServerCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, ipBlockCount, len(blockPeerMap))

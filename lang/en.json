@@ -43,7 +43,7 @@
 	"Error-LoadConfig": "An error occurred while loading config (%s): %s",
 	"Error-ParseConfig": "An error occurred while parsing config (%s): %s",
 	"Error-LoadFile": "An error occurred while parsing file (%s): %s",
-	"Error-CompileBlockList": "Expression %s has error",
+	"Error-CompileBlockList": "Expression has %d error",
 	"Error-CompileIPBlockList": "IP %s has error",
 	"Error-GetClientConfig_LoadConfig": "An error occurred while loading client config file: %s",
 	"Error-GetClientConfig_LoadConfigMeta": "An error occurred while reading client config file: %s",

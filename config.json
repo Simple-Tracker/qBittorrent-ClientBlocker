@@ -56,5 +56,7 @@
 		"240e:90e:2000:2006::/60",
 		"240e:918:8008::/48"
 	],
-	"ipBlockListURL": "https://raw.githubusercontent.com/PBH-BTN/BTN-Collected-Rules/main/combine/all.txt"
+	"ipBlockListURL": [
+        "https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt"
+    ]
 }
