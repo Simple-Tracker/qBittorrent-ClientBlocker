@@ -18,7 +18,7 @@
 		"^-DT", "dt[ /]torrent", "^-HP", "hp[ /]torrent", "^-XM", "xm[ /]torrent",
 		"trafficConsume", "\u07ad__",
 		"^-GT0002", "go[ \\.]torrent",
-		"Taipei-Torrent dev",
+		"Taipei-Torrent dev", "Gopeed dev",
 		"qBittorrent[ /]3\\.3\\.15",
 		"gobind", "offline-download",
 		"ljyun.cn"
