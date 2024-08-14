@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/dlclark/regexp2"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/dlclark/regexp2"
 )
 
 type BlockPeerInfoStruct struct {
@@ -196,20 +197,6 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 				return 1, peerNet
 			}
 		}
-		for _, v := range blockListFromURLCompiled {
-			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockListFromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-Client_Normal|BlockListFromURL", peerIP, peerPort, torrentInfoHash)
-				return 1, peerNet
-			}
-		}
-		for _, v := range blockListFromFileCompiled {
-			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockListFromFile)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-Client_Normal|BlockListFromFile", peerIP, peerPort, torrentInfoHash)
-				return 1, peerNet
-			}
-		}
 	}
 
 	for port := range config.PortBlockList {
@@ -231,26 +218,6 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-IP_Normal", peerIP, -1, torrentInfoHash)
-				return 3, peerNet
-			}
-		}
-		for _, v := range ipBlockListFromURLCompiled {
-			if v == nil {
-				continue
-			}
-			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_FromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
-				return 3, peerNet
-			}
-		}
-		for _, v := range ipBlockListFromFileCompiled {
-			if v == nil {
-				continue
-			}
-			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_FromURL)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
 				return 3, peerNet
 			}
 		}

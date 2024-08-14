@@ -57,12 +57,12 @@ type ConfigStruct struct {
 	SyncServerURL                 string
 	SyncServerToken               string
 	BlockList                     []string
-	BlockListURL                  string
-	BlockListFile                 string
+	BlockListURL                  []string
+	BlockListFile                 []string
 	PortBlockList                 []uint32
 	IPBlockList                   []string
-	IPBlockListURL                string
-	IPBlockListFile               string
+	IPBlockListURL                []string
+	IPBlockListFile               []string
 	IgnoreByDownloaded            uint32
 	GenIPDat                      uint32
 	IPUploadedCheck               bool
@@ -92,12 +92,12 @@ var needHideWindow bool
 var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
-var blockListCompiled []*regexp2.Regexp
-var blockListFromURLCompiled = make(map[string]*regexp2.Regexp)
-var blockListFromFileCompiled = make(map[string]*regexp2.Regexp)
-var ipBlockListCompiled []*net.IPNet
-var ipBlockListFromURLCompiled = make(map[string]*net.IPNet)
-var ipBlockListFromFileCompiled = make(map[string]*net.IPNet)
+var blockListCompiled = make(map[string]*regexp2.Regexp)
+var ipBlockListCompiled = make(map[string]*net.IPNet)
+var blockListURLLastFetch int64 = 0
+var ipBlockListURLLastFetch int64 = 0
+var blockListFileLastMod = make(map[string]int64)
+var ipBlockListFileLastMod = make(map[string]int64)
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
@@ -108,10 +108,6 @@ var longFlag_configFilename string
 var additionConfigFilename string = "config_additional.json"
 var shortFlag_additionConfigFilename string
 var longFlag_additionConfigFilename string
-var blockListURLLastFetch int64 = 0
-var ipBlockListURLLastFetch int64 = 0
-var blockListFileLastMod int64 = 0
-var ipBlockListFileLastMod int64 = 0
 
 var httpTransport = &http.Transport{
 	DisableKeepAlives:     true,
@@ -174,12 +170,12 @@ var config = ConfigStruct{
 	SyncServerURL:                 "",
 	SyncServerToken:               "",
 	BlockList:                     []string{},
-	BlockListURL:                  "",
-	BlockListFile:                 "",
+	BlockListURL:                  []string{},
+	BlockListFile:                 []string{},
 	PortBlockList:                 []uint32{},
 	IPBlockList:                   []string{},
-	IPBlockListURL:                "",
-	IPBlockListFile:               "",
+	IPBlockListURL:                nil,
+	IPBlockListFile:               nil,
 	IgnoreByDownloaded:            100,
 	GenIPDat:                      0,
 	IPUploadedCheck:               false,
@@ -197,184 +193,239 @@ var config = ConfigStruct{
 	BanByRelativePUAntiErrorRatio: 3,
 }
 
-func SetBlockListFromContent(blockListContent []byte, blockListCompiled map[string]*regexp2.Regexp) int {
-	// Max 8MB.
-	if len(blockListContent) > 8388608 {
-		Log("SetBlockListFromContent", GetLangText("Error-LargeFile"), true)
-		return 0
-	}
+func SetBlockListFromContent(blockListContent []string) int {
+	setCount := 0
 
-	blockListArr := strings.Split(string(blockListContent), "\n")
-	tmpBlockListCompiled := make(map[string]*regexp2.Regexp)
-
-	for blockListLineNum, blockListLine := range blockListArr {
-		blockListLine = ProcessRemark(blockListLine)
-		if blockListLine == "" {
-			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, blockListLineNum)
+	for index, content := range blockListContent {
+		content = StrTrim(ProcessRemark(content))
+		if content == "" {
+			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, index)
 			continue
 		}
 
-		if reg, exists := blockListCompiled[blockListLine]; exists {
-			tmpBlockListCompiled[blockListLine] = reg
+		if _, exists := blockListCompiled[content]; exists {
 			continue
 		}
 
-		Log("Debug-SetBlockListFromContent_Compile", ":%d %s", false, blockListLineNum, blockListLine)
+		Log("Debug-SetBlockListFromContent_Compile", ":%d %s", false, index, content)
 
-		reg, err := regexp2.Compile("(?i)"+blockListLine, 0)
+		reg, err := regexp2.Compile("(?i)"+content, 0)
 		if err != nil {
-			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, blockListLineNum, blockListLine)
+			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, index, content)
 			continue
 		}
 
 		reg.MatchTimeout = 50 * time.Millisecond
 
-		tmpBlockListCompiled[blockListLine] = reg
+		blockListCompiled[content] = reg
+		setCount++
 	}
 
-	blockListCompiled = tmpBlockListCompiled
-	return len(blockListCompiled)
+	return setCount
 }
-func SetIPBlockListFromContent(ipBlockListContent []byte, ipBlockListCompiled map[string]*net.IPNet) int {
-	// Max 8MB.
-	if len(ipBlockListContent) > 8388608 {
-		Log("SetIPBlockListFromContent", GetLangText("Error-LargeFile"), true)
-		return 0
-	}
-
-	ipBlockListArr := strings.Split(string(ipBlockListContent), "\n")
-	tmpIPBlockListCompiled := make(map[string]*net.IPNet)
-
-	for ipBlockListLineNum, ipBlockListLine := range ipBlockListArr {
-		ipBlockListLine = ProcessRemark(ipBlockListLine)
-		if ipBlockListLine == "" {
-			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
-			continue
-		}
-
-		if cidr, exists := ipBlockListCompiled[ipBlockListLine]; exists {
-			tmpIPBlockListCompiled[ipBlockListLine] = cidr
-			continue
-		}
-
-		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
-		cidr := ParseIPCIDR(ipBlockListLine)
-		if cidr == nil {
-			Log("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, ipBlockListLineNum, ipBlockListLine)
-			continue
-		}
-
-		tmpIPBlockListCompiled[ipBlockListLine] = cidr
-	}
-
-	ipBlockListCompiled = tmpIPBlockListCompiled
-	return len(ipBlockListCompiled)
-}
-func SetBlockListFromURL() bool {
-	if config.BlockListURL == "" || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+func SetBlockListFromFile() bool {
+	if config.BlockListFile == nil || len(config.BlockListFile) == 0 {
 		return true
 	}
+	setCount := 0
+	for _, FilePath := range config.BlockListFile {
+		blockListFileStat, err := os.Stat(FilePath)
+		// Max 8MB.
+		if blockListFileStat.Size() > 8388608 {
+			Log("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
+			continue
+		}
+		if err != nil {
+			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, FilePath, err.Error())
+			return false
+		}
 
-	blockListURLLastFetch = currentTimestamp
+		FileLastMod := blockListFileStat.ModTime().Unix()
+		if FileLastMod == blockListFileLastMod[FilePath] {
+			return false
+		}
+		if blockListFileLastMod[FilePath] != 0 {
+			Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, FilePath)
+		}
+		blockListContent, err := os.ReadFile(FilePath)
+		if err != nil {
+			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, FilePath, err.Error())
+			return false
+		}
+		blockListFileLastMod[FilePath] = FileLastMod
 
-	_, _, blockListContent := Fetch(config.BlockListURL, false, false, nil)
-	if blockListContent == nil {
-		blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-		Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-		return false
+		var Content []string
+		if filepath.Ext(FilePath) == ".json" {
+			err = json.Unmarshal(blockListContent, &Content)
+			if err != nil {
+				Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, FilePath)
+				continue
+			}
+		} else {
+			Content = strings.Split(string(blockListContent), "\n")
+		}
+		setCount += SetBlockListFromContent(Content)
 	}
 
-	ruleCount := SetBlockListFromContent(blockListContent, blockListFromURLCompiled)
+	Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, setCount)
+	return true
+}
+func SetBlockListFromURL() bool {
+	if config.BlockListURL == nil || len(config.BlockListURL) == 0 || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+		return true
+	}
+	blockListURLLastFetch = currentTimestamp
 
-	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, ruleCount)
+	setCountChan := make(chan int, len(config.BlockListURL))
 
+	for _, BlockListURL := range config.BlockListURL {
+		WaitGroup.Add(1)
+		go func(BlockListURL string) {
+			defer WaitGroup.Done()
+			_, httpHeader, blockListContent := Fetch(BlockListURL, false, false, nil)
+
+			if blockListContent == nil {
+				blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+				Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+				return
+			}
+			if len(blockListContent) > 8388608 {
+				Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
+				return
+			}
+			var Content []string
+			if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
+				err := json.Unmarshal(blockListContent, &Content)
+				if err != nil {
+					Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, BlockListURL)
+					return
+				}
+			} else {
+				Content = strings.Split(string(blockListContent), "\n")
+			}
+			setCountChan <- SetBlockListFromContent(Content)
+		}(BlockListURL)
+	}
+
+	WaitGroup.Wait()
+	close(setCountChan)
+
+	setCount := 0
+	for count := range setCountChan {
+		setCount += count
+	}
+
+	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, setCount)
+	return true
+}
+func SetIPBlockListFromContent(ipBlockListContent []string) int {
+	setCount := 0
+
+	for index, content := range ipBlockListContent {
+		content = StrTrim(ProcessRemark(content))
+		if content == "" {
+			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, index)
+			continue
+		}
+
+		if _, exists := ipBlockListCompiled[content]; exists {
+			continue
+		}
+
+		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s", false, index, content)
+		cidr := ParseIPCIDR(content)
+		if cidr == nil {
+			Log("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, index, content)
+			continue
+		}
+
+		ipBlockListCompiled[content] = cidr
+		setCount++
+	}
+
+	return setCount
+}
+func SetIPBlockListFromFile() bool {
+	if config.IPBlockListFile == nil || len(config.IPBlockListFile) == 0 {
+		return true
+	}
+	setCount := 0
+	for _, FilePath := range config.IPBlockListFile {
+		ipBlockListFileStat, err := os.Stat(FilePath)
+		if err != nil {
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, FilePath, err.Error())
+			return false
+		}
+
+		FileLastMod := ipBlockListFileStat.ModTime().Unix()
+		if FileLastMod == ipBlockListFileLastMod[FilePath] {
+			return false
+		}
+		if ipBlockListFileLastMod[FilePath] != 0 {
+			Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, FilePath)
+		}
+		ipBlockListFile, err := os.ReadFile(FilePath)
+		if err != nil {
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, FilePath, err.Error())
+			return false
+		}
+		ipBlockListFileLastMod[FilePath] = FileLastMod
+
+		var Content []string
+		if filepath.Ext(FilePath) == ".json" {
+			err := json.Unmarshal(ipBlockListFile, &Content)
+			if err != nil {
+				Log("SetIPBlockListFromFile", GetLangText("Error-GenJSON"), true, FilePath)
+			}
+		} else {
+			Content = strings.Split(string(ipBlockListFile), "\n")
+		}
+		setCount += SetIPBlockListFromContent(Content)
+	}
+	Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, setCount)
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if config.IPBlockListURL == "" || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+	if config.IPBlockListURL == nil || len(config.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
-
 	ipBlockListURLLastFetch = currentTimestamp
 
-	_, _, ipBlockListContent := Fetch(config.IPBlockListURL, false, false, nil)
-	if ipBlockListContent == nil {
-		ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-		Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-		return false
+	setCountChan := make(chan int, len(config.IPBlockListURL))
+
+	for _, ipBlockListURL := range config.IPBlockListURL {
+		WaitGroup.Add(1)
+		go func(ipBlockListURL string) {
+			defer WaitGroup.Done()
+			_, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, nil)
+			if ipBlockListContent == nil {
+				ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+				Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+				return
+			}
+			var Content []string
+			if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
+				err := json.Unmarshal(ipBlockListContent, &Content)
+				if err != nil {
+					Log("SetIPBlockListFromURL", GetLangText("Error-GenJSON"), true, ipBlockListURL)
+					return
+				}
+			} else {
+				Content = strings.Split(string(ipBlockListContent), "\n")
+			}
+			setCountChan <- SetIPBlockListFromContent(Content)
+		}(ipBlockListURL)
 	}
 
-	ruleCount := SetIPBlockListFromContent(ipBlockListContent, ipBlockListFromURLCompiled)
+	WaitGroup.Wait()
+	close(setCountChan)
 
-	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, ruleCount)
-
-	return true
-}
-func SetBlockListFromFile() bool {
-	if config.BlockListFile == "" {
-		return true
+	setCount := 0
+	for count := range setCountChan {
+		setCount += count
 	}
 
-	blockListFileStat, err := os.Stat(config.BlockListFile)
-	if err != nil {
-		Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, config.BlockListFile, err.Error())
-		return false
-	}
-
-	tmpBlockListFileLastMod := blockListFileStat.ModTime().Unix()
-	if tmpBlockListFileLastMod <= blockListFileLastMod {
-		return false
-	}
-
-	if blockListFileLastMod != 0 {
-		Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, config.BlockListFile)
-	}
-
-	blockListFile, err := os.ReadFile(config.BlockListFile)
-	if err != nil {
-		Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, config.BlockListFile, err.Error())
-		return false
-	}
-
-	blockListFileLastMod = tmpBlockListFileLastMod
-
-	ruleCount := SetBlockListFromContent(blockListFile, blockListFromFileCompiled)
-
-	Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, ruleCount)
-
-	return true
-}
-func SetIPBlockListFromFile() bool {
-	if config.IPBlockListFile == "" {
-		return true
-	}
-
-	ipBlockListFileStat, err := os.Stat(config.IPBlockListFile)
-	if err != nil {
-		Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, config.IPBlockListFile, err.Error())
-		return false
-	}
-
-	tmpIPBlockListFileLastMod := ipBlockListFileStat.ModTime().Unix()
-	if tmpIPBlockListFileLastMod <= ipBlockListFileLastMod {
-		return false
-	}
-
-	if ipBlockListFileLastMod != 0 {
-		Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, config.IPBlockListFile)
-	}
-
-	ipBlockListFile, err := os.ReadFile(config.IPBlockListFile)
-	if err != nil {
-		Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, config.IPBlockListFile, err.Error())
-		return false
-	}
-
-	ipBlockListFileLastMod = tmpIPBlockListFileLastMod
-
-	ruleCount := SetIPBlockListFromContent(ipBlockListFile, ipBlockListFromFileCompiled)
-
-	Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, ruleCount)
+	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, setCount)
 
 	return true
 }
@@ -477,32 +528,16 @@ func InitConfig() {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
 
-	blockListCompiled = make([]*regexp2.Regexp, len(config.BlockList))
-	for k, v := range config.BlockList {
-		Log("Debug-LoadConfig_CompileBlockList", "%s", false, v)
-
-		reg, err := regexp2.Compile("(?i)"+v, 0)
-		if err != nil {
-			Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, v)
-			continue
-		}
-
-		reg.MatchTimeout = 50 * time.Millisecond
-
-		blockListCompiled[k] = reg
+	blockListCompiled = make(map[string]*regexp2.Regexp)
+	SetBlockListFromContent(config.BlockList)
+	if errCount := len(config.BlockList) != len(blockListCompiled); errCount {
+		Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, errCount)
 	}
 
-	ipBlockListCompiled = make([]*net.IPNet, len(config.IPBlockList))
-	for k, v := range config.IPBlockList {
-		Log("Debug-LoadConfig_CompileIPBlockList", "%s", false, v)
-
-		cidr := ParseIPCIDR(v)
-		if cidr == nil {
-			Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), false, v)
-			continue
-		}
-
-		ipBlockListCompiled[k] = cidr
+	ipBlockListCompiled = make(map[string]*net.IPNet, len(config.IPBlockList))
+	SetIPBlockListFromContent(config.IPBlockList)
+	if errCount := len(config.IPBlockList) != len(ipBlockListCompiled); errCount {
+		Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), false, errCount)
 	}
 }
 func LoadInitConfig(firstLoad bool) bool {

@@ -21,7 +21,8 @@
 		"Taipei-Torrent dev", "Gopeed dev",
 		"qBittorrent[ /]3\\.3\\.15",
 		"gobind", "offline-download",
-		"ljyun.cn"
+		"ljyun.cn",
+        "Gopeed"
 	],
 	"_blockList": [
 		// 可选 blockList.
@@ -56,5 +57,8 @@
 		"240e:90e:2000:2006::/60",
 		"240e:918:8008::/48"
 	],
-	"ipBlockListURL": "https://raw.githubusercontent.com/PBH-BTN/BTN-Collected-Rules/main/combine/all.txt"
+	"ipBlockListURL": [
+        "https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
+        "https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt"
+    ]
 }
