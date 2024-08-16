@@ -274,45 +274,34 @@ func SetBlockListFromURL() bool {
 	if config.BlockListURL == nil || len(config.BlockListURL) == 0 || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
+
 	blockListURLLastFetch = currentTimestamp
-
-	setCountChan := make(chan int, len(config.BlockListURL))
-
-	for _, BlockListURL := range config.BlockListURL {
-		WaitGroup.Add(1)
-		go func(BlockListURL string) {
-			defer WaitGroup.Done()
-			_, httpHeader, blockListContent := Fetch(BlockListURL, false, false, nil)
-
-			if blockListContent == nil {
-				blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-				Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-				return
-			}
-			if len(blockListContent) > 8388608 {
-				Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
-				return
-			}
-			var Content []string
-			if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
-				err := json.Unmarshal(blockListContent, &Content)
-				if err != nil {
-					Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, BlockListURL)
-					return
-				}
-			} else {
-				Content = strings.Split(string(blockListContent), "\n")
-			}
-			setCountChan <- SetBlockListFromContent(Content)
-		}(BlockListURL)
-	}
-
-	WaitGroup.Wait()
-	close(setCountChan)
-
 	setCount := 0
-	for count := range setCountChan {
-		setCount += count
+
+	for _, blockListURL := range config.BlockListURL {
+		_, httpHeader, blockListContent := Fetch(blockListURL, false, false, nil)
+		if blockListContent == nil {
+			blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+			continue
+		}
+		if len(blockListContent) > 8388608 {
+			Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
+			continue
+		}
+
+		var content []string
+		if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
+			err := json.Unmarshal(blockListContent, &content)
+			if err != nil {
+				Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, blockListURL)
+				continue
+			}
+		} else {
+			content = strings.Split(string(blockListContent), "\n")
+		}
+
+		setCount += SetBlockListFromContent(content)
 	}
 
 	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, setCount)
@@ -349,39 +338,46 @@ func SetIPBlockListFromFile() bool {
 	if config.IPBlockListFile == nil || len(config.IPBlockListFile) == 0 {
 		return true
 	}
+
 	setCount := 0
-	for _, FilePath := range config.IPBlockListFile {
-		ipBlockListFileStat, err := os.Stat(FilePath)
+
+	for _, filePath := range config.IPBlockListFile {
+		ipBlockListFileStat, err := os.Stat(filePath)
 		if err != nil {
-			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, FilePath, err.Error())
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
 			return false
 		}
 
-		FileLastMod := ipBlockListFileStat.ModTime().Unix()
-		if FileLastMod == ipBlockListFileLastMod[FilePath] {
-			return false
+		fileLastMod := ipBlockListFileStat.ModTime().Unix()
+		if fileLastMod <= ipBlockListFileLastMod[filePath] {
+			return true
 		}
-		if ipBlockListFileLastMod[FilePath] != 0 {
-			Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, FilePath)
-		}
-		ipBlockListFile, err := os.ReadFile(FilePath)
-		if err != nil {
-			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, FilePath, err.Error())
-			return false
-		}
-		ipBlockListFileLastMod[FilePath] = FileLastMod
 
-		var Content []string
-		if filepath.Ext(FilePath) == ".json" {
-			err := json.Unmarshal(ipBlockListFile, &Content)
+		if ipBlockListFileLastMod[filePath] != 0 {
+			Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, filePath)
+		}
+
+		ipBlockListFile, err := os.ReadFile(filePath)
+		if err != nil {
+			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
+			return false
+		}
+
+		ipBlockListFileLastMod[filePath] = fileLastMod
+
+		var content []string
+		if filepath.Ext(filePath) == ".json" {
+			err := json.Unmarshal(ipBlockListFile, &content)
 			if err != nil {
-				Log("SetIPBlockListFromFile", GetLangText("Error-GenJSON"), true, FilePath)
+				Log("SetIPBlockListFromFile", GetLangText("Error-GenJSON"), true, filePath)
 			}
 		} else {
-			Content = strings.Split(string(ipBlockListFile), "\n")
+			content = strings.Split(string(ipBlockListFile), "\n")
 		}
-		setCount += SetIPBlockListFromContent(Content)
+
+		setCount += SetIPBlockListFromContent(content)
 	}
+
 	Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, setCount)
 	return true
 }
@@ -389,40 +385,34 @@ func SetIPBlockListFromURL() bool {
 	if config.IPBlockListURL == nil || len(config.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
-	ipBlockListURLLastFetch = currentTimestamp
 
-	setCountChan := make(chan int, len(config.IPBlockListURL))
+	ipBlockListURLLastFetch = currentTimestamp
+	setCount := 0
 
 	for _, ipBlockListURL := range config.IPBlockListURL {
-		WaitGroup.Add(1)
-		go func(ipBlockListURL string) {
-			defer WaitGroup.Done()
-			_, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, nil)
-			if ipBlockListContent == nil {
-				ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
-				Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-				return
-			}
-			var Content []string
-			if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
-				err := json.Unmarshal(ipBlockListContent, &Content)
-				if err != nil {
-					Log("SetIPBlockListFromURL", GetLangText("Error-GenJSON"), true, ipBlockListURL)
-					return
-				}
-			} else {
-				Content = strings.Split(string(ipBlockListContent), "\n")
-			}
-			setCountChan <- SetIPBlockListFromContent(Content)
-		}(ipBlockListURL)
-	}
+		_, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, nil)
+		if ipBlockListContent == nil {
+			ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+			Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+			continue
+		}
+		if len(ipBlockListContent) > 8388608 {
+			Log("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
+			continue
+		}
 
-	WaitGroup.Wait()
-	close(setCountChan)
+		var content []string
+		if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
+			err := json.Unmarshal(ipBlockListContent, &content)
+			if err != nil {
+				Log("SetIPBlockListFromURL", GetLangText("Error-GenJSON"), true, ipBlockListURL)
+				continue
+			}
+		} else {
+			content = strings.Split(string(ipBlockListContent), "\n")
+		}
 
-	setCount := 0
-	for count := range setCountChan {
-		setCount += count
+		setCount += SetIPBlockListFromContent(content)
 	}
 
 	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, setCount)
@@ -586,8 +576,8 @@ func LoadInitConfig(firstLoad bool) bool {
 	if !firstLoad {
 		SetBlockListFromFile()
 		SetIPBlockListFromFile()
-		SetBlockListFromURL()
-		SetIPBlockListFromURL()
+		go SetBlockListFromURL()
+		go SetIPBlockListFromURL()
 	}
 
 	return true

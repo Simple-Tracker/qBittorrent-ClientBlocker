@@ -192,8 +192,8 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	if hasPeerClient {
 		for _, v := range blockListCompiled {
 			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
-				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal|BlockList)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-Client_Normal|BlockList", peerIP, peerPort, torrentInfoHash)
+				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
+				AddBlockPeer("Bad-Client_Normal", peerIP, peerPort, torrentInfoHash)
 				return 1, peerNet
 			}
 		}
@@ -227,7 +227,7 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 			}
 			if v.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_FromSyncServer)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("Bad-IP_FromURL", peerIP, -1, torrentInfoHash)
+				AddBlockPeer("Bad-IP_FromSyncServer", peerIP, -1, torrentInfoHash)
 				return 3, peerNet
 			}
 		}
