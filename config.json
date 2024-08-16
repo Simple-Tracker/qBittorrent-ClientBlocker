@@ -1,16 +1,41 @@
 {
+	"checkUpdate": true,
 	"debug": false,
+	"debug_CheckTorrent": false,
+	"debug_CheckPeer": false,
 	"interval": 6,
 	"cleanInterval": 3600,
+	"updateInterval": 86400,
+	"restartInterval": 6,
+	"torrentMapCleanInterval": 60,
 	"banTime": 86400,
+	"banAllPort": true,
+	"banIPCIDR": "/32",
+	"banIP6CIDR": "/128",
+	"ignoreEmptyPeer": true,
+	"ignoreNoLeechersTorrent": true,
+	"ignorePTTorrent": true,
+	"sleepTime": 20,
 	"timeout": 6,
-	"logPath": "logs",
+	"proxy": "Auto",
+	"longConnection": true,
 	"logToFile": true,
+	"logPath": "logs",
+	"logDebug": false,
+	"listen": "127.0.0.1:26262",
 	"clientType": "",
 	"clientURL": "",
 	"clientUsername": "",
 	"clientPassword": "",
+	"useBasicAuth": false,
 	"skipCertVerification": false,
+	"fetchFailedThreshold": 0,
+	"execCommand_FetchFailed": "",
+	"execCommand_Run": "",
+	"execCommand_Ban": "",
+	"execCommand_Unban": "",
+	"syncServerURL": "",
+	"syncServerToken": "",
 	"blockList": [
 		"^-(SD|XF|QD|BN|DL)",
 		"^-XL", "Xunlei", "cacao_torrent",
@@ -18,11 +43,10 @@
 		"^-DT", "dt[ /]torrent", "^-HP", "hp[ /]torrent", "^-XM", "xm[ /]torrent",
 		"trafficConsume", "\u07ad__",
 		"^-GT0002", "go[ \\.]torrent",
-		"Taipei-Torrent dev", "Gopeed dev",
+		"Taipei-Torrent dev", "Gopeed", "Gopeed dev",
 		"qBittorrent[ /]3\\.3\\.15",
 		"gobind", "offline-download",
 		"ljyun.cn",
-        "Gopeed"
 	],
 	"_blockList": [
 		// 可选 blockList.
@@ -30,6 +54,9 @@
 		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-", "StellarPlayer", // 恒星播放器.
 		"dandanplay" // 弹弹 Play.
 	],
+	"blockListURL": "",
+	"blockListFile": "",
+	"portBlockList": [],
 	"ipBlockList": [
 		// Credit: https://docs.qq.com/doc/DQnJBTGJjSFZBR2JW.
 		"1.180.24.0/23",
@@ -58,7 +85,23 @@
 		"240e:918:8008::/48"
 	],
 	"ipBlockListURL": [
-        "https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
-        "https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt"
-    ]
+		"https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
+    		"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt"
+	],
+	"ipBlockListFile": "",
+	"genIPDat": 0,
+	"ipUploadedCheck": false,
+	"ipUpCheckInterval": 300,
+	"ipUpCheckIncrementMB": 38000,
+	"ipUpCheckPerTorrentRatio": 3.0,
+	"maxIPPortCount": 0,
+	"banByProgressUploaded": false,
+	"banByPUStartMB": 20,
+	"banByPUStartPrecent": 2.0,
+	"banByPUAntiErrorRatio": 3.0,
+	"banByRelativeProgressUploaded": false,
+	"banByRelativePUStartMB": 20,
+	"banByRelativePUStartPrecent": 2.0,
+	"banByRelativePUAntiErrorRatio": 3.0,
+	"ignoreByDownloaded": 100
 }
