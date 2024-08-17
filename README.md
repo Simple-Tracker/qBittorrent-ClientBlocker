@@ -149,6 +149,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | proxy | string | Auto (自动) | 使用代理. 设置为空可以禁止此行为, 但仍会在首次加载配置文件时自动检测代理 |
 | longConnection | bool | true (启用) | 长连接. 启用可降低资源消耗 |
 | logToFile | bool | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |
+| logPath | string | logs | 日志的目录，需要启用 logToFile |
 | logDebug | bool | false (禁用) | 记录调试信息到日志 (须先启用 debug 及 logToFile). 启用后可用于进阶的分析及统计用途, 但信息量较大 |
 | listen | string | 127.0.0.1:26262 | 监听端口. 用于向部分客户端 (Transmission) 提供 BlockPeerList. 非本机使用可改为 ```<Host>:<Port>``` |
 | clientType | string | 空 | 客户端类型. 使用客户端屏蔽器的前提条件, 若未能自动检测客户端类型, 则须正确填入. 目前支持 ```qBittorrent```/```Transmission```/```BitComet``` |

@@ -146,6 +146,7 @@ Docker version is configured through the same name variable configuration, which
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
 | proxy | string | Auto | Use proxy. Set to empty to disable this behavior but still automatically detect proxy on first load |
 | longConnection | bool | true | Long connection. Enable to reduce resource consumption |
+| logPath | string | logs | Path to write log files with logToFile enabled |
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | 127.0.0.1:26262 | Listen port. Used to provide BlockPeerList to some client (Transmission). For non-localhost, you can change to ```<Host>:<Port>``` |
