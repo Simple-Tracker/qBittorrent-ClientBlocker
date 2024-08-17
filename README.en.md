@@ -146,7 +146,7 @@ Docker version is configured through the same name variable configuration, which
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
 | proxy | string | Auto | Use proxy. Set to empty to disable this behavior but still automatically detect proxy on first load |
 | longConnection | bool | true | Long connection. Enable to reduce resource consumption |
-| logPath | string | logs | Path to write log files with logToFile enabled |
+| logPath | string | logs | Log path. Must enable logToFile |
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | 127.0.0.1:26262 | Listen port. Used to provide BlockPeerList to some client (Transmission). For non-localhost, you can change to ```<Host>:<Port>``` |
@@ -165,12 +165,12 @@ Docker version is configured through the same name variable configuration, which
 | syncServerURL | string | Empty | Sync server URL. Sync server will submit TorrentMap to server and receive BlockIPCIDR from server |
 | syncServerToken | string | Empty | Sync server Token. Some sync server may require authentication |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
-| blockListURL | string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
-| blockListFile | string | Empty | Block client list File. Support format is same as blockList, one rule per line |
+| blockListURL | []string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
+| blockListFile | []string | Empty | Block client list File. Support format is same as blockList, one rule per line |
 | portBlockList | []uint32 | Empty | Block port list. If peer port matches any of ports, Peer will be automatically block |
 | ipBlockList | []string | Empty | Block IP list. Support excluding ports IP (1.2.3.4) or IPCIDR (2.3.3.3/3) |
-| ipBlockListURL | string | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
-| ipBlockListFile | string | Empty | Block IP list File. Support format is same as ipBlockList, one rule per line |
+| ipBlockListURL | []string | Empty | Block IP list URL. Support format is same as ipBlockList, one rule per line |
+| ipBlockListFile | []string | Empty | Block IP list File. Support format is same as ipBlockList, one rule per line |
 | genIPDat | uint32 | 0 (Disable) | 1: Generate IPBlockList.dat. Include All Peer IPCIDR, support format is same as ipBlockList; 2: Generate IPFilter.dat. Include All Peer IP; One rule per line |
 | ipUploadedCheck | bool | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
 | ipUpCheckInterval | uint32 | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
