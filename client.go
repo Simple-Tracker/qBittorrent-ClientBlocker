@@ -119,13 +119,16 @@ func FetchTorrentPeers(infoHash string) interface{} {
 
 	return nil
 }
-func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct, useShadowBan bool) bool {
 	if blockPeerMap == nil {
 		return true
 	}
 
 	switch currentClientType {
 	case "qBittorrent":
+		if useShadowBan {
+			return qb_SubmitShadowbanPeers(blockPeerMap)
+		}
 		return qB_SubmitBlockPeer(blockPeerMap)
 	case "Transmission":
 		return Tr_SubmitBlockPeer(blockPeerMap)

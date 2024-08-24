@@ -210,7 +210,8 @@ func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 
 	return &torrentPeersResult
 }
-func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+
+func qb_ConstructBanPeersParameters(blockPeerMap map[string]BlockPeerInfoStruct) string {
 	banIPPortsStr := ""
 
 	if blockPeerMap != nil {
@@ -241,6 +242,10 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 			}
 		}
 	}
+	return banIPPortsStr
+}
+func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	banIPPortsStr := qb_ConstructBanPeersParameters(blockPeerMap)
 
 	Log("Debug-SubmitBlockPeer", "%s", false, banIPPortsStr)
 
@@ -251,6 +256,30 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
+		_, _, banResponseBody = Submit(config.ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
+	}
+
+	if banResponseBody == nil {
+		Log("SubmitBlockPeer", GetLangText("Error"), true)
+		return false
+	}
+
+	return true
+}
+func qb_SubmitShadowbanPeers(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	banIPPortsStr := qb_ConstructBanPeersParameters(blockPeerMap)
+
+	Log("Debug-SubmitShadowbanPeers", "%s", false, banIPPortsStr)
+
+	var banResponseBody []byte
+
+	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
+		params := url.Values{}
+		params.Set("peers", banIPPortsStr)
+		Log("SubmitShadowbanPeers", "%s", false, string(params.Encode()))
+		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/shadowbanPeers", params.Encode(), true, true, nil)
+	} else {
+		banIPPortsStr = url.QueryEscape("{\"shadow_banned_IPs\": \"" + banIPPortsStr + "\"}")
 		_, _, banResponseBody = Submit(config.ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
 	}
 

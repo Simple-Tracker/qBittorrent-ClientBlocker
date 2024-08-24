@@ -78,6 +78,7 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   float64
 	BanByRelativePUAntiErrorRatio float64
+	EnableShadowBan               bool
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -191,6 +192,7 @@ var config = ConfigStruct{
 	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
+	EnableShadowBan:               false,
 }
 
 func SetBlockListFromContent(blockListContent []string) int {
@@ -565,7 +567,7 @@ func LoadInitConfig(firstLoad bool) bool {
 			if firstLoad && !Login() {
 				return false
 			}
-			SubmitBlockPeer(nil)
+			SubmitBlockPeer(nil, false)
 			lastURL = config.ClientURL
 		}
 	} else {

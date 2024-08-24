@@ -65,7 +65,8 @@
 		"https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
     		"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt"
 	],
-	"ipBlockListFile": []
+	"ipBlockListFile": [],
+	"enableShadowBan": true
 	/*
 	"debug_CheckTorrent": false,
 	"debug_CheckPeer": false,

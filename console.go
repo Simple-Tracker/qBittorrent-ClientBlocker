@@ -274,7 +274,7 @@ func Task() {
 			}
 		}
 
-		SubmitBlockPeer(blockPeerMap)
+		SubmitBlockPeer(blockPeerMap, config.EnableShadowBan)
 
 		if !config.IPUploadedCheck && len(ipBlockListCompiled) <= 0 && len(ipBlockCIDRMapFromSyncServerCompiled) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
@@ -343,7 +343,10 @@ func Stop() {
 	}
 
 	DeleteIPFilter()
-	SubmitBlockPeer(nil)
+	SubmitBlockPeer(nil, false)
+	if config.EnableShadowBan {
+		SubmitBlockPeer(nil, true)
+	}
 	httpClient.CloseIdleConnections()
 	httpClientWithoutCookie.CloseIdleConnections()
 	StopServer()
