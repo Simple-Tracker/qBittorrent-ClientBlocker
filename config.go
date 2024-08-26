@@ -519,12 +519,14 @@ func InitConfig() {
 	}
 
 	blockListCompiled = make(map[string]*regexp2.Regexp)
+	blockListURLLastFetch = 0
 	SetBlockListFromContent(config.BlockList)
 	if errCount := len(config.BlockList) != len(blockListCompiled); errCount {
 		Log("LoadConfig_CompileBlockList", GetLangText("Error-CompileBlockList"), false, errCount)
 	}
 
 	ipBlockListCompiled = make(map[string]*net.IPNet, len(config.IPBlockList))
+	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList)
 	if errCount := len(config.IPBlockList) != len(ipBlockListCompiled); errCount {
 		Log("LoadConfig_CompileIPBlockList", GetLangText("Error-CompileIPBlockList"), false, errCount)
