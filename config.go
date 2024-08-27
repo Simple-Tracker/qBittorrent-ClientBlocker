@@ -146,7 +146,7 @@ var config = ConfigStruct{
 	BanIPCIDR:                     "/32",
 	BanIP6CIDR:                    "/128",
 	IgnoreEmptyPeer:               true,
-	IgnoreNoLeechersTorrent:       true,
+	IgnoreNoLeechersTorrent:       false,
 	IgnorePTTorrent:               true,
 	SleepTime:                     20,
 	Timeout:                       6,
