@@ -227,44 +227,50 @@ func SetBlockListFromFile() bool {
 	if config.BlockListFile == nil || len(config.BlockListFile) == 0 {
 		return true
 	}
+
 	setCount := 0
-	for _, FilePath := range config.BlockListFile {
-		blockListFileStat, err := os.Stat(FilePath)
+
+	for _, filePath := range config.BlockListFile {
+		blockListFileStat, err := os.Stat(filePath)
+		if err != nil {
+			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
+			return false
+		}
+
 		// Max 8MB.
 		if blockListFileStat.Size() > 8388608 {
 			Log("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
 			continue
 		}
+
+		fileLastMod := blockListFileStat.ModTime().Unix()
+		if fileLastMod == blockListFileLastMod[filePath] {
+			return false
+		}
+		if blockListFileLastMod[filePath] != 0 {
+			Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, filePath)
+		}
+
+		blockListContent, err := os.ReadFile(filePath)
 		if err != nil {
-			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, FilePath, err.Error())
+			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
 			return false
 		}
 
-		FileLastMod := blockListFileStat.ModTime().Unix()
-		if FileLastMod == blockListFileLastMod[FilePath] {
-			return false
-		}
-		if blockListFileLastMod[FilePath] != 0 {
-			Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, FilePath)
-		}
-		blockListContent, err := os.ReadFile(FilePath)
-		if err != nil {
-			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, FilePath, err.Error())
-			return false
-		}
-		blockListFileLastMod[FilePath] = FileLastMod
+		blockListFileLastMod[filePath] = fileLastMod
 
-		var Content []string
-		if filepath.Ext(FilePath) == ".json" {
-			err = json.Unmarshal(blockListContent, &Content)
+		var content []string
+		if filepath.Ext(filePath) == ".json" {
+			err = json.Unmarshal(blockListContent, &content)
 			if err != nil {
-				Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, FilePath)
+				Log("SetBlockListFromFile", GetLangText("Error-GenJSON"), true, filePath)
 				continue
 			}
 		} else {
-			Content = strings.Split(string(blockListContent), "\n")
+			content = strings.Split(string(blockListContent), "\n")
 		}
-		setCount += SetBlockListFromContent(Content)
+
+		setCount += SetBlockListFromContent(content)
 	}
 
 	Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, setCount)
@@ -285,6 +291,8 @@ func SetBlockListFromURL() bool {
 			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
+
+		// Max 8MB.
 		if len(blockListContent) > 8388608 {
 			Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
 			continue
