@@ -53,6 +53,7 @@
 	"ignoreEmptyPeer": true,
 	"ignoreNoLeechersTorrent": true,
 	"ignorePTTorrent": true,
+	"ignoreAuthFailed": false,
 	"sleepTime": 20,
 	"proxy": "Auto",
 	"longConnection": true,

@@ -142,6 +142,7 @@ Docker version is configured through the same name variable configuration, which
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignoreNoLeechersTorrent | bool | false | Ignore torrent without leechers. Enabling may improve performance, but may cause inaccuracies with some clients (such as qBittorrent) |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
+| ignoreFailureExit | bool | false | Ignore failure exit. If enabled, it will continue to retry after first detection of the client fails or authentication fails |
 | sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
 | proxy | string | Auto | Use proxy. Set to empty to disable this behavior but still automatically detect proxy on first load |

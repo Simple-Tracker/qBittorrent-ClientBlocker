@@ -35,6 +35,7 @@ type ConfigStruct struct {
 	IgnoreEmptyPeer               bool
 	IgnoreNoLeechersTorrent       bool
 	IgnorePTTorrent               bool
+	IgnoreFailureExit             bool
 	SleepTime                     uint32
 	Timeout                       uint32
 	Proxy                         string
@@ -148,6 +149,7 @@ var config = ConfigStruct{
 	IgnoreEmptyPeer:               true,
 	IgnoreNoLeechersTorrent:       false,
 	IgnorePTTorrent:               true,
+	IgnoreFailureExit:             false,
 	SleepTime:                     20,
 	Timeout:                       6,
 	Proxy:                         "Auto",
@@ -541,8 +543,6 @@ func InitConfig() {
 	}
 }
 func LoadInitConfig(firstLoad bool) bool {
-	lastURL = config.ClientURL
-
 	loadConfigStatus := LoadConfig(configFilename, true)
 
 	if loadConfigStatus < -1 {
@@ -570,11 +570,15 @@ func LoadInitConfig(firstLoad bool) bool {
 
 	if config.ClientURL != "" {
 		if lastURL != config.ClientURL {
-			DetectClient()
-			InitClient()
-			if firstLoad && !Login() {
+			if !DetectClient() {
+				Log("LoadInitConfig", GetLangText("LoadInitConfig_DetectClientFailed"), true)
 				return false
 			}
+			if !Login() {
+				Log("LoadInitConfig", GetLangText("LoadInitConfig_AuthFailed"), true)
+				return false
+			}
+			InitClient()
 			SubmitBlockPeer(nil)
 			lastURL = config.ClientURL
 		}

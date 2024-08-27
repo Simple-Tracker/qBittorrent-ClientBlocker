@@ -359,10 +359,11 @@ func RunConsole() {
 		time.Sleep(time.Duration(startDelay) * time.Second)
 	}
 
-	if !LoadInitConfig(true) {
-		Log("RunConsole", GetLangText("RunConsole_AuthFailed"), true)
+	for !LoadInitConfig(true) {
 		time.Sleep(2 * time.Second)
-		os.Exit(1)
+		if !config.IgnoreFailureExit {
+			os.Exit(1)
+		}
 	}
 
 	isRunning = true
@@ -390,10 +391,11 @@ func RunConsole() {
 		tmpCurrentTimestamp := time.Now().Unix()
 		if (currentTimestamp + int64(config.Interval)) <= tmpCurrentTimestamp {
 			currentTimestamp = tmpCurrentTimestamp
-			LoadInitConfig(false)
 			go CheckUpdate()
-			Task()
-			GC()
+			if LoadInitConfig(false) {
+				Task()
+				GC()
+			}
 		}
 	}
 }
