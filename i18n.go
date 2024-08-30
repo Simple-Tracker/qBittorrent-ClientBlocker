@@ -55,8 +55,6 @@ var defaultLangContent = map[string]string{
 	"Error-LoadConfig":                                 "加载配置文件 (%s) 时发生了错误: %s",
 	"Error-ParseConfig":                                "解析配置文件 (%s) 时发生了错误: %s",
 	"Error-LoadFile":                                   "加载文件 (%s) 时发生了错误: %s",
-	"Error-CompileBlockList":                           "表达式存在 %d 处错误",
-	"Error-CompileIPBlockList":                         "IP %s 有错误",
 	"Error-GetClientConfig_LoadConfig":                 "加载客户端配置文件时发生了错误: %s",
 	"Error-GetClientConfig_LoadConfigMeta":             "读取客户端配置文件元数据时发生了错误: %s",
 	"Error-SetBlocklistFromContent_Compile":            ":%d 表达式 %s 有错误",
