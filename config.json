@@ -12,32 +12,23 @@
 	"clientPassword": "",
 	"useBasicAuth": false,
 	"skipCertVerification": false,
-	"blockList": [
-		"^-(SD|XF|QD|BN|DL)",
-		"^-XL", "Xunlei", "cacao_torrent",
-		"anacrolix[ /]torrent v?([0-1]\\.(([0-9]|[0-4][0-9]|[0-5][0-2])\\.[0-9]+|(53\\.[0-2]( |$)))|unknown)",
-		"^-DT", "dt[ /]torrent", "^-HP", "hp[ /]torrent", "^-XM", "xm[ /]torrent",
-		"trafficConsume", "\u07ad__",
-		"^-GT0002", "go[ \\.]torrent",
-		"^-RN", "Rain 0.0.0",
-		"Taipei-Torrent dev", "Gopeed dev",
-		"qBittorrent[ /]3\\.3\\.15",
-		"gobind", "offline-download",
-		"ljyun.cn",
-	],
-	"_blockList": [
-		// 可选 blockList.
-		"^-UW\\w{4}-", // uTorrent Web.
-		"^-SP(([0-2]\\d{3})|(3[0-5]\\d{2}))-", "StellarPlayer", // 恒星播放器.
-		"dandanplay" // 弹弹 Play.
-	],
-	"blockListURL": [],
-	"blockListFile": [],
+	"blockListFile": [
+        "blockList.json",
+        // "blockBackList.json",
+    ],
+	"blockListURL": [
+        "https://bta.iaalai.cn/qBittorrent-ClientBlocker/blockList.json",
+        "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/blockList.json"
+    ],
 	"portBlockList": [],
-	"ipBlockList": [],
+	"ipBlockList": [
+        "customIpBlock.txt",
+        "ipBlockList.txt"
+    ],
 	"ipBlockListURL": [
 		"https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
     	"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
+		"https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/blockIP.txt",
     	"https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/blockIP.txt"
 	],
 	"ipBlockListFile": []
