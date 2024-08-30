@@ -84,7 +84,7 @@ jobs:
           md5sum: false
           sha256sum: false
           binary_name: 'qBittorrent-ClientBlocker'
-          extra_files: 'lang/ LICENSE *.md *.json '
+          extra_files: 'lang/ LICENSE *.md *.txt *.json'
       - name: 'Upload GitHub Artifact (Nightly)'
         uses: actions/upload-artifact@v4
         if: ${{ github.event_name != 'release' }}
