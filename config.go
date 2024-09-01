@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dlclark/regexp2"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/tidwall/jsonc"
 )
 
@@ -460,9 +461,17 @@ func LoadConfig(filename string, notExistErr bool) int {
 
 	configLastMod[filename] = tmpConfigLastMod
 
+	switch filepath.Ext(filename) {
+	case ".json":
 	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
 		Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 		return -4
+		}
+	case ".toml":
+		if err := toml.Unmarshal(configFile, &config); err != nil {
+			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
+			return -4
+		}
 	}
 
 	Log("LoadConfig", GetLangText("Success-LoadConfig"), true, filename)
