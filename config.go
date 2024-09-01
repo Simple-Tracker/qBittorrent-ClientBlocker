@@ -463,9 +463,9 @@ func LoadConfig(filename string, notExistErr bool) int {
 
 	switch filepath.Ext(filename) {
 	case ".json":
-	if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
-		Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
-		return -4
+		if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
+			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
+			return -4
 		}
 	case ".toml":
 		if err := toml.Unmarshal(configFile, &config); err != nil {
