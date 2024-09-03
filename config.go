@@ -461,7 +461,7 @@ func LoadConfig(filename string, notExistErr bool) int {
 
 	configLastMod[filename] = tmpConfigLastMod
 
-	switch filepath.Ext(filename) {
+	switch filepath.Ext(strings.ToLower(filename)) {
 	case ".json":
 		if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
 			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())

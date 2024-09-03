@@ -1,8 +1,6 @@
 module github.com/Simple-Tracker/qBittorrent-ClientBlocker
 
-go 1.21.0
-
-toolchain go1.23.0
+go 1.20
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.1
@@ -11,7 +9,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.0
 	github.com/getlantern/systray v1.2.2
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
-	github.com/pelletier/go-toml/v2 v2.2.3
+	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/tidwall/jsonc v0.3.2
 	golang.design/x/hotkey v0.4.1
 )

@@ -1,37 +1,34 @@
 {
-	"checkUpdate": true,
-	"debug": false,
-	"interval": 6,
-	"cleanInterval": 3600,
-	"banTime": 86400,
-	"timeout": 6,
-	"logToFile": true,
-	"clientType": "",
-	"clientURL": "",
-	"clientUsername": "",
-	"clientPassword": "",
-	"useBasicAuth": false,
-	"skipCertVerification": false,
-	"blockListFile": [
-        "blockList.json",
-        // "blockList-Optional.json"
-    ],
-	"blockListURL": [
-        "https://bta.iaalai.cn/qBittorrent-ClientBlocker/blockList.json",
-        "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/blockList.json"
-    ],
-	"portBlockList": [],
-	"ipBlockList": [
-        "ipBlockList.txt"
-    ],
-	"ipBlockListURL": [
-		"https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
-    	"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
-		"https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/ipBlockList.txt",
-    	"https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/ipBlockList.txt"
-	],
-	"ipBlockListFile": []
-	/*
+  "checkUpdate": true,
+  "debug": false,
+  "interval": 6,
+  "cleanInterval": 3600,
+  "banTime": 86400,
+  "timeout": 6,
+  "logToFile": true,
+  "clientType": "",
+  "clientURL": "",
+  "clientUsername": "",
+  "clientPassword": "",
+  "useBasicAuth": false,
+  "skipCertVerification": false,
+  "blockListFile": [
+    "blockList.json"
+    // "blockList-Optional.json"
+  ],
+  "blockListURL": [
+    "https://bta.iaalai.cn/qBittorrent-ClientBlocker/blockList.json",
+    "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/blockList.json"
+  ],
+  "portBlockList": [],
+  "ipBlockListFile": ["ipBlockList.txt"],
+  "ipBlockListURL": [
+    "https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
+    "https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
+    "https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/ipBlockList.txt",
+    "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/ipBlockList.txt"
+  ]
+  /*
 	"debug_CheckTorrent": false,
 	"debug_CheckPeer": false,
 	"updateInterval": 86400,
