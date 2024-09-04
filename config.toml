@@ -1,0 +1,71 @@
+checkUpdate = true
+debug = false
+interval = 6
+cleanInterval = 3_600
+banTime = 86_400
+timeout = 6
+logToFile = true
+clientType = ""
+clientURL = ""
+clientUsername = ""
+clientPassword = ""
+useBasicAuth = false
+skipCertVerification = false
+blockList = []
+blockListFile = [
+    "blockList.json",
+    # "blockList-Optional.json",
+]
+blockListURL = [
+    "https://bta.iaalai.cn/qBittorrent-ClientBlocker/blockList.json",
+    # "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/blockList.json",
+]
+portBlockList = []
+ipBlockList = []
+ipBlockListFile = ["ipBlockList.txt"]
+ipBlockListURL = [
+    "https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
+    "https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
+    # "https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/ipBlockList.txt",
+    "https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/ipBlockList.txt",
+]
+# debug_CheckTorrent = false
+# debug_CheckPeer = false
+# updateInterval = 86_400
+# restartInterval = 6
+# torrentMapCleanInterval = 60
+# banAllPort = true
+# banIPCIDR = "/32"
+# banIP6CIDR = "/128"
+# ignoreEmptyPeer = true
+# ignoreNoLeechersTorrent = true
+# ignorePTTorrent = true
+# ignoreAuthFailed = false
+# sleepTime = 20
+# proxy = "Auto"
+# longConnection = true
+# logPath = "logs"
+# logDebug = false
+# listen = "127.0.0.1:26262"
+# fetchFailedThreshold = 0
+# execCommand_FetchFailed = ""
+# execCommand_Run = ""
+# execCommand_Ban = ""
+# execCommand_Unban = ""
+# syncServerURL = ""
+# syncServerToken = ""
+# genIPDat = 0
+# ipUploadedCheck = false
+# ipUpCheckInterval = 300
+# ipUpCheckIncrementMB = 38_000
+# ipUpCheckPerTorrentRatio = 3
+# maxIPPortCount = 0
+# banByProgressUploaded = false
+# banByPUStartMB = 20
+# banByPUStartPrecent = 2
+# banByPUAntiErrorRatio = 3
+# banByRelativeProgressUploaded = false
+# banByRelativePUStartMB = 20
+# banByRelativePUStartPrecent = 2
+# banByRelativePUAntiErrorRatio = 3
+# ignoreByDownloaded = 100
