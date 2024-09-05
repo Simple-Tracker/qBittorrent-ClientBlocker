@@ -126,7 +126,11 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	switch currentClientType {
 	case "qBittorrent":
-		return qB_SubmitBlockPeer(blockPeerMap)
+		if config.ShadowBan {
+			return qB_SubmitShadowBanPeer(blockPeerMap)
+		} else {
+			return qB_SubmitBlockPeer(blockPeerMap)
+		}
 	case "Transmission":
 		return Tr_SubmitBlockPeer(blockPeerMap)
 	}
