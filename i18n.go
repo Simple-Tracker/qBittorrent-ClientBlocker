@@ -109,7 +109,7 @@ var defaultLangContent = map[string]string{
 
 // Shadowban Related
 	"Warn-ShadowbanAPINotExist": 						"Shadow Ban API 不存在，请确认使用的是具有 Shadow Ban 功能的客户端",
-	"Warn-EnableShadowbanReset":						"Shadow Ban API 未启用，已重置",
+	"Warn-EnableShadowbanReset":						"Shadow Ban API 未启用，已忽略 Shadow Ban配置",
 	"Fail-GetQBPreferences":   							"获取qB偏好设置失败",
 	"Fail-UnknownShadowbanAPI":  						"Shadow Ban API 的类型超出预期",
 

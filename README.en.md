@@ -187,6 +187,7 @@ Docker version is configured through the same name variable configuration, which
 | banByRelativePUStartPrecent | float64 | 2 (%) | Enhanced automatic blocking_Relative/Start progress. If the relative upload progress of the client is greater than the set start progress, Peer will be automatically block |
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
 | ignoreByDownloaded | uint32 | 100 (MB) | Enhanced automatic blocking*/Max downloaded. If downloaded from Peer is greater than this value, enhanced automatic blocking will be skipped |
+| ShadowBan | bool | false | Use Shadow Ban API block peers。This setting only works with client which has ShadowBan API.And it will check if Shadow Ban API available while loading config, with ignoring this setting if unavailabled.
 
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), ask/discuss/share usage through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions), contribute code improvement to blocker through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls).  
