@@ -186,6 +186,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByRelativePUStartPrecent | float64 | 2 (%) | 增强自动屏蔽_相对/起始进度. 若客户端相对上传进度大于设置起始进度, 则允许屏蔽 Peer |
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 | ignoreByDownloaded | uint32 | 100 (MB) | 增强自动屏蔽*/最高下载量. 若从 Peer 下载量大于此项, 则跳过增强自动屏蔽 |
+| ShadowBan | bool | false | 尝试使用Shadow Ban API进行封禁。仅对部分具有ShadowBan API的客户端生效，并会在载入配置时检测客户端相关API是否可用，若不可用则会忽略该参数。
 
 ## 反馈 Feedback
 用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  

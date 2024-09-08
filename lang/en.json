@@ -94,5 +94,10 @@
 	"Success-Login": "Login successful",
 	"Success-ClearBlockPeer": "Cleaned up expired client: %d",
 	"Success-ExecCommand": "Exec command success, output: %s",
-	"Success-SyncWithServer": "Sync with server success"
+	"Success-SyncWithServer": "Sync with server success",
+
+	"Warn-ShadowbanAPINotExist": 						"Shadow Ban API is invalid, please double check if client has Shadow Ban feature",
+	"Warn-EnableShadowbanReset":						"Shadow Ban API is reset, ignore Shadow Ban setting",
+	"Fail-GetQBPreferences":   							"Failed to get qBittorrent preferences",
+	"Fail-UnknownShadowbanAPI":  						"Unknown Shadow Ban API value type"
 }

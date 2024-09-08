@@ -72,6 +72,7 @@
 	"banByRelativePUStartMB": 20,
 	"banByRelativePUStartPrecent": 2.0,
 	"banByRelativePUAntiErrorRatio": 3.0,
-	"ignoreByDownloaded": 100
+	"ignoreByDownloaded": 100,
+	"ShadowBan": false,
 	*/
 }
