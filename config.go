@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
-	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dlclark/regexp2"
@@ -96,7 +96,7 @@ var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
 var blockListCompiled = make(map[string]*regexp2.Regexp)
-var ipBlockListCompiled = make(map[string]*net.IPNet)
+var ipBlockListCompiled sync.Map
 var blockListURLLastFetch int64 = 0
 var ipBlockListURLLastFetch int64 = 0
 var blockListFileLastMod = make(map[string]int64)
@@ -330,7 +330,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 			continue
 		}
 
-		if _, exists := ipBlockListCompiled[content]; exists {
+		if _, exists := ipBlockListCompiled.Load(content); exists {
 			continue
 		}
 
@@ -341,7 +341,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 			continue
 		}
 
-		ipBlockListCompiled[content] = cidr
+		ipBlockListCompiled.Store(content, cidr)
 		setCount++
 	}
 
@@ -543,7 +543,6 @@ func InitConfig() {
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(config.BlockList, "BlockList")
 
-	ipBlockListCompiled = make(map[string]*net.IPNet, len(config.IPBlockList))
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
 }
