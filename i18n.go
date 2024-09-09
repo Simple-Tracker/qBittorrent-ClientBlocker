@@ -107,11 +107,11 @@ var defaultLangContent = map[string]string{
 	"Success-ExecCommand":                              "执行命令成功, 输出: %s",
 	"Success-SyncWithServer":                           "成功与同步服务器同步",
 
-// Shadowban Related
-	"Warn-ShadowbanAPINotExist": 						"Shadow Ban API 不存在，请确认使用的是具有 Shadow Ban 功能的客户端",
-	"Warn-EnableShadowbanReset":						"Shadow Ban API 未启用，已忽略 Shadow Ban配置",
-	"Fail-GetQBPreferences":   							"获取qB偏好设置失败",
-	"Fail-UnknownShadowbanAPI":  						"Shadow Ban API 的类型超出预期",
+	// Part ShadowBan.
+	"Warning-ShadowBanAPINotExist":                     "未检测到 ShadowBan API, 将使用常规方法",
+	"Warning-ShadowBanAPIDisabled":                     "未启用 ShadowBan API, 将使用常规方法",
+	"Failed-UnknownShadowBanAPI":                       "检测到未知 Shadow Ban API, 将使用常规方法",
+	"Failed-GetQBPreferences":                          "获取 qBittorrent 偏好设置失败",
 
 }
 

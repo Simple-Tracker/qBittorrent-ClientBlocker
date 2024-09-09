@@ -50,6 +50,7 @@ type ConfigStruct struct {
 	ClientUsername                string
 	ClientPassword                string
 	UseBasicAuth                  bool
+	UseShadowBan                  bool
 	SkipCertVerification          bool
 	FetchFailedThreshold          int
 	ExecCommand_FetchFailed       string
@@ -80,7 +81,6 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   float64
 	BanByRelativePUAntiErrorRatio float64
-	ShadowBan                     bool
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -165,6 +165,7 @@ var config = ConfigStruct{
 	ClientUsername:                "",
 	ClientPassword:                "",
 	UseBasicAuth:                  false,
+	UseShadowBan:                  true,
 	SkipCertVerification:          false,
 	FetchFailedThreshold:          0,
 	ExecCommand_FetchFailed:       "",
@@ -195,7 +196,6 @@ var config = ConfigStruct{
 	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
-	ShadowBan:                     false,
 }
 
 func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
@@ -591,11 +591,9 @@ func LoadInitConfig(firstLoad bool) bool {
 		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 URL.
 		config.ClientURL = lastURL
 	}
-	if currentClientType == "qBittorrent" && config.ShadowBan {
-		if !qb_TestShadowbanAPI() {
-			Log("LoadInitConfig", GetLangText("Warn-EnableShadowbanReset"), true)
-			config.ShadowBan = false
-		}
+
+	if config.UseShadowBan && TestShadowBanAPI() <= 0 {
+		config.UseShadowBan = false
 	}
 
 	if !firstLoad {

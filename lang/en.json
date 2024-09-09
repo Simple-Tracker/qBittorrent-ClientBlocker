@@ -96,8 +96,9 @@
 	"Success-ExecCommand": "Exec command success, output: %s",
 	"Success-SyncWithServer": "Sync with server success",
 
-	"Warn-ShadowbanAPINotExist": 						"Shadow Ban API is invalid, please double check if client has Shadow Ban feature",
-	"Warn-EnableShadowbanReset":						"Shadow Ban API is reset, ignore Shadow Ban setting",
-	"Fail-GetQBPreferences":   							"Failed to get qBittorrent preferences",
-	"Fail-UnknownShadowbanAPI":  						"Unknown Shadow Ban API value type"
+	// Part ShadowBan.
+	"Warning-ShadowBanAPINotExist": "ShadowBan API not detected, and the normal method will be used",
+	"Warning-ShadowBanAPIDisabled": "ShadowBan API is disabled, and the normal method will be used",
+	"Failed-UnknownShadowBanAPI": "Detected unknown ShadowBan API, and the normal method will be used",
+	"Failed-GetQBPreferences": "Failed to get qBittorrent preferences"
 }

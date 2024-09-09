@@ -262,64 +262,64 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	return true
 }
 
-func qb_GetPreferences() map[string]interface{} {
+func qB_GetPreferences() map[string]interface{} {
 	_, _, responseBody := Submit(config.ClientURL+"/v2/app/preferences", "", true, true, nil)
 	if responseBody == nil {
-		Log("Fail-GetQBPreferences", GetLangText("Fail-GetQBPreferences"), true)
+		Log("GetPreferences", GetLangText("Failed-GetQBPreferences"), true)
 		return nil
 	}
 
 	var preferences map[string]interface{}
 	if err := json.Unmarshal(responseBody, &preferences); err != nil {
-		Log("Error-ParseQBPreferences", GetLangText("Error-Parse"), true, err.Error())
+		Log("GetPreferences", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
 	return preferences
 }
-
-func qb_TestShadowbanAPI() bool {
+func qB_TestShadowBanAPI() bool {
 	// 1. Check if enable_shadowban is true;
 	// enable_shadowban may be not exist in the preferences.
-	pref := qb_GetPreferences()
+	pref := qB_GetPreferences()
 	if pref == nil {
 		return false
 	}
 	
-	enableShadowban, ok := pref["shadow_ban_enabled"]
-	if !ok {
-		Log("Warn-ShadowbanAPINotExist", GetLangText("Warn-ShadowbanAPINotExist"), true)
+	enableShadowBan, exist := pref["shadow_ban_enabled"]
+	if !exist {
+		Log("TestShadowBanAPI", GetLangText("Warning-ShadowBanAPINotExist"), true)
 		return false
 	}
 	
-	if bEnableShadowban, ok := enableShadowban.(bool); ok {
-		if !bEnableShadowban {
+	if bEnableShadowBan, ok := enableShadowBan.(bool); ok {
+		if !bEnableShadowBan {
 			return false
 		}
 	} else {
-		Log("Fail-UnknownShadowbanAPI", GetLangText("Fail-UnknownShadowbanAPI"), true)
+		Log("TestShadowBanAPI", GetLangText("Failed-UnknownShadowBanAPI"), true)
 		return false
 	}
 
-	// 2. Check if the API is available
+	// 2. Check if the API is available;
 	code, _, _ := Submit(config.ClientURL+"/v2/transfer/shadowbanPeers", "peers=", true, true, nil)
 	if code != 200 {
-		Log("Warn-ShadowbanAPINotExist", GetLangText("Warn-ShadowbanAPINotExist"), true)
+		Log("TestShadowBanAPI", GetLangText("Warning-ShadowBanAPINotExist"), true)
 		return false
 	}
+
 	return true
 }
-
 func qB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	shadowBanIPPortsList := []string{}
 	for peerIP, peerInfo := range blockPeerMap {
 		for port := range peerInfo.Port {
-			if port <=0 || port > 65535 {
+			if port <= 0 || port > 65535 {
 				port = 1 // Seems qBittorrent will ignore the invalid port number, so we just set it to 1.
 			}
 			shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP + ":" + strconv.Itoa(port))
 		}
 	}
+
 	banIPPortsStr := strings.Join(shadowBanIPPortsList, "|")
 	Log("Debug-SubmitShadowBanPeer", "%s", false, banIPPortsStr)
 

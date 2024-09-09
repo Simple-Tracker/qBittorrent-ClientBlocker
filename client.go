@@ -126,7 +126,7 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	switch currentClientType {
 	case "qBittorrent":
-		if config.ShadowBan {
+		if config.UseShadowBan {
 			return qB_SubmitShadowBanPeer(blockPeerMap)
 		} else {
 			return qB_SubmitBlockPeer(blockPeerMap)
@@ -136,4 +136,16 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 
 	return false
+}
+func TestShadowBanAPI() int {
+	// -1: Unsupported (Error), 0: Unsupported (Silent), 1: Supported.
+	switch currentClientType {
+	case "qBittorrent":
+		if qB_TestShadowBanAPI() {
+			return 1
+		}
+		return -1
+	}
+
+	return 0
 }

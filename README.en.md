@@ -156,6 +156,7 @@ Docker version is configured through the same name variable configuration, which
 | clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
 | clientPassword | string | Empty | Client password. If client "Skip local client authentication" is enabled, it can be left blank by default |
 | useBasicAuth | bool | false | Also authenticates via HxTTP Basic Auth. Suitable for backend that only support Basic Auth (such as Transmission/BitComet) or add/change authentication methods via reverse proxy, etc |
+| useShadowBan | bool | true | Use ShadowBan API to ban peer. Only works with clients that support ShadowBan API (such as qBittorrent). If the relevant API is not available when loading the configuration, it will be automatically disabled |
 | skipCertVerification | bool | false | Skip Web API certificate verification. Suitable for self-signed and expired certificates |
 | fetchFailedThreshold | int | 0 (Disable) | Maximum number of fetch failures. When set number is exceeded, execCommand_FetchFailed will be executed |
 | execCommand_FetchFailed | string | Empty | Execute external command (FetchFailed). First parameter is regarded as an external program path, execute the command when number of fetch failures exceeds set threshold |
@@ -187,7 +188,6 @@ Docker version is configured through the same name variable configuration, which
 | banByRelativePUStartPrecent | float64 | 2 (%) | Enhanced automatic blocking_Relative/Start progress. If the relative upload progress of the client is greater than the set start progress, Peer will be automatically block |
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
 | ignoreByDownloaded | uint32 | 100 (MB) | Enhanced automatic blocking*/Max downloaded. If downloaded from Peer is greater than this value, enhanced automatic blocking will be skipped |
-| ShadowBan | bool | false | Use Shadow Ban API block peers。This setting only works with client which has ShadowBan API.And it will check if Shadow Ban API available while loading config, with ignoring this setting if unavailabled.
 
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), ask/discuss/share usage through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions), contribute code improvement to blocker through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls).  
