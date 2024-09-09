@@ -204,6 +204,11 @@ func ExecCommand(command string) (bool, string, string) {
 
 	return true, string(out), ""
 }
+
+// EraseSyncMap is a helper function to erase all elements in a sync.Map.
+// This function is supposed to be replaced by `Clear` method after Go1.23 and above.
+//
+// go:build !go1.23
 func EraseSyncMap(m *sync.Map) {
 	m.Range(func(key, value any) bool {
 		m.Delete(key)
