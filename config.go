@@ -95,7 +95,7 @@ var needHideWindow bool
 var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
-var blockListCompiled = make(map[string]*regexp2.Regexp)
+var blockListCompiled sync.Map
 var ipBlockListCompiled sync.Map
 var blockListURLLastFetch int64 = 0
 var ipBlockListURLLastFetch int64 = 0
@@ -208,7 +208,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 			continue
 		}
 
-		if _, exists := blockListCompiled[content]; exists {
+		if _, exists := blockListCompiled.Load(content); exists {
 			continue
 		}
 
@@ -222,7 +222,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 
 		reg.MatchTimeout = 50 * time.Millisecond
 
-		blockListCompiled[content] = reg
+		blockListCompiled.Store(content, reg)
 		setCount++
 	}
 
@@ -539,14 +539,11 @@ func InitConfig() {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
 
-	blockListCompiled = make(map[string]*regexp2.Regexp)
+	EraseSyncMap(&blockListCompiled)
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(config.BlockList, "BlockList")
 
-	ipBlockListCompiled.Range(func(key, _ any) bool {
-		ipBlockListCompiled.Delete(key)
-		return true
-	})
+	EraseSyncMap(&ipBlockListCompiled)
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
 }

@@ -1,3 +1,4 @@
 .DS_Store
-logs
+logs/
 qBittorrent-ClientBlocker
+qBittorrent-ClientBlocker.exe

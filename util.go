@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -202,4 +203,10 @@ func ExecCommand(command string) (bool, string, string) {
 	}
 
 	return true, string(out), ""
+}
+func EraseSyncMap(m *sync.Map) {
+	m.Range(func(key, value any) bool {
+		m.Delete(key)
+		return true
+	})
 }
