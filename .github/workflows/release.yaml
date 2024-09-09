@@ -63,7 +63,7 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@v4'
-      - name: Set build info
+      - name: 'Set build info'
         id: build_info
         run: |
           echo "tag_version=$(basename ${GITHUB_REF}) (${{ matrix.goarch == 'arm' && format('{0}, {1}v{2}', matrix.goos, matrix.goarch, matrix.goarm) || format('{0}, {1}', matrix.goos, matrix.goarch) }})" >> "${GITHUB_OUTPUT}"

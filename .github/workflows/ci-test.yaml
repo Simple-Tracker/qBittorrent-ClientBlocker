@@ -1,0 +1,21 @@
+name: 'Dev-CI-Test'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['dev']
+  pull_request:
+    branches: ['dev']
+
+jobs:
+  Dev-CI-Test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v4
+      - name: 'Setup Go'
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20.13'
+      - name: 'Test'
+        run: 'go test -v ./... -race'
