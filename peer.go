@@ -168,7 +168,7 @@ func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, pee
 
 	return false
 }
-func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, peerDlSpeed int64, peerUpSpeed int64, peerProgress float64, peerDownloaded int64, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
+func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpeed, peerUpSpeed int64, peerProgress float64, peerDownloaded, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
 	if peerIP == "" || CheckPrivateIP(peerIP) {
 		return -1, nil
 	}
@@ -190,12 +190,19 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	hasPeerClient := (peerID != "" || peerClient != "")
 
 	if hasPeerClient {
-		for _, v := range blockListCompiled {
-			if MatchBlockList(v, peerIP, peerPort, peerID, peerClient) {
+		earlyStop := false
+		blockListCompiled.Range(func(key, val any) bool {
+			if MatchBlockList(val.(*regexp2.Regexp), peerIP, peerPort, peerID, peerClient) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-Client_Normal", peerIP, peerPort, torrentInfoHash)
-				return 1, peerNet
+				earlyStop = true
+				return false
 			}
+			return true
+		})
+
+		if earlyStop {
+			return 1, peerNet
 		}
 	}
 
@@ -211,16 +218,29 @@ func CheckPeer(peerIP string, peerPort int, peerID string, peerClient string, pe
 	if ip == nil {
 		Log("Debug-CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s (TorrentInfoHash: %s)", false, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 	} else {
-		for _, v := range ipBlockListCompiled {
+		earlyStop := false
+		ipBlockListCompiled.Range(func(_, v any) bool {
 			if v == nil {
-				continue
+				return true
 			}
-			if v.Contains(ip) {
+
+			ipNet, ok := (v).(*net.IPNet)
+			if !ok {
+				return true
+			}
+			if ipNet.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("Bad-IP_Normal", peerIP, -1, torrentInfoHash)
-				return 3, peerNet
+				earlyStop = true
+				return false
 			}
+
+			return true
+		})
+		if earlyStop {
+			return 3, peerNet
 		}
+
 		for _, v := range ipBlockCIDRMapFromSyncServerCompiled {
 			if v == nil {
 				continue

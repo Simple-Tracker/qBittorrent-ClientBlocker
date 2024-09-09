@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
-	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dlclark/regexp2"
@@ -80,7 +80,7 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   float64
 	BanByRelativePUAntiErrorRatio float64
-	ShadowBan 			  bool
+	ShadowBan                     bool
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -95,8 +95,8 @@ var needHideWindow bool
 var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
-var blockListCompiled = make(map[string]*regexp2.Regexp)
-var ipBlockListCompiled = make(map[string]*net.IPNet)
+var blockListCompiled sync.Map
+var ipBlockListCompiled sync.Map
 var blockListURLLastFetch int64 = 0
 var ipBlockListURLLastFetch int64 = 0
 var blockListFileLastMod = make(map[string]int64)
@@ -195,7 +195,7 @@ var config = ConfigStruct{
 	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
-	ShadowBan: 			   false,
+	ShadowBan:                     false,
 }
 
 func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
@@ -208,7 +208,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 			continue
 		}
 
-		if _, exists := blockListCompiled[content]; exists {
+		if _, exists := blockListCompiled.Load(content); exists {
 			continue
 		}
 
@@ -222,7 +222,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 
 		reg.MatchTimeout = 50 * time.Millisecond
 
-		blockListCompiled[content] = reg
+		blockListCompiled.Store(content, reg)
 		setCount++
 	}
 
@@ -330,7 +330,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 			continue
 		}
 
-		if _, exists := ipBlockListCompiled[content]; exists {
+		if _, exists := ipBlockListCompiled.Load(content); exists {
 			continue
 		}
 
@@ -341,7 +341,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 			continue
 		}
 
-		ipBlockListCompiled[content] = cidr
+		ipBlockListCompiled.Store(content, cidr)
 		setCount++
 	}
 
@@ -539,11 +539,11 @@ func InitConfig() {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
 	}
 
-	blockListCompiled = make(map[string]*regexp2.Regexp)
+	EraseSyncMap(&blockListCompiled)
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(config.BlockList, "BlockList")
 
-	ipBlockListCompiled = make(map[string]*net.IPNet, len(config.IPBlockList))
+	EraseSyncMap(&ipBlockListCompiled)
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
 }
