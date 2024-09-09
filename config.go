@@ -80,7 +80,7 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   float64
 	BanByRelativePUAntiErrorRatio float64
-	ShadowBan 			  bool
+	ShadowBan                     bool
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -195,7 +195,7 @@ var config = ConfigStruct{
 	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
-	ShadowBan: 			   false,
+	ShadowBan:                     false,
 }
 
 func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
@@ -543,6 +543,10 @@ func InitConfig() {
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(config.BlockList, "BlockList")
 
+	ipBlockListCompiled.Range(func(key, _ any) bool {
+		ipBlockListCompiled.Delete(key)
+		return true
+	})
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
 }
