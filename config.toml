@@ -10,6 +10,7 @@ clientURL = ""
 clientUsername = ""
 clientPassword = ""
 useBasicAuth = false
+useShadowBan = true
 skipCertVerification = false
 blockList = []
 blockListFile = [
