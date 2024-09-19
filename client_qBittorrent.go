@@ -316,7 +316,11 @@ func qB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 			if port <= 0 || port > 65535 {
 				port = 1 // Seems qBittorrent will ignore the invalid port number, so we just set it to 1.
 			}
-			shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP + ":" + strconv.Itoa(port))
+			if IsIPv6(peerIP) { 
+				shadowBanIPPortsList = append(shadowBanIPPortsList,  "[" + peerIP + "]:" + strconv.Itoa(port))
+			} else {
+				shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP + ":" + strconv.Itoa(port))
+			}
 		}
 	}
 
