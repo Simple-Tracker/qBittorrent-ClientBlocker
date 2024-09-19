@@ -320,6 +320,7 @@ func qB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 				shadowBanIPPortsList = append(shadowBanIPPortsList,  "[" + peerIP + "]:" + strconv.Itoa(port))
 			} else {
 				shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP + ":" + strconv.Itoa(port))
+				shadowBanIPPortsList = append(shadowBanIPPortsList, "[::ffff:" + peerIP + "]:" + strconv.Itoa(port))
 			}
 		}
 	}
