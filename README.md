@@ -156,7 +156,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | clientUsername | string | 空 | 客户端账号. 留空会跳过认证. 若启用客户端内 "跳过本机客户端认证" 可默认留空, 因可自动读取客户端配置文件并设置 |
 | clientPassword | string | 空 | 客户端密码. 若启用客户端内 "跳过本机客户端认证" 可默认留空 |
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission/BitComet) 或通过反向代理等方式 增加/换用 认证方式的后端 |
-| useShadowBan | bool | true (启用) | 使用 ShadowBan API 进行封禁. 仅适用于支持 ShadowBan API 的客户端 (如 qBittorrent), 若载入配置时检测相关 API 不可用, 将自动禁用 |
+| useShadowBan | bool | true (启用) | 使用 ShadowBan API 进行封禁. 仅适用于支持 ShadowBan API 的客户端 (如 qBEE), 若载入配置时检测相关 API 不可用, 将自动禁用 |
 | skipCertVerification | bool | false (禁用) | 跳过 Web API 证书校验. 适合自签及过期证书 |
 | fetchFailedThreshold | int | 0 (禁用) | 最大获取失败次数. 当超过设定次数, 将执行设置的外部命令 |
 | execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 首个参数被视作外部程序路径, 当获取失败次数超过设定次数后执行 |
