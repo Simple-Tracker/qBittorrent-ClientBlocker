@@ -22,7 +22,7 @@ func GetProxy(r *http.Request) (*url.URL, error) {
 				getproxy_httpProxyURL.Scheme = "http"
 			}
 
-			Log("GetProxy", "发现 HTTP 代理: %s (来源: %s)", true, getproxy_httpProxyURL.String(), httpProxy.Src())
+			Log("GetProxy", GetLangText("GetProxy_ProxyFound"), true, "HTTP", getproxy_httpProxyURL.String(), httpProxy.Src())
 		}
 
 		httpsProxy := proxyProvider.GetHTTPSProxy("")
@@ -32,11 +32,11 @@ func GetProxy(r *http.Request) (*url.URL, error) {
 				getproxy_httpsProxyURL.Scheme = "http"
 			}
 
-			Log("GetProxy", "发现 HTTPS 代理: %s (来源: %s)", true, getproxy_httpsProxyURL.String(), httpsProxy.Src())
+			Log("GetProxy", GetLangText("GetProxy_ProxyFound"), true, "HTTPS", getproxy_httpsProxyURL.String(), httpsProxy.Src())
 		}
 
 		if getproxy_httpProxyURL == nil || getproxy_httpsProxyURL == nil {
-			Log("GetProxy", "未能发现 HTTP/HTTPS 代理", true)
+			Log("GetProxy", GetLangText("GetProxy_ProxyNotFound"), true, "HTTP/HTTPS")
 		}
 	} else if r != nil {
 		if r.URL.Scheme == "https" {
