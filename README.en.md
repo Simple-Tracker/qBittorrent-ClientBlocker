@@ -13,6 +13,8 @@ A client blocker compatible with qBittorrent (4.1+)/Transmission (3.0+, Beta)/Bi
 -   Support enhanced automatic ban (Default disable): Automatically ban peer based on the default or set related parameter
 -   Under Windows, support show and hide window through systray or window hotkey (Ctrl+Alt+B) (Some users [feedback](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10) it may affect ban. Due to unknown reason, the function can be avoided if related problem are encountered)
 
+Usually, occasional errors can be ignored. The reasons may be: 1. Network problems; 2. Client timeout; 3. Transmission periodically rotates CSRF Token; ...
+
 ![Preview](Preview.png)
 
 ## 使用 Usage

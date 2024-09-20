@@ -13,6 +13,8 @@
 -   支持增强自动屏蔽 (默认禁用): 根据默认或设定的相关参数自动屏蔽 Peer
 -   在 Windows 下支持通过系统托盘或窗口热键 (CTRL+ALT+B) 显示及隐藏窗口 (部分用户[反馈](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/10)其可能会影响屏蔽, 由于原因不明, 若遇到相关问题可避免使用该功能)
 
+通常可以忽略偶发错误, 其原因可能有: 1. 网络问题; 2. 客户端超时; 3. Transmission 定期轮换 CSRF Token; ...
+
 ![Preview](Preview.png)
 
 ## 使用 Usage
