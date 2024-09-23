@@ -78,6 +78,7 @@ var defaultLangContent = map[string]string{
 	"Error-Login":                                      "登录时发生了错误",
 	"Error-FetchUpdate":                                "获取更新时发生了错误",
 	"Error-GenJSON":                                    "构造 JSON 时发生了错误: %s",
+	"Error-GenJSONWithID":                              "构造 JSON (%s) 时发生了错误: %s",
 	"Error-Log_Write":                                  "写入日志时发生了错误: %s",
 	"Error-IPFilter_Write":                             "写入 IPFilter 时发生了错误: %s",
 	"Error-LoadLog_Mkdir":                              "创建日志目录时发生了错误: %s",

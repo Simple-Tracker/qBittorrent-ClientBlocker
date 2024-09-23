@@ -67,6 +67,7 @@
 	"Error-Login": "An error occurred while logging in",
 	"Error-FetchUpdate": "An error occurred while fetching update",
 	"Error-GenJSON": "An error occurred while generate JSON: %s",
+	"Error-GenJSONWithID": "An error occurred while generate JSON (%s): %s",
 	"Error-Log_Write": "An error occurred while writing to log: %s",
 	"Error-IPFilter_Write": "An error occurred while writing to IPFilter: %s",
 	"Error-LoadLog_Mkdir": "An error occurred while creating log directory: %s",
