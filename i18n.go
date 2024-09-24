@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Xuanwo/go-locale"
+	"github.com/tidwall/jsonc"
 )
 
 var langContent map[string]string
@@ -136,7 +137,7 @@ func LoadLang(langCode string) bool {
 		return false
 	}
 
-	if err := json.Unmarshal(langFile, &langContent); err != nil {
+	if err := json.Unmarshal(jsonc.ToJSON(langFile), &langContent); err != nil {
 		Log("LoadLang", GetLangText("Error-ParseLang"), false, langPath, err.Error())
 		return false
 	}

@@ -266,7 +266,7 @@ func SetBlockListFromFile() bool {
 
 		var content []string
 		if filepath.Ext(filePath) == ".json" {
-			err = json.Unmarshal(blockListContent, &content)
+			err = json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
 			if err != nil {
 				Log("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
 				continue
@@ -305,7 +305,7 @@ func SetBlockListFromURL() bool {
 
 		var content []string
 		if strings.HasSuffix(strings.ToLower(strings.Split(httpHeader.Get("Content-Type"), ";")[0]), "json") {
-			err := json.Unmarshal(blockListContent, &content)
+			err := json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
 			if err != nil {
 				Log("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
 				continue
@@ -380,7 +380,7 @@ func SetIPBlockListFromFile() bool {
 
 		var content []string
 		if filepath.Ext(filePath) == ".json" {
-			err := json.Unmarshal(ipBlockListFile, &content)
+			err := json.Unmarshal(jsonc.ToJSON(ipBlockListFile), &content)
 			if err != nil {
 				Log("SetIPBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
 			}
@@ -416,7 +416,7 @@ func SetIPBlockListFromURL() bool {
 
 		var content []string
 		if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
-			err := json.Unmarshal(ipBlockListContent, &content)
+			err := json.Unmarshal(jsonc.ToJSON(ipBlockListContent), &content)
 			if err != nil {
 				Log("SetIPBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, ipBlockListURL, err.Error())
 				continue
