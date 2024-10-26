@@ -100,6 +100,7 @@
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
+            -e useENV=true \
             -e debug=false \
             -e logPath=logs \
             -e blockList='["ExampleBlockList1", "ExampleBlockList2"]' \

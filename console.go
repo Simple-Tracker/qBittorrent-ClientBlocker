@@ -361,7 +361,7 @@ func Stop() {
 }
 func RunConsole() {
 	if startDelay > 0 {
-		Log("RunConsole", GetLangText("StartDelay"), false, startDelay)
+		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, startDelay)
 		time.Sleep(time.Duration(startDelay) * time.Second)
 	}
 
