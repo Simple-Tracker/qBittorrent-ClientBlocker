@@ -147,7 +147,7 @@ Docker version is configured through the same name variable configuration, which
 | ignoreFailureExit | bool | false | Ignore failure exit. If enabled, it will continue to retry after first detection of the client fails or authentication fails |
 | sleepTime | uint32 | 20 (MicroSec) | Query waiting time of each Torrent Peers. Short interval can make blocking Peer faster but may cause client lag, Long interval can help average CPU usage |
 | timeout | uint32 | 6 (MillSec) | Request timeout. If interval is too short, peer may not be properly blocked. If interval is too long, timeout request will affect blocking other peer |
-| proxy | string | Auto | Use proxy. Proxy will still automatically detect proxy on first load. Empty: Disable proxy; Auto: Automatic (use proxy only for external resources); All: Use proxy |
+| proxy | string | Auto | Use proxy. Still automatically detect proxy on first load. Empty: Disable proxy; Auto: Automatic (use proxy only for external requests); All: Use proxy for all requests |
 | longConnection | bool | true | Long connection. Enable to reduce resource consumption |
 | logPath | string | logs | Log path. Must enable logToFile |
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
