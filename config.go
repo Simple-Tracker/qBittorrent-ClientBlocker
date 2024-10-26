@@ -126,7 +126,7 @@ var httpTransport = &http.Transport{
 }
 
 var httpClient http.Client
-var httpClientWithoutCookie http.Client
+var httpClientExternal http.Client // 没有 Cookie.
 
 var httpServer = http.Server{
 	ReadTimeout:  30,
@@ -499,13 +499,19 @@ func InitConfig() {
 		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	}
 
+	httpTransportExternal := httpTransport.Clone()
+
 	if config.Proxy == "Auto" {
+		// Aka default. 仅对外部资源使用代理.
+		httpTransport.Proxy = nil
+		httpTransportExternal.Proxy = GetProxy
+	} else if config.Proxy == "All" {
 		httpTransport.Proxy = GetProxy
+		httpTransportExternal.Proxy = GetProxy
 	} else {
 		httpTransport.Proxy = nil
+		httpTransportExternal.Proxy = nil
 	}
-
-	httpTransportWithoutCookie := httpTransport.Clone()
 
 	if config.LongConnection {
 		httpTransport.DisableKeepAlives = false
@@ -522,9 +528,9 @@ func InitConfig() {
 		},
 	}
 
-	httpClientWithoutCookie = http.Client{
+	httpClientExternal = http.Client{
 		Timeout:   currentTimeout,
-		Transport: httpTransportWithoutCookie,
+		Transport: httpTransportExternal,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},

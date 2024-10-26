@@ -8,7 +8,7 @@ import (
 
 var fetchFailedCount = 0
 
-func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHeader *map[string]string) *http.Request {
+func NewRequest(isPOST bool, url string, postdata string, external bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
 
@@ -47,18 +47,18 @@ func NewRequest(isPOST bool, url string, postdata string, withAuth bool, withHea
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	if currentClientType == "Transmission" && withAuth && Tr_csrfToken != "" {
+	if currentClientType == "Transmission" && external && Tr_csrfToken != "" {
 		request.Header.Set("X-Transmission-Session-Id", Tr_csrfToken)
 	}
 
-	if withAuth && config.UseBasicAuth && config.ClientUsername != "" {
+	if external && config.UseBasicAuth && config.ClientUsername != "" {
 		request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
 	}
 
 	return request
 }
-func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, http.Header, []byte) {
-	request := NewRequest(false, url, "", withCookie, withHeader)
+func Fetch(url string, tryLogin bool, external bool, withHeader *map[string]string) (int, http.Header, []byte) {
+	request := NewRequest(false, url, "", external, withHeader)
 	if request == nil {
 		return -1, nil, nil
 	}
@@ -66,10 +66,10 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 	var response *http.Response
 	var err error
 
-	if withCookie {
+	if external {
 		response, err = httpClient.Do(request)
 	} else {
-		response, err = httpClientWithoutCookie.Do(request)
+		response, err = httpClientExternal.Do(request)
 	}
 
 	if err != nil {
@@ -141,8 +141,8 @@ func Fetch(url string, tryLogin bool, withCookie bool, withHeader *map[string]st
 
 	return response.StatusCode, response.Header, responseBody
 }
-func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHeader *map[string]string) (int, http.Header, []byte) {
-	request := NewRequest(true, url, postdata, withCookie, withHeader)
+func Submit(url string, postdata string, tryLogin bool, external bool, withHeader *map[string]string) (int, http.Header, []byte) {
+	request := NewRequest(true, url, postdata, external, withHeader)
 	if request == nil {
 		return -1, nil, nil
 	}
@@ -150,10 +150,10 @@ func Submit(url string, postdata string, tryLogin bool, withCookie bool, withHea
 	var response *http.Response
 	var err error
 
-	if withCookie {
+	if external {
 		response, err = httpClient.Do(request)
 	} else {
-		response, err = httpClientWithoutCookie.Do(request)
+		response, err = httpClientExternal.Do(request)
 	}
 
 	if err != nil {

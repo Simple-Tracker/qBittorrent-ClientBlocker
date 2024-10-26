@@ -147,7 +147,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | ignoreFailureExit | bool | false (禁用) | 忽略失败退出. 启用后会使得首次检测客户端失败或认证失败后继续重试 |
 | sleepTime | uint32 | 20 (毫秒) | 查询每个 Torrent Peers 的等待时间. 短间隔可使屏蔽 Peer 更快但可能造成客户端卡顿, 长间隔有助于平均 CPU 资源占用 |
 | timeout | uint32 | 6 (秒) | 请求超时. 过短间隔可能会造成无法正确屏蔽 Peer, 过长间隔会使超时请求影响屏蔽其它 Peer 的性能 |
-| proxy | string | Auto (自动) | 使用代理. 设置为空可以禁止此行为, 但仍会在首次加载配置文件时自动检测代理 |
+| proxy | string | Auto (自动) | 使用代理. 仍会在首次加载配置文件时自动检测代理. 空: 禁止使用代理; Auto: 自动 (仅对外部资源使用代理); All: 使用代理 |
 | longConnection | bool | true (启用) | 长连接. 启用可降低资源消耗 |
 | logPath | string | logs | 日志目录. 须先启用 logToFile |
 | logToFile | bool | true (启用) | 记录普通信息到日志. 启用后可用于一般的分析及统计用途 |

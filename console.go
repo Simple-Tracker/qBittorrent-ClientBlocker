@@ -351,7 +351,7 @@ func Stop() {
 	DeleteIPFilter()
 	SubmitBlockPeer(nil)
 	httpClient.CloseIdleConnections()
-	httpClientWithoutCookie.CloseIdleConnections()
+	httpClientExternal.CloseIdleConnections()
 	StopServer()
 	Platform_Stop()
 
