@@ -43,7 +43,7 @@ func SyncWithServer() bool {
 
 	_, _, syncServerContent := Submit(config.SyncServerURL, string(syncJSON), false, false, nil)
 	if syncServerContent == nil {
-		Log("SyncWithServer", GetLangText("Error-FetchResponse"), true)
+		Log("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
 		return false
 	}
 

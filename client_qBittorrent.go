@@ -142,7 +142,7 @@ func qB_SetURL() bool {
 }
 func qB_GetAPIVersion() bool {
 	if !strings.HasSuffix(config.ClientURL, "/api") {
-		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL+"/api/v2/app/webapiVersion", false, false, nil)
+		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL+"/api/v2/app/webapiVersion", false, false, false, nil)
 		if apiResponseStatusCodeWithSuffix == 200 || apiResponseStatusCodeWithSuffix == 403 {
 			config.ClientURL += "/api"
 			Log("qB_GetAPIVersion", GetLangText("ClientQB_Detect-OldClientURL"), true, config.ClientURL)
@@ -150,7 +150,7 @@ func qB_GetAPIVersion() bool {
 		}
 	}
 
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/v2/app/webapiVersion", false, false, nil)
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/v2/app/webapiVersion", false, false, false, nil)
 	return (apiResponseStatusCode == 200 || apiResponseStatusCode == 403)
 }
 func qB_Login() bool {
@@ -175,7 +175,7 @@ func qB_Login() bool {
 	return false
 }
 func qB_FetchTorrents() *[]qB_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/v2/torrents/info?filter=active", true, true, nil)
+	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/v2/torrents/info?filter=active", true, true, false, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -190,7 +190,7 @@ func qB_FetchTorrents() *[]qB_TorrentStruct {
 	return &torrentsResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, nil)
+	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, false, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil

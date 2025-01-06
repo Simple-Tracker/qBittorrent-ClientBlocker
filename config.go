@@ -290,7 +290,11 @@ func SetBlockListFromURL() bool {
 	setCount := 0
 
 	for _, blockListURL := range config.BlockListURL {
-		_, httpHeader, blockListContent := Fetch(blockListURL, false, false, nil)
+		httpStatusCode, httpHeader, blockListContent := Fetch(blockListURL, false, false, true, nil)
+		if httpStatusCode == 304 {
+			continue
+		}
+
 		if blockListContent == nil {
 			blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
 			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
@@ -403,12 +407,17 @@ func SetIPBlockListFromURL() bool {
 	setCount := 0
 
 	for _, ipBlockListURL := range config.IPBlockListURL {
-		_, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, nil)
+		httpStatusCode, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, true, nil)
+		if httpStatusCode == 304 {
+			continue
+		}
+
 		if ipBlockListContent == nil {
 			ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
 			Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
+
 		if len(ipBlockListContent) > 8388608 {
 			Log("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
 			continue

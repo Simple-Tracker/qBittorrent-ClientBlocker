@@ -7,8 +7,10 @@ import (
 )
 
 var fetchFailedCount = 0
+var urlETagCache = make(map[string]string)
+var urlLastModCache = make(map[string]string)
 
-func NewRequest(isPOST bool, url string, postdata string, clientReq bool, withHeader *map[string]string) *http.Request {
+func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowCache bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
 
@@ -55,12 +57,20 @@ func NewRequest(isPOST bool, url string, postdata string, clientReq bool, withHe
 		if config.UseBasicAuth && config.ClientUsername != "" {
 			request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
 		}
+	} else if !isPOST && allowCache {
+		if etag, exist := urlETagCache[url]; exist {
+			request.Header.Set("If-None-Match", etag)
+		}
+
+		if lastMod, exist := urlLastModCache[url]; exist {
+			request.Header.Set("If-Modified-Since", lastMod)
+		}
 	}
 
 	return request
 }
-func Fetch(url string, tryLogin bool, clientReq bool, withHeader *map[string]string) (int, http.Header, []byte) {
-	request := NewRequest(false, url, "", clientReq, withHeader)
+func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeader *map[string]string) (int, http.Header, []byte) {
+	request := NewRequest(false, url, "", clientReq, allowCache, withHeader)
 	if request == nil {
 		return -1, nil, nil
 	}
@@ -136,15 +146,33 @@ func Fetch(url string, tryLogin bool, clientReq bool, withHeader *map[string]str
 		return 404, response.Header, nil
 	}
 
+	if allowCache && response.StatusCode == 304 {
+		Log("Fetch", GetLangText("Debug-Request_NoChange"), false, url)
+		return 304, response.Header, nil
+	}
+
 	if response.StatusCode != 200 {
 		Log("Fetch", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
 		return response.StatusCode, response.Header, nil
 	}
 
+	if allowCache {
+		etag := response.Header.Get("ETag")
+
+		if etag != "" {
+			urlETagCache[url] = etag
+		}
+
+		lastMod := response.Header.Get("Last-Modified")
+		if lastMod != "" {
+			urlLastModCache[url] = lastMod
+		}
+	}
+
 	return response.StatusCode, response.Header, responseBody
 }
 func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHeader *map[string]string) (int, http.Header, []byte) {
-	request := NewRequest(true, url, postdata, clientReq, withHeader)
+	request := NewRequest(true, url, postdata, clientReq, false, withHeader)
 	if request == nil {
 		return -1, nil, nil
 	}

@@ -99,7 +99,11 @@ func CheckUpdate() {
 		return
 	}
 
-	_, _, listReleaseContent := Fetch("https://api.github.com/repos/Simple-Tracker/qBittorrent-ClientBlocker/releases?per_page=5", false, false, &githubAPIHeader)
+	listResponseCode, _, listReleaseContent := Fetch("https://api.github.com/repos/Simple-Tracker/qBittorrent-ClientBlocker/releases?per_page=5", false, false, true, &githubAPIHeader)
+	if listResponseCode == 304 {
+		return
+	}
+
 	if listReleaseContent == nil {
 		Log("CheckUpdate", GetLangText("Error-FetchUpdate"), true)
 		return

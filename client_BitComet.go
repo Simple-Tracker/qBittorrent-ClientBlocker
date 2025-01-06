@@ -133,16 +133,16 @@ func BC_ParseIP(ipStr string) (string, int) {
 	return ipWithoutPortStr, port
 }
 func BC_DetectClient() bool {
-	apiResponseStatusCode, apiResponseHeaders, _ := Fetch(config.ClientURL+"/panel/", false, false, nil)
+	apiResponseStatusCode, apiResponseHeaders, _ := Fetch(config.ClientURL+"/panel/", false, false, false, nil)
 	return (apiResponseStatusCode == 401 && strings.Contains(apiResponseHeaders.Get("WWW-Authenticate"), "BitComet"))
 }
 func BC_Login() bool {
 	// BitComet 通过 Basic Auth 进行认证, 因此此处只进行验证.
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/panel/", false, true, nil)
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/panel/", false, true, false, nil)
 	return (apiResponseStatusCode == 200)
 }
 func BC_FetchTorrents() *map[int]BC_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/panel/task_list?group=active", true, true, nil)
+	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/panel/task_list?group=active", true, true, false, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -198,7 +198,7 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 	return &torrentsMap
 }
 func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/panel/task_detail?id="+infoHash+"&show=peers", true, true, nil)
+	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/panel/task_detail?id="+infoHash+"&show=peers", true, true, false, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
