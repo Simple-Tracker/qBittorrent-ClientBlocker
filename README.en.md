@@ -120,6 +120,7 @@ Usually, occasional errors can be ignored. The reasons may be: 1. Network proble
 | --debug | false | Debug mode. Effective before loading config file |
 | --startdelay | 0 (Sec, Disable) | Start delay. Special uses for some user |
 | --nochdir | false | Don't change working directory. Change to the program directory by default |
+| --reghotkey | true | Register window hotkey. The window hotkey is fixed to CTRL+ALT+B |
 | --hidewindow | false | Hide window by default. Only available on Windows |
 | --hidesystray | false | Hide systray by default. Only available on Windows |
 

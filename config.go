@@ -91,6 +91,7 @@ var shortFlag_ShowVersion bool
 var longFlag_ShowVersion bool
 var startDelay uint
 var noChdir bool
+var needRegHotKey bool
 var needHideWindow bool
 var needHideSystray bool
 
@@ -630,6 +631,7 @@ func RegFlag() {
 	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
 	flag.UintVar(&startDelay, "startdelay", 0, GetLangText("StartDelay"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
+	flag.BoolVar(&needRegHotKey, "reghotkey", true, GetLangText("RegHotKey"))
 	flag.BoolVar(&needHideWindow, "hidewindow", false, GetLangText("HideWindow"))
 	flag.BoolVar(&needHideSystray, "hidesystray", false, GetLangText("HideSystray"))
 	flag.Parse()

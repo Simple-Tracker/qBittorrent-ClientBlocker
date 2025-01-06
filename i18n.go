@@ -16,6 +16,7 @@ var defaultLangContent = map[string]string{
 	"DebugMode":                                        "调试模式",
 	"StartDelay":                                       "启动延迟",
 	"NoChdir":                                          "不切换工作目录",
+	"RegHotkey":                                        "注册窗口热键",
 	"HideWindow":                                       "默认隐藏窗口 (仅 Windows)",
 	"HideSystray":                                      "默认隐藏托盘图标 (仅 Windows)",
 	"RunConsole_StartDelay":                            "启动延迟: %d 秒",

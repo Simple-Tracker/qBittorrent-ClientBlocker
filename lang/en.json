@@ -4,6 +4,7 @@
 	"DebugMode": "Debug mode",
 	"StartDelay": "Start delay",
 	"NoChdir": "Don't change working directory",
+	"RegHotkey": "Register window hotkey",
 	"HideWindow": "Hide window by default (Only Windows)",
 	"HideSystray": "Hide systray by default (Only Windows)",
 	"RunConsole_StartDelay": "Start delay: %d Sec",

@@ -28,6 +28,10 @@ func Platform_Stop() {
 	systray.Quit()
 }
 func RegHotKey() {
+	if !needRegHotKey {
+		return
+	}
+
 	err := programHotkey.Register()
 	if err != nil {
 		Log("RegHotKey", GetLangText("Error-RegHotkey"), false, err.Error())
