@@ -110,6 +110,11 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 		return -3, nil, nil
 	}
 
+	if response.StatusCode == 204 {
+		Log("Fetch", GetLangText("Debug-Request_NoContent"), false, url)
+		return 204, response.Header, nil
+	}
+
 	if response.StatusCode == 401 {
 		Log("Fetch", GetLangText("Error-NoAuth"), true)
 		return 401, response.Header, nil
@@ -197,6 +202,11 @@ func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHead
 	if err != nil {
 		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
 		return -3, nil, nil
+	}
+
+	if response.StatusCode == 204 {
+		Log("Fetch", GetLangText("Debug-Request_NoContent"), false, url)
+		return 204, response.Header, nil
 	}
 
 	if response.StatusCode == 401 {

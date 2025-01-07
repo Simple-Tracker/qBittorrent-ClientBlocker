@@ -45,6 +45,7 @@ var defaultLangContent = map[string]string{
 	"ClientQB_Detect-OldClientURL":                     "检测到 ClientURL (Web UI), 已自动修改至 ClientURL (Web API): %s",
 	"Debug-LoadConfig_HotReload":                       "发现配置文件 (%s) 更改, 正在进行热重载",
 	"Debug-Request_NoChange":                           "请求的 URL (%s) 没有发生改变",
+	"Debug-Request_NoContent":                          "请求的 URL (%s) 没有返回内容",
 	"Debug-SetBlockListFromFile_HotReload":             "发现 BlockListFile (%s) 更改, 正在进行热重载",
 	"Debug-SetIPBlockListFromFile_HotReload":           "发现 IPBlockListFile (%s) 更改, 正在进行热重载",
 	"Debug-ShowOrHiddenWindow_HideWindow":              "窗口隐藏",

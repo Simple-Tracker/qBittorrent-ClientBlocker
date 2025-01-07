@@ -33,6 +33,7 @@
 	"ClientQB_Detect-OldClientURL": "Detected ClientURL (Web UI), automatically changed to ClientURL (Web API): %s",
 	"Debug-LoadConfig_HotReload": "Config (%s) change found, hot reload in progress",
 	"Debug-Request_NoChange": "The requested URL (%s) has not changed",
+	"Debug-Request_NoContent": "The requested URL (%s) did not return any content",
 	"Debug-SetBlockListFromFile_HotReload": "BlockListFile (%s) change found, hot reload in progress",
 	"Debug-SetIPBlockListFromFile_HotReload": "IPBlockListFile (%s) change found, hot reload in progress",
 	"Debug-ShowOrHiddenWindow_HideWindow": "Hide window",

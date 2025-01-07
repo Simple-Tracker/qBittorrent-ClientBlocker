@@ -18,30 +18,27 @@ type SyncServer_SubmitStruct struct {
 	TorrentMap map[string]TorrentInfoStruct `json:"torrentMap"`
 }
 
-var lastSync int64 = 0
-var syncConfig = SyncServer_ConfigStruct{
+var syncServer_isSubmiting bool = false
+var syncServer_lastSync int64 = 0
+var syncServer_syncConfig = SyncServer_ConfigStruct{
 	Interval:    60,
 	Status:      "",
 	BlockIPRule: make(map[string][]string),
 }
 var ipBlockCIDRMapFromSyncServerCompiled = make(map[string]*net.IPNet)
 
-func SyncWithServer() bool {
-	if config.SyncServerURL == "" || (lastSync+int64(syncConfig.Interval)) > currentTimestamp {
-		return true
-	}
-
-	Log("Debug-SyncWithServer", "In progress..", false)
-
+func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, string) {
 	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: currentTimestamp, Token: config.SyncServerToken, TorrentMap: torrentMap})
 	if err != nil {
-		Log("SyncWithServer", GetLangText("Error-GenJSON"), true, err.Error())
-		return false
+		Log("SyncWithServer_PrepareJSON", GetLangText("Error-GenJSON"), true, err.Error())
+		return false, ""
 	}
 
-	lastSync = currentTimestamp
-
-	_, _, syncServerContent := Submit(config.SyncServerURL, string(syncJSON), false, false, nil)
+	return true, string(syncJSON)
+}
+func SyncWithServer_Submit(syncJSON string) bool {
+	_, _, syncServerContent := Submit(config.SyncServerURL, syncJSON, false, false, nil)
+	syncServer_isSubmiting = false
 	if syncServerContent == nil {
 		Log("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
 		return false
@@ -53,19 +50,19 @@ func SyncWithServer() bool {
 		return false
 	}
 
-	if err := json.Unmarshal(jsonc.ToJSON(syncServerContent), &syncConfig); err != nil {
+	if err := json.Unmarshal(jsonc.ToJSON(syncServerContent), &syncServer_syncConfig); err != nil {
 		Log("SyncWithServer", GetLangText("Error-ParseConfig"), true, err.Error())
 		return false
 	}
 
-	if syncConfig.Status != "" {
-		Log("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, syncConfig.Status)
+	if syncServer_syncConfig.Status != "" {
+		Log("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, syncServer_syncConfig.Status)
 		return false
 	}
 
 	tmpIPBlockCIDRMapFromSyncServerCompiled := make(map[string]*net.IPNet)
 
-	for reason, ipArr := range syncConfig.BlockIPRule {
+	for reason, ipArr := range syncServer_syncConfig.BlockIPRule {
 		logReason := false
 
 		for ipBlockListLineNum, ipBlockListLine := range ipArr {
@@ -100,5 +97,30 @@ func SyncWithServer() bool {
 	ipBlockCIDRMapFromSyncServerCompiled = tmpIPBlockCIDRMapFromSyncServerCompiled
 
 	Log("Debug-SyncWithServer", GetLangText("Success-SyncWithServer"), true, len(ipBlockCIDRMapFromSyncServerCompiled))
+	return true
+}
+func SyncWithServer_FullSubmit(syncJSON string) bool {
+	syncServer_isSubmiting = true
+	syncStatus := SyncWithServer_Submit(syncJSON)
+	syncServer_isSubmiting = false
+
+	return syncStatus
+}
+func SyncWithServer() bool {
+	if config.SyncServerURL == "" || (syncServer_lastSync+int64(syncServer_syncConfig.Interval)) > currentTimestamp || syncServer_isSubmiting {
+		return true
+	}
+
+	Log("Debug-SyncWithServer", "In progress..", false)
+
+	status, syncJSON := SyncWithServer_PrepareJSON(torrentMap)
+	if !status {
+		return false
+	}
+
+	syncServer_lastSync = currentTimestamp
+
+	go SyncWithServer_FullSubmit(syncJSON)
+
 	return true
 }
