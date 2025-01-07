@@ -120,7 +120,7 @@
 | --debug | false (禁用) | 调试模式. 加载配置文件前生效 |
 | --startdelay | 0 (秒, 禁用) | 启动延迟. 部分用户的特殊用途 |
 | --nochdir | false (禁用) | 不切换工作目录. 默认会切换至程序目录 |
-| --reghotkey | true (启用) | 注册窗口热键. 窗口热键固定为 CTRL+ALT+B |
+| --reghotkey | true (启用) | 注册窗口热键. 仅 Windows 可用. 窗口热键固定为 CTRL+ALT+B |
 | --hidewindow | false (禁用) | 默认隐藏窗口. 仅 Windows 可用 |
 | --hidesystray | false (禁用) | 默认隐藏托盘图标. 仅 Windows 可用 |
 
