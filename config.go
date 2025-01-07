@@ -59,6 +59,7 @@ type ConfigStruct struct {
 	ExecCommand_Unban             string
 	SyncServerURL                 string
 	SyncServerToken               string
+	BTNConfigureURL               string
 	BlockList                     []string
 	BlockListURL                  []string
 	BlockListFile                 []string
@@ -175,6 +176,7 @@ var config = ConfigStruct{
 	ExecCommand_Unban:             "",
 	SyncServerURL:                 "",
 	SyncServerToken:               "",
+	BTNConfigureURL:               "",
 	BlockList:                     []string{},
 	BlockListURL:                  []string{},
 	BlockListFile:                 []string{},
@@ -617,6 +619,7 @@ func LoadInitConfig(firstLoad bool) bool {
 		SetIPBlockListFromFile()
 		go SetBlockListFromURL()
 		go SetIPBlockListFromURL()
+		go BTN_GetConfig()
 	}
 
 	return true

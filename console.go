@@ -294,6 +294,7 @@ func Task() {
 	}
 
 	SyncWithServer()
+	BTN_Task()
 }
 func GC() {
 	ipMapGCCount := (len(ipMap) - 23333333)
