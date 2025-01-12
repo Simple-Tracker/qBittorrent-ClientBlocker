@@ -111,7 +111,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if response.StatusCode == 204 {
-		Log("Fetch", GetLangText("Debug-Request_NoContent"), false, url)
+		Log("Debug-Fetch", GetLangText("Debug-Request_NoContent"), false, url)
 		return 204, response.Header, nil
 	}
 
@@ -152,7 +152,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if allowCache && response.StatusCode == 304 {
-		Log("Fetch", GetLangText("Debug-Request_NoChange"), false, url)
+		Log("Debug-Fetch", GetLangText("Debug-Request_NoChange"), false, url)
 		return 304, response.Header, nil
 	}
 
