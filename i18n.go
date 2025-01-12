@@ -92,6 +92,7 @@ var defaultLangContent = map[string]string{
 	"Error-Task_NotSupportClient":                      "检测到不支持的客户端, 可能是未配置且未能自动检测客户端: %s",
 	"Error-SyncWithServer_ServerError":                 "同步服务器错误: %s",
 	"Error-Debug-EmptyLine":                            ":%d 为空",
+	"Error-Debug-EmptyLineWithSource":                  ":%d 为空 (%s)",
 	"Error-Debug-GetClientConfigPath_GetUserHomeDir":   "获取 User Home 目录时发生了错误: %s",
 	"Error-Debug-GetClientConfigPath_GetUserConfigDir": "获取 User Config 目录时发生了错误: %s",
 	"Failed-LoadInitConfig":                            "读取配置文件失败或不完整",

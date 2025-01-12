@@ -205,7 +205,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 	for index, content := range blockListContent {
 		content = StrTrim(ProcessRemark(content))
 		if content == "" {
-			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, index, blockListSource)
+			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, blockListSource)
 			continue
 		}
 
@@ -331,7 +331,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 	for index, content := range ipBlockListContent {
 		content = StrTrim(ProcessRemark(content))
 		if content == "" {
-			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLine"), false, index, ipBlockListSource)
+			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, ipBlockListSource)
 			continue
 		}
 

@@ -80,6 +80,7 @@
 	"Error-Task_NotSupportClient": "Detected unsupport client, may not be configured and failed to automatically detect client type: %s",
 	"Error-SyncWithServer_ServerError": "Sync server error: %s",
 	"Error-Debug-EmptyLine": ":%d is empty",
+	"Error-Debug-EmptyLineWithSource": ":%d is empty (%s)",
 	"Error-Debug-GetClientConfigPath_GetUserHomeDir": "An error occurred while retrieving the User Home directory: %s",
 	"Error-Debug-GetClientConfigPath_GetUserConfigDir": "An error occurred while retrieving the User Config directory: %s",
 	"Failed-LoadInitConfig": "Failed to read config file or config file is incomplete",
