@@ -30,7 +30,7 @@
 	"ipBlockListURL": [
 		"https://bta.iaalai.cn/BTN-Collected-Rules/combine/all.txt",
 		"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
-		//"https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/ipBlockList.txt",
+		//"https://bta.iaalai.cn/qBittorrent-ClientBlocker/ipBlockList.txt",
 		"https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/ipBlockList.txt"
 	]
 	/*
