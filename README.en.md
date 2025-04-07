@@ -81,7 +81,7 @@ Usually, occasional errors can be ignored. The reasons may be: 1. Network proble
 
     3. Run docker image and view log to observe whether the information output is normal;
 
-       The following command templates are used as a reference only, please replace ```/path/config.json``` to your config path.
+       The following command templates are used as a reference only, please replace ```/path/config.json``` to your config path (The file should be created before mounting).
 
         ```
         docker run -d \
