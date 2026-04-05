@@ -157,7 +157,14 @@ func qB_Login() bool {
 	loginParams := url.Values{}
 	loginParams.Set("username", config.ClientUsername)
 	loginParams.Set("password", config.ClientPassword)
-	_, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
+	loginResponseCode, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
+
+	// see: https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/159
+	if loginResponseCode == 204 {
+		Log("Login", GetLangText("Success-Login"), true)
+		return true
+	}
+	
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
