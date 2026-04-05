@@ -160,11 +160,16 @@
             font-weight: 600;
         }
 
-        .empty-state {
-            text-align: center;
-            color: var(--secondary-text);
-            padding: 30px;
-        }
+        .empty-state { text-align: center; color: var(--secondary-text); padding: 30px; }
+
+        /* Pagination styles */
+        .pagination { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        .pagination-info { font-size: 0.85rem; color: var(--secondary-text); }
+        .pagination-controls { display: flex; gap: 8px; }
+        .btn-page { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.82rem; font-weight: 500; }
+        .btn-page:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); }
+        .btn-page.active { background: var(--accent-color); border-color: var(--accent-color); color: white; }
+        .btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .logs-container {
             font-family: 'JetBrains Mono', 'Fira Code', monospace;
@@ -228,7 +233,6 @@
             <div class="stat-item"><span class="stat-label" id="label-uptime">Uptime</span> <span id="uptime">0s</span></div>
             <div class="stat-item"><span class="stat-label" id="label-client">Client</span> <span id="client-type">-</span></div>
             <div class="stat-item"><span class="stat-label" id="label-extensions">Loaded extensions</span> <span id="loaded-extensions">None</span></div>
-            <div class="stat-item"><span class="stat-label" id="label-memory">System RAM</span> <span id="memory">- MB</span></div>
         </div>
         <div class="card">
             <h2 id="stats-card-title">Statistics</h2>
@@ -263,17 +267,27 @@
             <table class="peers-table">
                 <thead>
                     <tr>
-                        <th id="th-ip">Peer IP</th>
-                        <th id="th-ports">Ports</th>
                         <th id="th-module">Module</th>
                         <th id="th-reason">Reason</th>
+                        <th id="th-ip">IP</th>
+                        <th id="th-ports">Ports</th>
+                        <th id="th-id">Peer ID</th>
+                        <th id="th-client">Client</th>
+                        <th id="th-traffic">Traffic (Up / Down)</th>
                         <th id="th-blocked-at">Blocked at</th>
                     </tr>
                 </thead>
                 <tbody id="peers-list">
-                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                    <tr><td colspan="8" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
+        </div>
+        <div id="pagination" class="pagination" style="display:none">
+            <div id="pagination-info" class="pagination-info">Showing 1 to 50 of 0</div>
+            <div class="pagination-controls">
+                <button id="btn-prev" class="btn-page">Previous</button>
+                <button id="btn-next" class="btn-page">Next</button>
+            </div>
         </div>
     </div>
 
@@ -308,10 +322,13 @@
                 allModules: '全部模块',
                 allReasons: '全部原因',
                 showingCount: '显示 {shown} / {total}',
-                peerIP: 'Peer IP',
-                ports: '端口',
                 module: '模块',
                 reason: '原因',
+                ip: 'IP',
+                ports: '端口',
+                id: 'Peer ID',
+                client: '客户端',
+                traffic: '累计流量 (上传 / 下载)',
                 blockedAt: '封禁时间',
                 noBlockedPeers: '当前会话没有封禁记录',
                 noMatchedPeers: '没有匹配的封禁记录',
@@ -323,7 +340,10 @@
                 none: 'None',
                 unknown: '未知',
                 loading: '加载中...',
-                allPorts: 'ALL'
+                allPorts: 'ALL',
+                paginationInfo: '当前显示 {start} - {end}，共 {total} 条封禁记录',
+                prev: '上一页',
+                next: '下一页'
             },
             en: {
                 pageTitle: 'qBittorrent-ClientBlocker Monitor',
@@ -348,10 +368,13 @@
                 allModules: 'All modules',
                 allReasons: 'All reasons',
                 showingCount: 'Showing {shown} / {total}',
-                peerIP: 'Peer IP',
-                ports: 'Ports',
                 module: 'Module',
                 reason: 'Reason',
+                ip: 'IP',
+                ports: 'Ports',
+                id: 'Peer ID',
+                client: 'Client',
+                traffic: 'Traffic (Up / Down)',
                 blockedAt: 'Blocked at',
                 noBlockedPeers: 'No blocked peers in the current session.',
                 noMatchedPeers: 'No blocked peers match the current filters.',
@@ -363,11 +386,16 @@
                 none: 'None',
                 unknown: 'Unknown',
                 loading: 'Loading...',
-                allPorts: 'ALL'
+                allPorts: 'ALL',
+                paginationInfo: 'Showing {start} to {end} of {total} blocked peers',
+                prev: 'Previous',
+                next: 'Next'
             }
         };
 
         const locale = (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+        const pageSize = 50;
+        let currentPage = 1;
         const text = i18n[locale];
         let allPeers = [];
 
@@ -395,7 +423,6 @@
             document.getElementById('label-uptime').textContent = t('uptime');
             document.getElementById('label-client').textContent = t('client');
             document.getElementById('label-extensions').textContent = t('loadedExtensions');
-            document.getElementById('label-memory').textContent = t('systemRam');
             document.getElementById('stats-card-title').textContent = t('statistics');
             document.getElementById('label-blocked-ips').textContent = t('blockedIPs');
             document.getElementById('label-blocked-ports').textContent = t('blockedPorts');
@@ -405,15 +432,20 @@
             document.getElementById('peer-search').placeholder = t('searchPlaceholder');
             document.getElementById('module-filter-label').textContent = t('moduleFilter');
             document.getElementById('reason-filter-label').textContent = t('reasonFilter');
-            document.getElementById('th-ip').textContent = t('peerIP');
-            document.getElementById('th-ports').textContent = t('ports');
             document.getElementById('th-module').textContent = t('module');
             document.getElementById('th-reason').textContent = t('reason');
+            document.getElementById('th-ip').textContent = t('ip');
+            document.getElementById('th-ports').textContent = t('ports');
+            document.getElementById('th-id').textContent = t('id');
+            document.getElementById('th-client').textContent = t('client');
+            document.getElementById('th-traffic').textContent = t('traffic');
             document.getElementById('th-blocked-at').textContent = t('blockedAt');
             document.getElementById('logs-title').textContent = t('liveLogs');
             document.getElementById('logs').textContent = t('initializing');
             document.getElementById('refresh-notice').textContent = t('autoSync');
-            document.getElementById('peers-list').innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('loading'))}</td></tr>`;
+            document.getElementById('btn-prev').textContent = t('prev');
+            document.getElementById('btn-next').textContent = t('next');
+            document.getElementById('peers-list').innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t('loading'))}</td></tr>`;
         }
 
         function formatUptime(seconds) {
@@ -422,6 +454,14 @@
             const m = Math.floor(seconds % 3600 / 60);
             const s = Math.floor(seconds % 60);
             return `${d > 0 ? d + 'd ' : ''}${h}h ${m}m ${s}s`;
+        }
+
+        function formatTraffic(bytes) {
+            if (bytes <= 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
         function formatLoadedExtensions(extensions) {
@@ -454,8 +494,11 @@
 
             const filteredPeers = allPeers.filter((peer) => {
                 const ports = (peer.ports || []).join(', ');
-                const matchesSearch = !searchValue || peer.ip.toLowerCase().includes(searchValue) ||
+                const matchesSearch = !searchValue || 
+                    peer.ip.toLowerCase().includes(searchValue) ||
                     ports.toLowerCase().includes(searchValue) ||
+                    (peer.client || '').toLowerCase().includes(searchValue) ||
+                    (peer.id || '').toLowerCase().includes(searchValue) ||
                     (peer.reason || '').toLowerCase().includes(searchValue);
                 const matchesModule = !moduleFilter || peer.module === moduleFilter;
                 const matchesReason = !reasonFilter || peer.reason === reasonFilter;
@@ -468,26 +511,54 @@
 
             const peersList = document.getElementById('peers-list');
             if (allPeers.length === 0) {
-                peersList.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('noBlockedPeers'))}</td></tr>`;
+                peersList.innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t('noBlockedPeers'))}</td></tr>`;
+                document.getElementById('pagination').style.display = 'none';
                 return;
             }
             if (filteredPeers.length === 0) {
-                peersList.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('noMatchedPeers'))}</td></tr>`;
+                peersList.innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t('noMatchedPeers'))}</td></tr>`;
+                document.getElementById('pagination').style.display = 'none';
                 return;
             }
 
-            peersList.innerHTML = filteredPeers.map((peer) => {
+            // Pagination Logic
+            const total = filteredPeers.length;
+            const maxPage = Math.ceil(total / pageSize);
+            if (currentPage > maxPage) currentPage = maxPage || 1;
+
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, total);
+            const paginatedPeers = filteredPeers.slice(start, end);
+
+            peersList.innerHTML = paginatedPeers.map((peer) => {
                 const ports = (peer.ports || []).map((port) => port === 'ALL' ? t('allPorts') : port).join(', ');
+                const trafficInfo = `<span style="color:var(--success-color)">↑ ${formatTraffic(peer.uploaded)}</span><br><span style="color:var(--accent-color)">↓ ${formatTraffic(peer.downloaded)}</span>`;
                 return `
                     <tr>
+                        <td style="font-size: 0.85rem;">${escapeHtml(peer.module || '-')}</td>
+                        <td style="font-size: 0.85rem;">${escapeHtml(peer.reason || '-')}</td>
                         <td style="font-weight: 500;">${escapeHtml(peer.ip)}</td>
                         <td>${escapeHtml(ports)}</td>
-                        <td>${escapeHtml(peer.module || '-')}</td>
-                        <td>${escapeHtml(peer.reason || '-')}</td>
-                        <td style="color: var(--secondary-text)">${escapeHtml(new Date(peer.timestamp * 1000).toLocaleString())}</td>
+                        <td style="font-size: 0.8rem; font-family: monospace; max-width: 150px; word-break: break-all;">${escapeHtml(peer.id || '-')}</td>
+                        <td style="font-size: 0.85rem; max-width: 150px; word-break: break-all;">${escapeHtml(peer.client || '-')}</td>
+                        <td style="white-space: nowrap; font-family: monospace; font-size: 0.85rem;">${trafficInfo}</td>
+                        <td style="color: var(--secondary-text); white-space: nowrap; font-size: 0.85rem;">${escapeHtml(new Date(peer.timestamp * 1000).toLocaleString())}</td>
                     </tr>
                 `;
             }).join('');
+
+            const pagination = document.getElementById('pagination');
+            if (total <= pageSize) {
+                pagination.style.display = 'none';
+            } else {
+                pagination.style.display = 'flex';
+                document.getElementById('pagination-info').textContent = t('paginationInfo')
+                    .replace('{start}', start + 1)
+                    .replace('{end}', end)
+                    .replace('{total}', total);
+                document.getElementById('btn-prev').disabled = currentPage === 1;
+                document.getElementById('btn-next').disabled = currentPage === maxPage;
+            }
         }
 
         async function fetchData() {
@@ -527,7 +598,6 @@
             document.getElementById('uptime').textContent = formatUptime(status.uptime_seconds);
             document.getElementById('client-type').textContent = status.client_type || t('none');
             document.getElementById('loaded-extensions').textContent = formatLoadedExtensions(status.loaded_extensions || []);
-            document.getElementById('memory').textContent = status.runtime.alloc_mb + ' MB';
             document.getElementById('total-blocked-ips').textContent = status.stats.total_blocked_ips;
             document.getElementById('total-blocked-ports').textContent = status.stats.total_blocked_ports;
 
@@ -547,9 +617,12 @@
             }
         }
 
-        document.getElementById('peer-search').addEventListener('input', renderPeers);
-        document.getElementById('module-filter').addEventListener('change', renderPeers);
-        document.getElementById('reason-filter').addEventListener('change', renderPeers);
+        document.getElementById('peer-search').addEventListener('input', () => { currentPage = 1; renderPeers(); });
+        document.getElementById('module-filter').addEventListener('change', () => { currentPage = 1; renderPeers(); });
+        document.getElementById('reason-filter').addEventListener('change', () => { currentPage = 1; renderPeers(); });
+
+        document.getElementById('btn-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPeers(); } });
+        document.getElementById('btn-next').addEventListener('click', () => { currentPage++; renderPeers(); });
 
         setStaticText();
         setInterval(fetchData, 2000);

@@ -258,7 +258,7 @@ func Task() {
 			return true
 		})
 
-		if !config.IPUploadedCheck && iblcLen <= 0 && len(ipBlockCIDRMapFromSyncServerCompiled) <= 0 {
+		if !config.IPUploadedCheck && iblcLen <= 0 && len(syncServer_CompiledRules) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, ipBlockCount, len(blockPeerMap))

@@ -17,6 +17,8 @@ type PeerInfoStruct struct {
 	Progress   float64
 	Downloaded int64
 	Uploaded   int64
+	ID         string
+	Client     string
 }
 
 var torrentMap = make(map[string]TorrentInfoStruct)
@@ -26,7 +28,7 @@ var lastTorrentMapMutex sync.RWMutex
 var lastTorrentCleanTimestamp int64 = 0
 
 // AddTorrentInfo 添加种子信息, 以便后续进行上传进度比分析.
-func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerUploaded int64) {
+func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerDownloaded int64, peerUploaded int64, peerID string, peerClient string) {
 	if !((config.IPUploadedCheck && config.IPUpCheckPerTorrentRatio > 0) || config.BanByRelativeProgressUploaded || config.SyncServerURL != "") {
 		return
 	}
@@ -43,16 +45,11 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 			peerPortMap = make(map[int]bool)
 		} else {
 			peerPortMap = peerInfo.Port
-
-			// 防止 Peer 在周期内通过重连清空实际上传量.
-			if peerInfo.Uploaded > peerUploaded {
-				peerUploaded += peerInfo.Uploaded
-			}
 		}
 	}
 	peerPortMap[peerPort] = true
 
-	peers[peerIP] = PeerInfoStruct{Net: cidr, Port: peerPortMap, Progress: peerProgress, Uploaded: peerUploaded}
+	peers[peerIP] = PeerInfoStruct{Net: cidr, Port: peerPortMap, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, ID: peerID, Client: peerClient}
 	torrentMap[torrentInfoHash] = TorrentInfoStruct{Size: torrentTotalSize, Peers: peers}
 	torrentMapMutex.Unlock()
 }
@@ -71,14 +68,30 @@ func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, 
 
 // IsProgressNotMatchUploaded_Relative 判断 Peer 在两个周期之间的相对上传进度是否不匹配.
 func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerInfoStruct, lastPeerInfo PeerInfoStruct) int64 {
-	var relativeUploaded int64 = (peerInfo.Uploaded - lastPeerInfo.Uploaded)
+	var relativeUploaded int64 = 0
+	if peerInfo.Uploaded < lastPeerInfo.Uploaded {
+		relativeUploaded = peerInfo.Uploaded
+	} else {
+		relativeUploaded = (peerInfo.Uploaded - lastPeerInfo.Uploaded)
+	}
 
 	if torrentTotalSize > 0 && peerInfo.Uploaded > 0 && (float64(relativeUploaded)/1024/1024) > float64(config.BanByRelativePUStartMB) {
-		relativeUploadedPrecent := (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
+		var relativeUploadedPrecent float64 = 0
+		if peerInfo.Uploaded > 0 {
+			if peerInfo.Uploaded < lastPeerInfo.Uploaded {
+				relativeUploadedPrecent = 1
+			} else {
+				relativeUploadedPrecent = (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
+			}
+		}
 		if relativeUploadedPrecent > (config.BanByRelativePUStartPrecent / 100) {
 			var peerReportProgress float64 = 0
 			if peerInfo.Progress > 0 {
-				peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
+				if peerInfo.Progress < lastPeerInfo.Progress {
+					peerReportProgress = 1
+				} else {
+					peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
+				}
 			}
 			if relativeUploadedPrecent > (peerReportProgress * config.BanByRelativePUAntiErrorRatio) {
 				return relativeUploaded
@@ -109,7 +122,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * config.IPUpCheckPerTorrentRatio) {
 						Log("CheckAllTorrent_AddBlockPeer (Torrent-Too high uploaded)", "%s (Uploaded: %.2f MB)", true, peerIP, (float64(peerInfo.Uploaded) / 1024 / 1024))
 						ipBlockCount++
-						AddBlockPeer("CheckAllTorrent", "Torrent-Too high uploaded", peerIP, -1, torrentInfoHash)
+						AddBlockPeer("CheckAllTorrent", "Torrent-Too high uploaded", peerIP, -1, torrentInfoHash, peerInfo.ID, peerInfo.Client, 0, peerInfo.Uploaded)
 						AddBlockCIDR(peerIP, peerInfo.Net)
 						continue
 					}
@@ -124,7 +137,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 								}
 								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
 								blockCount++
-								AddBlockPeer("CheckAllTorrent", "Bad-Relative_Progress_Uploaded", peerIP, port, torrentInfoHash)
+								AddBlockPeer("CheckAllTorrent", "Bad-Relative_Progress_Uploaded", peerIP, port, torrentInfoHash, peerInfo.ID, peerInfo.Client, 0, peerInfo.Uploaded)
 								AddBlockCIDR(peerIP, peerInfo.Net)
 							}
 							continue

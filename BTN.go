@@ -9,10 +9,14 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
+	"net"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/dlclark/regexp2"
 	"github.com/tidwall/jsonc"
 )
 
@@ -80,11 +84,11 @@ type BTN_BanInfo struct {
 }
 
 type BTN_RulesStruct struct {
-	Version    string                 `json:"version"`
-	PeerID     map[string][]RuleEntry `json:"peer_id"`
-	ClientName map[string][]RuleEntry `json:"client_name"`
-	IP         map[string][]string    `json:"ip"`
-	Port       map[string][]string    `json:"port"`
+	Version    string              `json:"version"`
+	PeerID     map[string][]string `json:"peer_id"`
+	ClientName map[string][]string `json:"client_name"`
+	IP         map[string][]string `json:"ip"`
+	Port       map[string][]string `json:"port"`
 }
 
 type RuleEntry struct {
@@ -93,11 +97,11 @@ type RuleEntry struct {
 }
 
 type BTN_ExceptionStruct struct {
-	Version    string                 `json:"version"`
-	PeerID     map[string][]RuleEntry `json:"peer_id"`
-	ClientName map[string][]RuleEntry `json:"client_name"`
-	IP         map[string][]string    `json:"ip"`
-	Port       map[string][]string    `json:"port"`
+	Version    string              `json:"version"`
+	PeerID     map[string][]string `json:"peer_id"`
+	ClientName map[string][]string `json:"client_name"`
+	IP         map[string][]string `json:"ip"`
+	Port       map[string][]string `json:"port"`
 }
 
 var btnProtocol = "BTN-Protocol/3.0.0"
@@ -131,6 +135,124 @@ var btn_isTaskRunning atomic.Bool
 
 var btnRules BTN_RulesStruct
 var btnExceptions BTN_ExceptionStruct
+var btn_regexCache sync.Map // map[string]*regexp2.Regexp
+
+func BTN_MatchEntry(value string, ruleRaw string) bool {
+	var rule RuleEntry
+	if err := json.Unmarshal([]byte(ruleRaw), &rule); err != nil {
+		// 某些规则可能直接是字符串内容 (Legacy).
+		return strings.Contains(value, ruleRaw)
+	}
+
+	switch strings.ToUpper(rule.Method) {
+	case "EQUALS":
+		return value == rule.Content
+	case "STARTS_WITH":
+		return strings.HasPrefix(value, rule.Content)
+	case "ENDS_WITH":
+		return strings.HasSuffix(value, rule.Content)
+	case "CONTAINS":
+		return strings.Contains(value, rule.Content)
+	case "REGEX":
+		var re *regexp2.Regexp
+		if val, ok := btn_regexCache.Load(rule.Content); ok {
+			re = val.(*regexp2.Regexp)
+		} else {
+			var err error
+			re, err = regexp2.Compile(rule.Content, regexp2.IgnoreCase)
+			if err != nil {
+				Log("BTN_MatchEntry", "Invalid regex: %s", true, rule.Content)
+				return false
+			}
+			btn_regexCache.Store(rule.Content, re)
+		}
+		match, _ := re.MatchString(value)
+		return match
+	}
+	return false
+}
+
+func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, string) {
+	if btnConfig == nil {
+		return false, 0, ""
+	}
+
+	ipObj := net.ParseIP(peerIP)
+	peerPortStr := strconv.Itoa(peerPort)
+
+	// 1. 检查例外规则 (WhiteList).
+	for _, rules := range btnExceptions.IP {
+		for _, rule := range rules {
+			_, subnet, err := net.ParseCIDR(rule)
+			if err == nil {
+				if subnet.Contains(ipObj) {
+					return false, 0, ""
+				}
+			} else if rule == peerIP {
+				return false, 0, ""
+			}
+		}
+	}
+	for _, rules := range btnExceptions.Port {
+		for _, rule := range rules {
+			if rule == peerPortStr || rule == "ALL" {
+				return false, 0, ""
+			}
+		}
+	}
+	for _, rules := range btnExceptions.PeerID {
+		for _, rule := range rules {
+			if BTN_MatchEntry(peerID, rule) {
+				return false, 0, ""
+			}
+		}
+	}
+	for _, rules := range btnExceptions.ClientName {
+		for _, rule := range rules {
+			if BTN_MatchEntry(peerClient, rule) {
+				return false, 0, ""
+			}
+		}
+	}
+
+	// 2. 检查封禁规则 (BlockList).
+	// 处理顺序: IP -> Port -> PeerID -> ClientName.
+	for reason, rules := range btnRules.IP {
+		for _, rule := range rules {
+			_, subnet, err := net.ParseCIDR(rule)
+			if err == nil {
+				if subnet.Contains(ipObj) {
+					return true, -1, "Bad-IP_FromBTN (" + reason + ")"
+				}
+			} else if rule == peerIP {
+				return true, -1, "Bad-IP_FromBTN (" + reason + ")"
+			}
+		}
+	}
+	for reason, rules := range btnRules.Port {
+		for _, rule := range rules {
+			if rule == peerPortStr || rule == "ALL" {
+				return true, peerPort, "Bad-IP_FromBTN (" + reason + ")"
+			}
+		}
+	}
+	for reason, rules := range btnRules.PeerID {
+		for _, rule := range rules {
+			if BTN_MatchEntry(peerID, rule) {
+				return true, peerPort, "Bad-IP_FromBTN (" + reason + ")"
+			}
+		}
+	}
+	for reason, rules := range btnRules.ClientName {
+		for _, rule := range rules {
+			if BTN_MatchEntry(peerClient, rule) {
+				return true, peerPort, "Bad-IP_FromBTN (" + reason + ")"
+			}
+		}
+	}
+
+	return false, 0, ""
+}
 
 func BTN_GetConfig() {
 	if config.BTNConfigureURL == "" || (atomic.LoadInt64(&btn_lastGetConfig)+int64(btn_configureInterval)) > atomic.LoadInt64(&currentTimestamp) {

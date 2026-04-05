@@ -56,12 +56,12 @@ func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 	oldClientExternal := httpClientExternal
 	oldConfig := config
 	oldSyncConfig := syncServer_syncConfig
-	oldCIDRMap := ipBlockCIDRMapFromSyncServerCompiled
+	oldRules := syncServer_CompiledRules
 	defer func() {
 		httpClientExternal = oldClientExternal
 		config = oldConfig
 		syncServer_syncConfig = oldSyncConfig
-		ipBlockCIDRMapFromSyncServerCompiled = oldCIDRMap
+		syncServer_CompiledRules = oldRules
 	}()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,7 @@ func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 		Status:      "",
 		BlockIPRule: map[string][]string{},
 	}
-	ipBlockCIDRMapFromSyncServerCompiled = map[string]*net.IPNet{}
+	syncServer_CompiledRules = []SyncServer_RuleStruct{}
 
 	if !SyncWithServer_Submit(`{"dummy":true}`) {
 		t.Fatal("SyncWithServer_Submit should succeed")
@@ -92,13 +92,46 @@ func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 	if syncServer_syncConfig.Interval != 90 {
 		t.Fatalf("Interval=%d, want 90", syncServer_syncConfig.Interval)
 	}
-	if len(ipBlockCIDRMapFromSyncServerCompiled) != 2 {
-		t.Fatalf("compiled CIDR count=%d, want 2", len(ipBlockCIDRMapFromSyncServerCompiled))
+	if len(syncServer_CompiledRules) != 2 {
+		t.Fatalf("compiled Rule count=%d, want 2", len(syncServer_CompiledRules))
 	}
-	if _, ok := ipBlockCIDRMapFromSyncServerCompiled["1.2.3.4"]; !ok {
-		t.Fatal("compiled CIDRs should contain IPv4 entry")
+
+	foundIPv4 := false
+	foundIPv6 := false
+	for _, rule := range syncServer_CompiledRules {
+		if rule.Net.String() == "1.2.3.4/32" {
+			foundIPv4 = true
+		}
+		if rule.Net.String() == "2001:db8::/64" {
+			foundIPv6 = true
+		}
 	}
-	if _, ok := ipBlockCIDRMapFromSyncServerCompiled["2001:db8::/64"]; !ok {
-		t.Fatal("compiled CIDRs should contain IPv6 entry")
+	if !foundIPv4 {
+		t.Fatal("compiled Rules should contain IPv4 entry")
+	}
+	if !foundIPv6 {
+		t.Fatal("compiled Rules should contain IPv6 entry")
+	}
+}
+
+func TestSyncServerCheckPeer(t *testing.T) {
+	oldRules := syncServer_CompiledRules
+	defer func() {
+		syncServer_CompiledRules = oldRules
+	}()
+
+	_, subnet, _ := net.ParseCIDR("10.0.0.0/24")
+	syncServer_CompiledRules = []SyncServer_RuleStruct{
+		{Net: subnet, Reason: "local-network"},
+	}
+
+	ok, reason := SyncServer_CheckPeer(net.ParseIP("10.0.0.5"))
+	if !ok || reason != "Bad-IP_FromSyncServer (local-network)" {
+		t.Fatalf("SyncServer_CheckPeer(10.0.0.5) = (%v, %q), want (true, \"Bad-IP_FromSyncServer (local-network)\")", ok, reason)
+	}
+
+	ok, _ = SyncServer_CheckPeer(net.ParseIP("10.0.1.5"))
+	if ok {
+		t.Fatal("SyncServer_CheckPeer(10.0.1.5) should be false")
 	}
 }

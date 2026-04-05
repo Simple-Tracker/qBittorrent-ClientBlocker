@@ -36,15 +36,18 @@ type Stats struct {
 type Runtime struct {
 	GoVersion    string `json:"go_version"`
 	NumGoroutine int    `json:"num_goroutine"`
-	AllocMB      uint64 `json:"alloc_mb"`
 }
 
 type WebUIBlockPeer struct {
-	IP        string   `json:"ip"`
-	Timestamp int64    `json:"timestamp"`
-	Module    string   `json:"module"`
-	Reason    string   `json:"reason"`
-	Ports     []string `json:"ports"`
+	IP         string   `json:"ip"`
+	Timestamp  int64    `json:"timestamp"`
+	Module     string   `json:"module"`
+	Reason     string   `json:"reason"`
+	Ports      []string `json:"ports"`
+	ID         string   `json:"id"`
+	Client     string   `json:"client"`
+	Downloaded int64    `json:"downloaded"`
+	Uploaded   int64    `json:"uploaded"`
 }
 
 var startTimestamp = time.Now().Unix()
@@ -106,11 +109,15 @@ func GetWebUIBlockPeers() []WebUIBlockPeer {
 		}
 
 		peers = append(peers, WebUIBlockPeer{
-			IP:        peerIP,
-			Timestamp: peerInfo.Timestamp,
-			Module:    peerInfo.Module,
-			Reason:    peerInfo.Reason,
-			Ports:     portLabels,
+			IP:         peerIP,
+			Timestamp:  peerInfo.Timestamp,
+			Module:     peerInfo.Module,
+			Reason:     peerInfo.Reason,
+			Ports:      portLabels,
+			ID:         peerInfo.ID,
+			Client:     peerInfo.Client,
+			Downloaded: peerInfo.Downloaded,
+			Uploaded:   peerInfo.Uploaded,
 		})
 	}
 
@@ -125,9 +132,6 @@ func GetWebUIBlockPeers() []WebUIBlockPeer {
 }
 
 func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-
 	loadedExtensions := []string{}
 	if config.SyncServerURL != "" {
 		loadedExtensions = append(loadedExtensions, "SyncServer")
@@ -154,7 +158,6 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 		Runtime: Runtime{
 			GoVersion:    runtime.Version(),
 			NumGoroutine: runtime.NumGoroutine(),
-			AllocMB:      m.Alloc / 1024 / 1024,
 		},
 	}
 

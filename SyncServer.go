@@ -20,6 +20,11 @@ type SyncServer_SubmitStruct struct {
 	TorrentMap map[string]TorrentInfoStruct `json:"torrentMap"`
 }
 
+type SyncServer_RuleStruct struct {
+	Net    *net.IPNet
+	Reason string
+}
+
 var syncServer_isSubmiting atomic.Bool
 var syncServer_lastSync int64 = 0
 var syncServer_syncConfig = SyncServer_ConfigStruct{
@@ -27,7 +32,7 @@ var syncServer_syncConfig = SyncServer_ConfigStruct{
 	Status:      "",
 	BlockIPRule: make(map[string][]string),
 }
-var ipBlockCIDRMapFromSyncServerCompiled = make(map[string]*net.IPNet)
+var syncServer_CompiledRules []SyncServer_RuleStruct
 var ipBlockCIDRMapMutex sync.RWMutex
 
 func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, string) {
@@ -64,7 +69,7 @@ func SyncWithServer_Submit(syncJSON string) bool {
 		return false
 	}
 
-	tmpIPBlockCIDRMapFromSyncServerCompiled := make(map[string]*net.IPNet)
+	var tmpSyncServerCompiledRules []SyncServer_RuleStruct
 
 	for reason, ipArr := range syncServer_syncConfig.BlockIPRule {
 		logReason := false
@@ -73,11 +78,6 @@ func SyncWithServer_Submit(syncJSON string) bool {
 			ipBlockListLine = ProcessRemark(ipBlockListLine)
 			if ipBlockListLine == "" {
 				Log("Debug-SyncWithServer_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
-				continue
-			}
-
-			if cidr, exists := ipBlockCIDRMapFromSyncServerCompiled[ipBlockListLine]; exists {
-				tmpIPBlockCIDRMapFromSyncServerCompiled[ipBlockListLine] = cidr
 				continue
 			}
 
@@ -93,17 +93,34 @@ func SyncWithServer_Submit(syncJSON string) bool {
 				Log("SyncWithServer", GetLangText("SyncWithServer_Compile-BlockByReason"), true, reason)
 			}
 
-			tmpIPBlockCIDRMapFromSyncServerCompiled[ipBlockListLine] = cidr
+			tmpSyncServerCompiledRules = append(tmpSyncServerCompiledRules, SyncServer_RuleStruct{Net: cidr, Reason: reason})
 			Log("SyncWithServer_BlockCIDR", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
 		}
 	}
 
 	ipBlockCIDRMapMutex.Lock()
-	ipBlockCIDRMapFromSyncServerCompiled = tmpIPBlockCIDRMapFromSyncServerCompiled
+	syncServer_CompiledRules = tmpSyncServerCompiledRules
 	ipBlockCIDRMapMutex.Unlock()
 
-	Log("Debug-SyncWithServer", GetLangText("Success-SyncWithServer"), true, len(ipBlockCIDRMapFromSyncServerCompiled))
+	Log("Debug-SyncWithServer", GetLangText("Success-SyncWithServer"), true, len(syncServer_CompiledRules))
 	return true
+}
+
+func SyncServer_CheckPeer(ipObj net.IP) (bool, string) {
+	if ipObj == nil {
+		return false, ""
+	}
+
+	ipBlockCIDRMapMutex.RLock()
+	defer ipBlockCIDRMapMutex.RUnlock()
+
+	for _, rule := range syncServer_CompiledRules {
+		if rule.Net != nil && rule.Net.Contains(ipObj) {
+			return true, "Bad-IP_FromSyncServer (" + rule.Reason + ")"
+		}
+	}
+
+	return false, ""
 }
 func SyncWithServer_FullSubmit(syncJSON string) bool {
 	syncStatus := SyncWithServer_Submit(syncJSON)

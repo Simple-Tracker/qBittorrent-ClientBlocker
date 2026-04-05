@@ -6,9 +6,10 @@ import (
 )
 
 type IPInfoStruct struct {
-	Net             *net.IPNet
-	Port            map[int]bool
-	TorrentUploaded map[string]int64
+	Net               *net.IPNet
+	Port              map[int]bool
+	TorrentDownloaded map[string]int64
+	TorrentUploaded   map[string]int64
 }
 
 var ipMap = make(map[string]IPInfoStruct)
@@ -17,31 +18,32 @@ var ipMapMutex sync.RWMutex
 var lastIPMapMutex sync.RWMutex
 var lastIPCleanTimestamp int64 = 0
 
-func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerUploaded int64) {
+func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerDownloaded int64, peerUploaded int64) {
 	if !(config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) {
 		return
 	}
 
 	var clientPortMap map[int]bool
+	var clientTorrentDownloadedMap map[string]int64
 	var clientTorrentUploadedMap map[string]int64
-
 	ipMapMutex.Lock()
 	if info, exist := ipMap[peerIP]; !exist {
 		clientPortMap = make(map[int]bool)
+		clientTorrentDownloadedMap = make(map[string]int64)
 		clientTorrentUploadedMap = make(map[string]int64)
 	} else {
 		clientPortMap = info.Port
+		clientTorrentDownloadedMap = info.TorrentDownloaded
 		clientTorrentUploadedMap = info.TorrentUploaded
+		if clientTorrentDownloadedMap == nil {
+			clientTorrentDownloadedMap = make(map[string]int64)
+		}
 	}
 	clientPortMap[peerPort] = true
+	clientTorrentDownloadedMap[torrentInfoHash] = peerDownloaded
+	clientTorrentUploadedMap[torrentInfoHash] = peerUploaded
 
-	if oldPeerUploaded, exist := clientTorrentUploadedMap[torrentInfoHash]; !exist || oldPeerUploaded <= peerUploaded {
-		clientTorrentUploadedMap[torrentInfoHash] = peerUploaded
-	} else {
-		clientTorrentUploadedMap[torrentInfoHash] += peerUploaded
-	}
-
-	ipMap[peerIP] = IPInfoStruct{Net: cidr, Port: clientPortMap, TorrentUploaded: clientTorrentUploadedMap}
+	ipMap[peerIP] = IPInfoStruct{Net: cidr, Port: clientPortMap, TorrentDownloaded: clientTorrentDownloadedMap, TorrentUploaded: clientTorrentUploadedMap}
 	ipMapMutex.Unlock()
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
@@ -52,7 +54,11 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
 				totalUploaded += torrentUploaded
 			} else {
-				totalUploaded += (torrentUploaded - lastTorrentUploaded)
+				if torrentUploaded < lastTorrentUploaded {
+					totalUploaded += torrentUploaded
+				} else {
+					totalUploaded += (torrentUploaded - lastTorrentUploaded)
+				}
 			}
 		}
 	}
@@ -103,20 +109,30 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
-					AddBlockPeer("CheckAllIP", "Too many ports", ip, -1, "")
+					AddBlockPeer("CheckAllIP", "Too many ports", ip, -1, "", "", "", 0, 0)
 					AddBlockCIDR(ip, ipInfo.Net)
 					continue
 				}
 			}
 
-			if lastIPInfo, exist := lastIPMap[ip]; exist {
-				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
-					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
-					ipBlockCount++
-					AddBlockPeer("CheckAllIP", "Global-Too high uploaded", ip, -1, "")
-					AddBlockCIDR(ip, ipInfo.Net)
+				if lastIPInfo, exist := lastIPMap[ip]; exist {
+					if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
+						Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
+						ipBlockCount++
+
+						var totalDownloaded int64 = 0
+						var totalUploaded int64 = 0
+						for _, v := range ipInfo.TorrentDownloaded {
+							totalDownloaded += v
+						}
+						for _, v := range ipInfo.TorrentUploaded {
+							totalUploaded += v
+						}
+
+						AddBlockPeer("CheckAllIP", "Global-Too high uploaded", ip, -1, "", "", "", totalDownloaded, totalUploaded)
+						AddBlockCIDR(ip, ipInfo.Net)
+					}
 				}
-			}
 		}
 
 		lastIPCleanTimestamp = currentTimestamp

@@ -10,11 +10,19 @@ import (
 )
 
 type BlockPeerInfoStruct struct {
-	Timestamp int64
-	Module    string
-	Reason    string
-	Port      map[int]bool
-	InfoHash  string
+	Timestamp            int64
+	Module               string
+	Reason               string
+	Port                 map[int]bool
+	InfoHash             string
+	ID                   string
+	Client               string
+	Downloaded           int64
+	Uploaded             int64
+	TorrentDownloaded    map[string]int64
+	TorrentUploaded      map[string]int64
+	TorrentDownloadedRaw map[string]int64
+	TorrentUploadedRaw   map[string]int64
 }
 type BlockCIDRInfoStruct struct {
 	Timestamp int64
@@ -30,17 +38,100 @@ var blockCIDRMapMutex sync.RWMutex
 var execPeerCommand = ExecCommand
 
 // AddBlockPeer 将 Peer 添加到封禁列表.
-func AddBlockPeer(module string, reason string, peerIP string, peerPort int, torrentInfoHash string) {
+func AddBlockPeer(module string, reason string, peerIP string, peerPort int, torrentInfoHash string, peerID string, peerClient string, peerDownloaded int64, peerUploaded int64) {
 	var blockPeerPortMap map[int]bool
+	var lastPeerID string
+	var lastPeerClient string
+	var torrentDownloaded map[string]int64
+	var torrentUploaded map[string]int64
+	var torrentDownloadedRaw map[string]int64
+	var torrentUploadedRaw map[string]int64
+
 	blockPeerMapMutex.Lock()
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
 		blockPeerPortMap = make(map[int]bool)
+		torrentDownloaded = make(map[string]int64)
+		torrentUploaded = make(map[string]int64)
+		torrentDownloadedRaw = make(map[string]int64)
+		torrentUploadedRaw = make(map[string]int64)
 	} else {
 		blockPeerPortMap = blockPeer.Port
+		lastPeerID = blockPeer.ID
+		lastPeerClient = blockPeer.Client
+		torrentDownloaded = blockPeer.TorrentDownloaded
+		torrentUploaded = blockPeer.TorrentUploaded
+		torrentDownloadedRaw = blockPeer.TorrentDownloadedRaw
+		torrentUploadedRaw = blockPeer.TorrentUploadedRaw
+		if torrentDownloaded == nil {
+			torrentDownloaded = make(map[string]int64)
+		}
+		if torrentUploaded == nil {
+			torrentUploaded = make(map[string]int64)
+		}
+		if torrentDownloadedRaw == nil {
+			torrentDownloadedRaw = make(map[string]int64)
+		}
+		if torrentUploadedRaw == nil {
+			torrentUploadedRaw = make(map[string]int64)
+		}
+	}
+
+	if peerID == "" {
+		peerID = lastPeerID
+	}
+	if peerClient == "" {
+		peerClient = lastPeerClient
+	}
+
+	// 使用 delta-based 累加处理流量统计.
+	if torrentInfoHash != "" {
+		// 计算下载下载量差额.
+		downloadedDelta := peerDownloaded - torrentDownloadedRaw[torrentInfoHash]
+		if peerDownloaded < torrentDownloadedRaw[torrentInfoHash] {
+			downloadedDelta = peerDownloaded
+		}
+		torrentDownloaded[torrentInfoHash] += downloadedDelta
+		torrentDownloadedRaw[torrentInfoHash] = peerDownloaded
+
+		// 计算上传下载量差额.
+		uploadedDelta := peerUploaded - torrentUploadedRaw[torrentInfoHash]
+		if peerUploaded < torrentUploadedRaw[torrentInfoHash] {
+			uploadedDelta = peerUploaded
+		}
+		torrentUploaded[torrentInfoHash] += uploadedDelta
+		torrentUploadedRaw[torrentInfoHash] = peerUploaded
+	} else {
+		// 全局增量处理.
+		torrentDownloaded["__global__"] += peerDownloaded
+		torrentUploaded["__global__"] += peerUploaded
+	}
+
+	// 汇总计算.
+	var totalDownloaded int64 = 0
+	var totalUploaded int64 = 0
+	for _, v := range torrentDownloaded {
+		totalDownloaded += v
+	}
+	for _, v := range torrentUploaded {
+		totalUploaded += v
 	}
 
 	blockPeerPortMap[peerPort] = true
-	blockPeerMap[peerIP] = BlockPeerInfoStruct{Timestamp: currentTimestamp, Module: module, Reason: reason, Port: blockPeerPortMap, InfoHash: torrentInfoHash}
+	blockPeerMap[peerIP] = BlockPeerInfoStruct{
+		Timestamp:            currentTimestamp,
+		Module:               module,
+		Reason:               reason,
+		Port:                 blockPeerPortMap,
+		InfoHash:             torrentInfoHash,
+		ID:                   peerID,
+		Client:               peerClient,
+		Downloaded:           totalDownloaded,
+		Uploaded:             totalUploaded,
+		TorrentDownloaded:    torrentDownloaded,
+		TorrentUploaded:      torrentUploaded,
+		TorrentDownloadedRaw: torrentDownloadedRaw,
+		TorrentUploadedRaw:   torrentUploadedRaw,
+	}
 	blockPeerMapMutex.Unlock()
 
 	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
@@ -226,7 +317,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		blockListCompiled.Range(func(key, val any) bool {
 			if MatchBlockList(val.(*regexp2.Regexp), peerIP, peerPort, peerID, peerClient) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("CheckPeer", "Bad-Client_Normal", peerIP, peerPort, torrentInfoHash)
+				AddBlockPeer("CheckPeer", "Bad-Client_Normal", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 				earlyStop = true
 				return false
 			}
@@ -241,7 +332,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 	for port := range config.PortBlockList {
 		if port == peerPort {
 			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-			AddBlockPeer("CheckPeer", "Bad-Port", peerIP, peerPort, torrentInfoHash)
+			AddBlockPeer("CheckPeer", "Bad-Port", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 			return 1, peerNet
 		}
 	}
@@ -262,7 +353,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 			}
 			if ipNet.Contains(ip) {
 				Log("CheckPeer_AddBlockPeer (Bad-IP_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("CheckPeer", "Bad-IP_Normal", peerIP, -1, torrentInfoHash)
+				AddBlockPeer("CheckPeer", "Bad-IP_Normal", peerIP, -1, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 				earlyStop = true
 				return false
 			}
@@ -273,21 +364,26 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 			return 3, peerNet
 		}
 
-		for _, v := range ipBlockCIDRMapFromSyncServerCompiled {
-			if v == nil {
-				continue
-			}
-			if v.Contains(ip) {
-				Log("CheckPeer_AddBlockPeer (Bad-IP_FromSyncServer)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
-				AddBlockPeer("CheckPeer", "Bad-IP_FromSyncServer", peerIP, -1, torrentInfoHash)
-				return 3, peerNet
-			}
+		if isBlocked, reason := SyncServer_CheckPeer(ip); isBlocked {
+			Log("CheckPeer_AddBlockPeer (Bad-IP_FromSyncServer)", "%s:%d %s|%s (TorrentInfoHash: %s, Reason: %s)", true, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, reason)
+			AddBlockPeer("SyncServer", reason, peerIP, -1, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
+			return 3, peerNet
 		}
+	}
+
+	// BTN 规则检查.
+	if isBlocked, banPort, reason := BTN_CheckPeer(peerIP, peerID, peerClient, peerPort); isBlocked {
+		Log("CheckPeer_AddBlockPeer (Bad-IP_FromBTN)", "%s:%d %s|%s (TorrentInfoHash: %s, Reason: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, reason)
+		AddBlockPeer("BTN", reason, peerIP, banPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
+		if banPort == -1 {
+			return 3, peerNet
+		}
+		return 1, peerNet
 	}
 
 	if IsMatchCIDR(peerNet) {
 		Log("CheckPeer_AddBlockPeer (Bad-CIDR)", "%s:%d %s|%s (TorrentInfoHash: %s, PeerNet: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, peerNet.String())
-		AddBlockPeer("CheckPeer", "Bad-CIDR", peerIP, peerPort, torrentInfoHash)
+		AddBlockPeer("CheckPeer", "Bad-CIDR", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 		return 1, peerNet
 	}
 
@@ -302,7 +398,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		}
 		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
 			Log("CheckPeer_AddBlockPeer (Bad-Progress_Uploaded)", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, PeerDlSpeed: %.2f MB/s, PeerUpSpeed: %.2f MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (float64(peerDlSpeed) / 1024 / 1024), (float64(peerUpSpeed) / 1024 / 1024), (peerProgress * 100), (float64(peerDownloaded) / 1024 / 1024), (float64(peerUploaded) / 1024 / 1024))
-			AddBlockPeer("CheckPeer", "Bad-Progress_Uploaded", peerIP, peerPort, torrentInfoHash)
+			AddBlockPeer("CheckPeer", "Bad-Progress_Uploaded", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 			return 1, peerNet
 		}
 	}
@@ -333,11 +429,11 @@ func ProcessPeer(peer *Peer, torrentInfoHash string, torrentTotalSize int64, blo
 		*emptyPeersCount++
 	case 0:
 		if peerNet == nil {
-			AddIPInfo(nil, peerIP, peer.Port, torrentInfoHash, peer.Uploaded)
-			AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peer.Port, peer.Progress, peer.Uploaded)
+			AddIPInfo(nil, peerIP, peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
+			AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
 		} else {
-			AddIPInfo(peerNet, peerNet.String(), peer.Port, torrentInfoHash, peer.Uploaded)
-			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peer.Port, peer.Progress, peer.Uploaded)
+			AddIPInfo(peerNet, peerNet.String(), peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
+			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
 		}
 	}
 }
