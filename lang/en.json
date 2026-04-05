@@ -74,6 +74,7 @@
 	"Error-Log_Write": "An error occurred while writing to log: %s",
 	"Error-IPFilter_Write": "An error occurred while writing to IPFilter: %s",
 	"Error-LoadLog_Mkdir": "An error occurred while creating log directory: %s",
+	"Error-LoadLog_Open": "An error occurred while opening log file: %s",
 	"Error-LoadLog_Close": "An error occurred while closing log: %s",
 	"Error-RegexpMatchErr": "An error occurred while matching regexp: %s",
 	"Error-Task_EmptyURL": "Detected ClientURL is empty, may not be configured and failed to automatically read client config file",
@@ -103,10 +104,18 @@
 	"Success-ClearBlockPeer": "Cleaned up expired client: %d",
 	"Success-ExecCommand": "Exec command success, output: %s",
 	"Success-SyncWithServer": "Sync with server success",
+	"StartServer_ListeningOn": "Listening on: %s",
 
-	// Part ShadowBan.
+	"Failed-GetQBPreferences": "Failed to get qBittorrent preferences",
+
 	"Warning-ShadowBanAPINotExist": "ShadowBan API not detected, and the normal method will be used",
 	"Warning-ShadowBanAPIDisabled": "ShadowBan API is disabled, and the normal method will be used",
 	"Failed-UnknownShadowBanAPI": "Detected unknown ShadowBan API, and the normal method will be used",
-	"Failed-GetQBPreferences": "Failed to get qBittorrent preferences"
+
+	"Success-BTNRegLoaded": "BTN rules loaded successfully, version: %s",
+	"Success-BTNExceptionLoaded": "BTN exception rules loaded successfully, version: %s",
+	"Success-BTNConfigLoaded": "BTN configuration loaded successfully",
+	"Debug-BTNNoChange": "BTN rules/exceptions have not changed",
+	"Debug-BTNConfigNoChange": "BTN configuration has not changed",
+	"Error-BTNVersionMismatch": "BTN protocol version mismatch: server requires [%d, %d], but we support 3. BTN module disabled."
 }

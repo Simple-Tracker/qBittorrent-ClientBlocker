@@ -8,6 +8,74 @@ import (
 	"strings"
 )
 
+// QBClient 实现了 qBittorrent 的客户端接口.
+type QBClient struct{}
+
+func (c *QBClient) GetClientType() string {
+	return "qBittorrent"
+}
+
+func (c *QBClient) ConfigPath() string {
+	return qB_GetClientConfigPath()
+}
+
+func (c *QBClient) SetURL() bool {
+	return qB_SetURL()
+}
+
+func (c *QBClient) Login() bool {
+	return qB_Login()
+}
+
+// FetchTorrents 获取所有活动的种子列表.
+func (c *QBClient) FetchTorrents() ([]*Torrent, error) {
+	torrents := qB_FetchTorrents()
+	if torrents == nil {
+		return nil, nil
+	}
+	var result []*Torrent
+	for _, t := range *torrents {
+		result = append(result, &Torrent{
+			Hash:       t.InfoHash,
+			Tracker:    t.Tracker,
+			LeechCount: t.NumLeechs,
+			TotalSize:  t.TotalSize,
+		})
+	}
+	return result, nil
+}
+
+// FetchTorrentPeers 获取特定种子的 Peer 列表.
+func (c *QBClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
+	peersStruct := qB_FetchTorrentPeers(torrent.Hash)
+	if peersStruct == nil {
+		return nil, nil
+	}
+	var result []*Peer
+	for _, p := range peersStruct.Peers {
+		result = append(result, &Peer{
+			IP:         p.IP,
+			Port:       p.Port,
+			ID:         p.PeerID,
+			Client:     p.Client,
+			DlSpeed:    p.DlSpeed,
+			UpSpeed:    p.UpSpeed,
+			Progress:   p.Progress,
+			Downloaded: p.Downloaded,
+			Uploaded:   p.Uploaded,
+		})
+	}
+	return result, nil
+}
+
+func (c *QBClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return qB_SubmitBlockPeer(blockPeerMap)
+}
+
+func (c *QBClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return qB_SubmitShadowBanPeer(blockPeerMap)
+}
+
 type qB_TorrentStruct struct {
 	InfoHash  string `json:"hash"`
 	NumLeechs int64  `json:"num_leechs"`
@@ -60,7 +128,6 @@ func qB_GetClientConfig() []byte {
 	_, err := os.Stat(qBConfigFilename)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			// 避免反复猜测默认 qBittorrent 配置文件的失败信息影响 Debug 用户体验.
 			Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfigMeta"), true, err.Error())
 		}
 		return []byte{}
@@ -209,12 +276,6 @@ func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 		return nil
 	}
 
-	/*
-		if config.Debug_CheckTorrent {
-			Log("Debug-FetchTorrentPeers", "完整更新: %s", false, strconv.FormatBool(torrentPeersResult.FullUpdate))
-		}
-	*/
-
 	return &torrentPeersResult
 }
 func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
@@ -285,19 +346,17 @@ func qB_GetPreferences() map[string]interface{} {
 	return preferences
 }
 func qB_TestShadowBanAPI() bool {
-	// 1. Check if enable_shadowban is true;
-	// enable_shadowban may be not exist in the preferences.
 	pref := qB_GetPreferences()
 	if pref == nil {
 		return false
 	}
-	
+
 	enableShadowBan, exist := pref["shadow_ban_enabled"]
 	if !exist {
 		Log("TestShadowBanAPI", GetLangText("Warning-ShadowBanAPINotExist"), true)
 		return false
 	}
-	
+
 	if bEnableShadowBan, ok := enableShadowBan.(bool); ok {
 		if !bEnableShadowBan {
 			return false
@@ -307,7 +366,6 @@ func qB_TestShadowBanAPI() bool {
 		return false
 	}
 
-	// 2. Check if the API is available;
 	code, _, _ := Submit(config.ClientURL+"/v2/transfer/shadowbanPeers", "peers=", true, true, nil)
 	if code != 200 {
 		Log("TestShadowBanAPI", GetLangText("Warning-ShadowBanAPINotExist"), true)
@@ -321,13 +379,13 @@ func qB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	for peerIP, peerInfo := range blockPeerMap {
 		for port := range peerInfo.Port {
 			if port <= 0 || port > 65535 {
-				port = 1 // Seems qBittorrent will ignore the invalid port number, so we just set it to 1.
+				port = 1
 			}
-			if IsIPv6(peerIP) { 
-				shadowBanIPPortsList = append(shadowBanIPPortsList,  "[" + peerIP + "]:" + strconv.Itoa(port))
+			if IsIPv6(peerIP) {
+				shadowBanIPPortsList = append(shadowBanIPPortsList, "["+peerIP+"]:"+strconv.Itoa(port))
 			} else {
-				shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP + ":" + strconv.Itoa(port))
-				shadowBanIPPortsList = append(shadowBanIPPortsList, "[::ffff:" + peerIP + "]:" + strconv.Itoa(port))
+				shadowBanIPPortsList = append(shadowBanIPPortsList, peerIP+":"+strconv.Itoa(port))
+				shadowBanIPPortsList = append(shadowBanIPPortsList, "[::ffff:"+peerIP+"]:"+strconv.Itoa(port))
 			}
 		}
 	}

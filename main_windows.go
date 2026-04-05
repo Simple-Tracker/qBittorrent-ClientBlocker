@@ -49,12 +49,14 @@ func RegSysTray() {
 	}
 
 	systray.Run(func() {
+		defer RecoverAndStop("RegSysTray.onReady")
+
 		systray.SetIcon(icon_Windows)
 		systray.SetTitle(programName)
 		mShow := systray.AddMenuItem("显示/隐藏", "显示/隐藏程序")
 		mQuit := systray.AddMenuItem("退出", "退出程序")
 
-		go func() {
+		GoWithCrashLog("RegSysTray.loop", func() {
 			for {
 				select {
 				case <-mShow.ClickedCh:
@@ -63,18 +65,21 @@ func RegSysTray() {
 					systray.Quit()
 				}
 			}
-		}()
+		})
 	}, func() {
+		defer RecoverAndStop("RegSysTray.onExit")
 		ReqStop()
 	})
 }
 func main() {
+	defer RecoverAndStop("main_windows")
+
 	if PrepareEnv() {
 		if needHideWindow && showWindow {
 			Platform_ShowOrHiddenWindow()
 		}
-		go RegHotKey()
-		go RegSysTray()
+		GoWithCrashLog("RegHotKey", RegHotKey)
+		GoWithCrashLog("RegSysTray", RegSysTray)
 		RunConsole()
 	}
 }

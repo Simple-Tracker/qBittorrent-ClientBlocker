@@ -155,6 +155,10 @@ Docker version is configured through the same name variable configuration, which
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | 127.0.0.1:26262 | Listen port. Used to provide BlockPeerList to some client (Transmission). For non-localhost, you can change to ```<Host>:<Port>``` |
+| webUI | bool | false | Enable the built-in WebUI. It exposes runtime status, recent blocks, and recent logs on a separate listener |
+| webUIListen | string | 127.0.0.1:7222 | WebUI listening address. If you expose it outside localhost, it is recommended to set ```webUIUsername``` and ```webUIPassword``` |
+| webUIUsername | string | Empty | WebUI Basic Auth username. When this field is empty, WebUI auth is disabled and ```webUIPassword``` is ignored |
+| webUIPassword | string | Empty | WebUI Basic Auth password. Only HTTP Basic Auth is provided; HTTPS is not included |
 | clientType | string | Empty | Client type. Available Web API or RPC address. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
 | clientURL | string | Empty | Client address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |
@@ -166,10 +170,17 @@ Docker version is configured through the same name variable configuration, which
 | execCommand_FetchFailed | string | Empty | Execute external command (FetchFailed). First parameter is regarded as an external program path, execute the command when number of fetch failures exceeds set threshold |
 | execCommand_Run | string | Empty | Execute external command (Run). First parameter is regarded as an external program path, execute the command when program starts |
 | execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
-| execCommand_Ban | string | Empty | Execute external command (Ban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | execCommand_Unban | string | Empty | Execute external command (Unban). First parameter is regarded as an external program path, and each parameter should be separated by ```\|```, command can use ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` to use related info (peerPort=-1 means ban all port) |
 | syncServerURL | string | Empty | Sync server URL. Sync server will submit TorrentMap to server and receive BlockIPCIDR from server |
 | syncServerToken | string | Empty | Sync server Token. Some sync server may require authentication |
+| btnConfigureURL | string | Empty | BTN server URL. Currently not available, [What is BTN?](https://docs.pbh-btn.com/en/docs/btn/intro/) |
+| btnAppID | string | Empty | BTN AppID. Some BTN servers may require authentication |
+| btnAppSecret | string | Empty | BTN AppSecret. Some BTN servers may require authentication |
+| btnSyncRules | bool | true (Enable) | Sync BTN server cloud ban rules |
+| btnSyncException | bool | true (Enable) | Sync BTN server cloud exception rules (whitelist) |
+| btnSubmitPeers | bool | false (Disable) | Submit Peer snapshots to BTN server |
+| btnSubmitBans | bool | false (Disable) | Submit local ban records to BTN server |
+| btnSubmitHistories | bool | false (Disable) | Submit Peer traffic delta history snapshots to BTN server |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | []string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | blockListFile | []string | Empty | Block client list File. Support format is same as blockList, one rule per line |

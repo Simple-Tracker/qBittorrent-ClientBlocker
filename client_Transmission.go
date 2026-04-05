@@ -8,6 +8,83 @@ import (
 	"time"
 )
 
+// TRClient 实现了 Transmission 的客户端接口.
+type TRClient struct{}
+
+func (c *TRClient) GetClientType() string {
+	return "Transmission"
+}
+
+func (c *TRClient) ConfigPath() string {
+	return ""
+}
+
+func (c *TRClient) SetURL() bool {
+	return Tr_SetURL()
+}
+
+func (c *TRClient) Login() bool {
+	return Tr_Login()
+}
+
+// FetchTorrents 获取所有活动的种子列表.
+func (c *TRClient) FetchTorrents() ([]*Torrent, error) {
+	torrents := Tr_FetchTorrents()
+	if torrents == nil {
+		return nil, nil
+	}
+	var result []*Torrent
+	for _, t := range torrents.Torrents {
+		result = append(result, trTorrentToTorrent(t))
+	}
+	return result, nil
+}
+
+// FetchTorrentPeers 返回 Transmission 已内嵌在种子信息中的 Peer 列表.
+func (c *TRClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
+	return torrent.Peers, nil
+}
+
+func (c *TRClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return Tr_SubmitBlockPeer(blockPeerMap)
+}
+
+func (c *TRClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return false // 不支持.
+}
+
+func trTorrentToTorrent(t Tr_TorrentStruct) *Torrent {
+	var peers []*Peer
+	var leecherCount int64
+	for _, p := range t.Peers {
+		if p.IsUploading {
+			leecherCount++
+		}
+		peers = append(peers, &Peer{
+			IP:       p.IP,
+			Port:     p.Port,
+			Client:   p.Client,
+			DlSpeed:  p.DlSpeed,
+			UpSpeed:  p.UpSpeed,
+			Progress: p.Progress,
+			// Transmission 这里不提供 PeerID 和上传/下载总量信息.
+			Downloaded: -1,
+			Uploaded:   -1,
+		})
+	}
+	torrent := &Torrent{
+		Hash:       t.InfoHash,
+		TotalSize:  t.TotalSize,
+		Tracker:    "",
+		LeechCount: leecherCount,
+		Peers:      peers,
+	}
+	if t.Private {
+		torrent.Tracker = "Private"
+	}
+	return torrent
+}
+
 type Tr_RequestStruct struct {
 	Method string      `json:"method"`
 	Args   interface{} `json:"arguments"`
@@ -55,7 +132,7 @@ var Tr_ipfilterStr = ""
 var Tr_jsonHeader = map[string]string{"Content-Type": "application/json"}
 
 func Tr_InitClient() {
-	go StartServer()
+	GoWithCrashLog("Tr_InitClient.StartServer", StartServer)
 }
 func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if strings.SplitN(r.RequestURI, "?", 2)[0] == "/ipfilter.dat" {
@@ -81,7 +158,6 @@ func Tr_DetectVersion() bool {
 	return (detectStatusCode == 200 || detectStatusCode == 409)
 }
 func Tr_Login() bool {
-	// Transmission 通过 Basic Auth 进行认证, 因此实际处理 CSRF 请求以避免 409 响应.
 	loginJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get"})
 	if err != nil {
 		Log("Login", GetLangText("Error-GenJSON"), true, err.Error())
@@ -146,7 +222,11 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 
 	stopStatusCode, _, _ := Submit(config.ClientURL, string(stopJSON), true, true, &Tr_jsonHeader)
 	if stopStatusCode != 200 {
-		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, err.Error())
+		stopErrMsg := "status code " + strconv.Itoa(stopStatusCode)
+		if err != nil {
+			stopErrMsg = err.Error()
+		}
+		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, stopErrMsg)
 		return
 	}
 
@@ -161,7 +241,11 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 
 	startStatusCode, _, _ := Submit(config.ClientURL, string(startJSON), true, true, &Tr_jsonHeader)
 	if startStatusCode != 200 {
-		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, err.Error())
+		startErrMsg := "status code " + strconv.Itoa(startStatusCode)
+		if err != nil {
+			startErrMsg = err.Error()
+		}
+		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, startErrMsg)
 		return
 	}
 }
