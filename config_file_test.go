@@ -7,10 +7,11 @@ import (
 )
 
 func TestSetBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldBlockListFileLastMod := blockListFileLastMod
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		blockListFileLastMod = oldBlockListFileLastMod
 		EraseSyncMap(&blockListCompiled)
 	}()
@@ -35,7 +36,8 @@ func TestSetBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	}
 	blockListFileLastMod[firstFile] = firstStat.ModTime().Unix()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.BlockListFile = []string{firstFile, secondFile}
 
 	if !SetBlockListFromFile() {
@@ -47,10 +49,11 @@ func TestSetBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 }
 
 func TestSetIPBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldIPBlockListFileLastMod := ipBlockListFileLastMod
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		ipBlockListFileLastMod = oldIPBlockListFileLastMod
 		EraseSyncMap(&ipBlockListCompiled)
 	}()
@@ -75,7 +78,8 @@ func TestSetIPBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	}
 	ipBlockListFileLastMod[firstFile] = firstStat.ModTime().Unix()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.IPBlockListFile = []string{firstFile, secondFile}
 
 	if !SetIPBlockListFromFile() {

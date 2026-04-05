@@ -3,15 +3,17 @@ package main
 import "testing"
 
 func TestCheckTorrent(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldClient := currentClient
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		currentClient = oldClient
 	}()
 
 	t.Run("EmptyHash", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		status, peers := CheckTorrent(&Torrent{Hash: ""})
 		if status != -1 || peers != nil {
 			t.Fatalf("status=%d peers=%v, want -1 nil", status, peers)
@@ -19,7 +21,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("IgnorePrivateTracker", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		config.IgnorePTTorrent = true
 		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "Private"})
 		if status != -4 {
@@ -28,7 +31,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("IgnorePasskeyTracker", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		config.IgnorePTTorrent = true
 		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "https://tracker/announce?passkey=123"})
 		if status != -4 {
@@ -37,7 +41,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("IgnoreRandomTokenTracker", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		config.IgnorePTTorrent = true
 		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "https://tracker/announce?x=0123456789abcdef0123456789abcdef"})
 		if status != -4 {
@@ -46,7 +51,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("IgnoreNoLeechers", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		config.IgnoreNoLeechersTorrent = true
 		status, _ := CheckTorrent(&Torrent{Hash: "abc", LeechCount: 0})
 		if status != -2 {
@@ -55,7 +61,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("UseEmbeddedPeers", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		embedded := []*Peer{{IP: "1.1.1.1", Port: 6881}}
 		status, peers := CheckTorrent(&Torrent{Hash: "abc", Peers: embedded})
 		if status != 0 {
@@ -67,7 +74,8 @@ func TestCheckTorrent(t *testing.T) {
 	})
 
 	t.Run("NoClientAndNoPeers", func(t *testing.T) {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		currentClient = nil
 		status, peers := CheckTorrent(&Torrent{Hash: "abc"})
 		if status != -3 || peers != nil {
@@ -77,9 +85,13 @@ func TestCheckTorrent(t *testing.T) {
 }
 
 func TestProcessTorrentStatusCounters(t *testing.T) {
-	oldConfig := config
-	defer func() { config = oldConfig }()
-	config = oldConfig
+	oldConfig := *config
+	defer func() { 
+		tmpConf := oldConfig
+		config = &tmpConf 
+	}()
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.SleepTime = 0
 	config.IgnoreNoLeechersTorrent = true
 

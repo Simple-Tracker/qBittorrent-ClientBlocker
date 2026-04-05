@@ -163,7 +163,7 @@ var httpServer = http.Server{
 	Handler:      &httpServerHandler{},
 }
 
-var config = ConfigStruct{
+var config *ConfigStruct = &ConfigStruct{
 	CheckUpdate:                   true,
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
@@ -337,7 +337,7 @@ func SetBlockListFromFile() bool {
 	return true
 }
 func SetBlockListFromURL() bool {
-	if config.BlockListURL == nil || len(config.BlockListURL) == 0 || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+	if len(config.BlockListURL) == 0 || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
@@ -467,7 +467,7 @@ func SetIPBlockListFromFile() bool {
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if config.IPBlockListURL == nil || len(config.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+	if len(config.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
@@ -509,7 +509,7 @@ func SetIPBlockListFromURL() bool {
 
 	return true
 }
-func LoadConfig(filename string, notExistErr bool) int {
+func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) int {
 	configFileStat, err := os.Stat(filename)
 	if err != nil {
 		notExist := os.IsNotExist(err)
@@ -550,12 +550,12 @@ func LoadConfig(filename string, notExistErr bool) int {
 
 	switch filepath.Ext(strings.ToLower(filename)) {
 	case ".json":
-		if err := json.Unmarshal(jsonc.ToJSON(configFile), &config); err != nil {
+		if err := json.Unmarshal(jsonc.ToJSON(configFile), targetConfig); err != nil {
 			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 			return -4
 		}
 	case ".toml":
-		if err := toml.Unmarshal(configFile, &config); err != nil {
+		if err := toml.Unmarshal(configFile, targetConfig); err != nil {
 			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 			return -4
 		}
@@ -624,8 +624,8 @@ func InitConfig() {
 	httpServer.ReadTimeout = currentTimeout
 	httpServer.WriteTimeout = currentTimeout
 
-	t := reflect.TypeOf(config)
-	v := reflect.ValueOf(config)
+	t := reflect.TypeOf(*config)
+	v := reflect.ValueOf(*config)
 	for k := 0; k < t.NumField(); k++ {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, FormatConfigValueForLog(t.Field(k).Name, v.Field(k).Interface()))
 	}
@@ -660,17 +660,19 @@ func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
 	return value
 }
 func LoadInitConfig(firstLoad bool) bool {
-	loadConfigStatus := LoadConfig(configFilename, true)
+	newConfig := *config
+	loadConfigStatus := LoadConfig(configFilename, true, &newConfig)
 
 	if loadConfigStatus < -1 {
 		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
 	} else {
-		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false)
+		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false, &newConfig)
 		if loadAdditionalConfigStatus == -5 && additionConfigFilename == "config_additional.json" {
-			loadAdditionalConfigStatus = LoadConfig("config/"+additionConfigFilename, false)
+			loadAdditionalConfigStatus = LoadConfig("config/"+additionConfigFilename, false, &newConfig)
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
+			config = &newConfig
 			InitConfig()
 		}
 	}

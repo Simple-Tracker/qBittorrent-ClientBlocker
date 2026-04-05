@@ -7,12 +7,14 @@ import (
 )
 
 func TestWriteCrashLogAppendsToCrashLog(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.LogPath = t.TempDir()
 
 	WriteCrashLog("test-location", "panic-a", []byte("stack-a\n"))

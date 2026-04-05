@@ -27,7 +27,7 @@ type SyncServer_RuleStruct struct {
 
 var syncServer_isSubmiting atomic.Bool
 var syncServer_lastSync int64 = 0
-var syncServer_syncConfig = SyncServer_ConfigStruct{
+var syncServer_syncConfig = &SyncServer_ConfigStruct{
 	Interval:    60,
 	Status:      "",
 	BlockIPRule: make(map[string][]string),
@@ -59,19 +59,20 @@ func SyncWithServer_Submit(syncJSON string) bool {
 		return false
 	}
 
-	if err := json.Unmarshal(jsonc.ToJSON(syncServerContent), &syncServer_syncConfig); err != nil {
+	var newConfig SyncServer_ConfigStruct
+	if err := json.Unmarshal(jsonc.ToJSON(syncServerContent), &newConfig); err != nil {
 		Log("SyncWithServer", GetLangText("Error-ParseConfig"), true, err.Error())
 		return false
 	}
 
-	if syncServer_syncConfig.Status != "" {
-		Log("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, syncServer_syncConfig.Status)
+	if newConfig.Status != "" {
+		Log("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, newConfig.Status)
 		return false
 	}
 
 	var tmpSyncServerCompiledRules []SyncServer_RuleStruct
 
-	for reason, ipArr := range syncServer_syncConfig.BlockIPRule {
+	for reason, ipArr := range newConfig.BlockIPRule {
 		logReason := false
 
 		for ipBlockListLineNum, ipBlockListLine := range ipArr {
@@ -102,6 +103,8 @@ func SyncWithServer_Submit(syncJSON string) bool {
 	syncServer_CompiledRules = tmpSyncServerCompiledRules
 	ipBlockCIDRMapMutex.Unlock()
 
+	syncServer_syncConfig = &newConfig
+
 	Log("Debug-SyncWithServer", GetLangText("Success-SyncWithServer"), true, len(syncServer_CompiledRules))
 	return true
 }
@@ -128,8 +131,25 @@ func SyncWithServer_FullSubmit(syncJSON string) bool {
 
 	return syncStatus
 }
+
 func SyncWithServer() bool {
-	if config.SyncServerURL == "" || (atomic.LoadInt64(&syncServer_lastSync)+int64(syncServer_syncConfig.Interval)) > atomic.LoadInt64(&currentTimestamp) || syncServer_isSubmiting.Load() {
+	if config.SyncServerURL == "" {
+		ipBlockCIDRMapMutex.Lock()
+		if len(syncServer_CompiledRules) > 0 {
+			syncServer_CompiledRules = nil
+		}
+		ipBlockCIDRMapMutex.Unlock()
+		
+		syncServer_syncConfig = &SyncServer_ConfigStruct{
+			Interval:    60,
+			Status:      "",
+			BlockIPRule: make(map[string][]string),
+		}
+		return true
+	}
+
+	currSyncConfig := syncServer_syncConfig
+	if (atomic.LoadInt64(&syncServer_lastSync)+int64(currSyncConfig.Interval)) > atomic.LoadInt64(&currentTimestamp) || syncServer_isSubmiting.Load() {
 		return true
 	}
 

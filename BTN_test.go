@@ -23,14 +23,15 @@ func TestGetTorrentIdentifierIsStableAndCaseInsensitive(t *testing.T) {
 
 func TestBTNGetConfigLoadsConfiguration(t *testing.T) {
 	oldClientExternal := httpClientExternal
-	oldConfig := config
+	oldConfig := *config
 	oldBtnConfig := btnConfig
 	oldLastGetConfig := btn_lastGetConfig
 	oldCurrentTimestamp := currentTimestamp
 	oldIsGetting := btn_isGettingConfig.Load()
 	defer func() {
 		httpClientExternal = oldClientExternal
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		btnConfig = oldBtnConfig
 		btn_lastGetConfig = oldLastGetConfig
 		currentTimestamp = oldCurrentTimestamp
@@ -58,7 +59,8 @@ func TestBTNGetConfigLoadsConfiguration(t *testing.T) {
 	defer server.Close()
 
 	httpClientExternal = *server.Client()
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.BTNConfigureURL = server.URL
 	config.BTNAppID = "app-a"
 	config.BTNAppSecret = "secret-a"
