@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/tidwall/jsonc"
 	"net"
+	"sync"
+	"sync/atomic"
 )
 
 type SyncServer_ConfigStruct struct {
@@ -18,7 +20,7 @@ type SyncServer_SubmitStruct struct {
 	TorrentMap map[string]TorrentInfoStruct `json:"torrentMap"`
 }
 
-var syncServer_isSubmiting bool = false
+var syncServer_isSubmiting atomic.Bool
 var syncServer_lastSync int64 = 0
 var syncServer_syncConfig = SyncServer_ConfigStruct{
 	Interval:    60,
@@ -26,9 +28,12 @@ var syncServer_syncConfig = SyncServer_ConfigStruct{
 	BlockIPRule: make(map[string][]string),
 }
 var ipBlockCIDRMapFromSyncServerCompiled = make(map[string]*net.IPNet)
+var ipBlockCIDRMapMutex sync.RWMutex
 
 func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, string) {
-	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: currentTimestamp, Token: config.SyncServerToken, TorrentMap: torrentMap})
+	torrentMapMutex.RLock()
+	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: atomic.LoadInt64(&currentTimestamp), Token: config.SyncServerToken, TorrentMap: torrentMap})
+	torrentMapMutex.RUnlock()
 	if err != nil {
 		Log("SyncWithServer_PrepareJSON", GetLangText("Error-GenJSON"), true, err.Error())
 		return false, ""
@@ -38,13 +43,12 @@ func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, 
 }
 func SyncWithServer_Submit(syncJSON string) bool {
 	_, _, syncServerContent := Submit(config.SyncServerURL, syncJSON, false, false, nil)
-	syncServer_isSubmiting = false
 	if syncServerContent == nil {
 		Log("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
 		return false
 	}
 
-	// Max 8MB.
+	// 最大 8MB.
 	if len(syncServerContent) > 8388608 {
 		Log("SyncWithServer", GetLangText("Error-LargeFile"), true)
 		return false
@@ -94,20 +98,21 @@ func SyncWithServer_Submit(syncJSON string) bool {
 		}
 	}
 
+	ipBlockCIDRMapMutex.Lock()
 	ipBlockCIDRMapFromSyncServerCompiled = tmpIPBlockCIDRMapFromSyncServerCompiled
+	ipBlockCIDRMapMutex.Unlock()
 
 	Log("Debug-SyncWithServer", GetLangText("Success-SyncWithServer"), true, len(ipBlockCIDRMapFromSyncServerCompiled))
 	return true
 }
 func SyncWithServer_FullSubmit(syncJSON string) bool {
-	syncServer_isSubmiting = true
 	syncStatus := SyncWithServer_Submit(syncJSON)
-	syncServer_isSubmiting = false
+	syncServer_isSubmiting.Store(false)
 
 	return syncStatus
 }
 func SyncWithServer() bool {
-	if config.SyncServerURL == "" || (syncServer_lastSync+int64(syncServer_syncConfig.Interval)) > currentTimestamp || syncServer_isSubmiting {
+	if config.SyncServerURL == "" || (atomic.LoadInt64(&syncServer_lastSync)+int64(syncServer_syncConfig.Interval)) > atomic.LoadInt64(&currentTimestamp) || syncServer_isSubmiting.Load() {
 		return true
 	}
 
@@ -118,9 +123,13 @@ func SyncWithServer() bool {
 		return false
 	}
 
-	syncServer_lastSync = currentTimestamp
+	atomic.StoreInt64(&syncServer_lastSync, atomic.LoadInt64(&currentTimestamp))
 
-	go SyncWithServer_FullSubmit(syncJSON)
+	if syncServer_isSubmiting.CompareAndSwap(false, true) {
+		GoWithCrashLog("SyncWithServer_FullSubmit", func() {
+			SyncWithServer_FullSubmit(syncJSON)
+		})
+	}
 
 	return true
 }

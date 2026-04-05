@@ -1,27 +1,62 @@
 package main
 
 import (
-	"encoding/json"
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-// Source: https://stackoverflow.com/questions/51459083/deep-copying-maps-in-golang.
+// 参考: https://stackoverflow.com/questions/51459083/deep-copying-maps-in-golang.
 func DeepCopyIPMap(src map[string]IPInfoStruct, dest map[string]IPInfoStruct) {
 	if src != nil && dest != nil {
-		if jsonStr, err := json.Marshal(src); err == nil {
-			json.Unmarshal(jsonStr, &dest)
+		for k := range dest {
+			delete(dest, k)
+		}
+		for k, v := range src {
+			newPortMap := make(map[int]bool)
+			for pk, pv := range v.Port {
+				newPortMap[pk] = pv
+			}
+			newTorrentUploadedMap := make(map[string]int64)
+			for tk, tv := range v.TorrentUploaded {
+				newTorrentUploadedMap[tk] = tv
+			}
+			dest[k] = IPInfoStruct{
+				Net:             v.Net,
+				Port:            newPortMap,
+				TorrentUploaded: newTorrentUploadedMap,
+			}
 		}
 	}
 }
 func DeepCopyTorrentMap(src map[string]TorrentInfoStruct, dest map[string]TorrentInfoStruct) {
 	if src != nil && dest != nil {
-		if jsonStr, err := json.Marshal(src); err == nil {
-			json.Unmarshal(jsonStr, &dest)
+		for k := range dest {
+			delete(dest, k)
+		}
+		for k, v := range src {
+			newPeers := make(map[string]PeerInfoStruct)
+			for pk, pv := range v.Peers {
+				newPortMap := make(map[int]bool)
+				for ppk, ppv := range pv.Port {
+					newPortMap[ppk] = ppv
+				}
+				newPeers[pk] = PeerInfoStruct{
+					Net:        pv.Net,
+					Port:       newPortMap,
+					Progress:   pv.Progress,
+					Downloaded: pv.Downloaded,
+					Uploaded:   pv.Uploaded,
+				}
+			}
+			dest[k] = TorrentInfoStruct{
+				Size:  v.Size,
+				Peers: newPeers,
+			}
 		}
 	}
 }
@@ -32,7 +67,7 @@ func IsIPv6(ip string) bool {
 	return (strings.Count(ip, ":") >= 2)
 }
 func ProcessRemark(str string) string {
-	// Remove all remarks.
+	// 删除所有注释内容.
 	return StrTrim(strings.SplitN(strings.SplitN(str, "#", 2)[0], "//", 2)[0])
 }
 func StrTrim(str string) string {
@@ -205,8 +240,8 @@ func ExecCommand(command string) (bool, string, string) {
 	return true, string(out), ""
 }
 
-// EraseSyncMap is a helper function to erase all elements in a sync.Map.
-// This function is supposed to be replaced by `Clear` method after Go1.23 and above.
+// EraseSyncMap 是一个辅助函数, 用于删除 sync.Map 中的所有元素.
+// 该函数可在 Go1.23 及以上版本替换为 `Clear` 方法.
 //
 // go:build !go1.23
 func EraseSyncMap(m *sync.Map) {
@@ -214,4 +249,45 @@ func EraseSyncMap(m *sync.Map) {
 		m.Delete(key)
 		return true
 	})
+}
+
+// CompareVersion 按照语义化版本 (Semantic Versioning) 比较两个版本号.
+// 返回 1 表示 v1 > v2, -1 表示 v1 < v2, 0 表示相等.
+func CompareVersion(v1, v2 string) int {
+	// 清理可选的 "v" 前缀.
+	v1 = strings.TrimPrefix(strings.ToLower(v1), "v")
+	v2 = strings.TrimPrefix(strings.ToLower(v2), "v")
+
+	if v1 == v2 {
+		return 0
+	}
+
+	v1Part := strings.Split(v1, ".")
+	v2Part := strings.Split(v2, ".")
+
+	len1 := len(v1Part)
+	len2 := len(v2Part)
+	maxLen := len1
+	if len2 > maxLen {
+		maxLen = len2
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var n1, n2 int
+		if i < len1 {
+			n1, _ = strconv.Atoi(v1Part[i])
+		}
+		if i < len2 {
+			n2, _ = strconv.Atoi(v2Part[i])
+		}
+
+		if n1 > n2 {
+			return 1
+		}
+		if n1 < n2 {
+			return -1
+		}
+	}
+
+	return 0
 }

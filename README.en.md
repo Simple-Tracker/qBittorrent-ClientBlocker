@@ -155,6 +155,10 @@ Docker version is configured through the same name variable configuration, which
 | logToFile | bool | true | Log general information to file. If enabled, it can be used for general analysis and statistical purposes |
 | logDebug | bool | false | Log debug information to file (Must enable debug and logToFile). If enabled, it can be used for advanced analysis and statistical purposes, but the amount of information is large |
 | listen | string | 127.0.0.1:26262 | Listen port. Used to provide BlockPeerList to some client (Transmission). For non-localhost, you can change to ```<Host>:<Port>``` |
+| webUI | bool | false | Enable the built-in WebUI. It exposes runtime status, recent blocks, and recent logs on a separate listener |
+| webUIListen | string | 127.0.0.1:7222 | WebUI listening address. If you expose it outside localhost, it is recommended to set ```webUIUsername``` and ```webUIPassword``` |
+| webUIUsername | string | Empty | WebUI Basic Auth username. When this field is empty, WebUI auth is disabled and ```webUIPassword``` is ignored |
+| webUIPassword | string | Empty | WebUI Basic Auth password. Only HTTP Basic Auth is provided; HTTPS is not included |
 | clientType | string | Empty | Client type. Available Web API or RPC address. Prerequisite for using blocker, if client config file cannot be automatically detect, must be filled in correctly. Currently support ```qBittorrent```/```Transmission```/```BitComet``` |
 | clientURL | string | Empty | Client address. Prerequisite for using blocker, if client config file cannot be automatically read, must be filled in correctly. Prefix must specify http or https protocol, such as ```http://127.0.0.1:990``` or ```http://127.0.0.1:9091/transmission/rpc``` |
 | clientUsername | string | Empty | Client username. Leaving it blank will skip authentication. If you enable client "Skip local client authentication", you can leave it blank by default, because the client config file can be automatically read and set |

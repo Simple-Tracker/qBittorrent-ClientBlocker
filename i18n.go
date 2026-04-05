@@ -80,12 +80,15 @@ var defaultLangContent = map[string]string{
 	"Error-UnknownStatusCode":                          "请求时发生了错误: 未知状态码 %d",
 	"Error-Parse":                                      "解析时发生了错误: %s",
 	"Error-Login":                                      "登录时发生了错误",
+	"Error-StartServer_Listen":                         "监听时发生了错误 (%s): %s",
+	"Error-StartServer_Serve":                          "启动服务器时发生了错误 (%s): %s",
 	"Error-FetchUpdate":                                "获取更新时发生了错误",
 	"Error-GenJSON":                                    "构造 JSON 时发生了错误: %s",
 	"Error-GenJSONWithID":                              "构造 JSON (%s) 时发生了错误: %s",
 	"Error-Log_Write":                                  "写入日志时发生了错误: %s",
 	"Error-IPFilter_Write":                             "写入 IPFilter 时发生了错误: %s",
 	"Error-LoadLog_Mkdir":                              "创建日志目录时发生了错误: %s",
+	"Error-LoadLog_Open":                               "打开日志文件时发生了错误: %s",
 	"Error-LoadLog_Close":                              "关闭日志时发生了错误: %s",
 	"Error-MatchRegexpErr":                             "正则匹配过程中发生了错误: %s",
 	"Error-Task_EmptyURL":                              "检测到 URL 为空, 可能是未配置且未能自动读取客户端配置文件",
@@ -116,12 +119,11 @@ var defaultLangContent = map[string]string{
 	"Success-ExecCommand":                              "执行命令成功, 输出: %s",
 	"Success-SyncWithServer":                           "成功与同步服务器同步",
 
-	// Part ShadowBan.
-	"Warning-ShadowBanAPINotExist":                     "未检测到 ShadowBan API, 将使用常规方法",
-	"Warning-ShadowBanAPIDisabled":                     "未启用 ShadowBan API, 将使用常规方法",
-	"Failed-UnknownShadowBanAPI":                       "检测到未知 Shadow Ban API, 将使用常规方法",
-	"Failed-GetQBPreferences":                          "获取 qBittorrent 偏好设置失败",
-
+	// ShadowBan 部分.
+	"Warning-ShadowBanAPINotExist": "未检测到 ShadowBan API, 将使用常规方法",
+	"Warning-ShadowBanAPIDisabled": "未启用 ShadowBan API, 将使用常规方法",
+	"Failed-UnknownShadowBanAPI":   "检测到未知 Shadow Ban API, 将使用常规方法",
+	"Failed-GetQBPreferences":      "获取 qBittorrent 偏好设置失败",
 }
 
 func LoadLang(langCode string) bool {

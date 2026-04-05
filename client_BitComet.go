@@ -7,6 +7,74 @@ import (
 	"strings"
 )
 
+// BCClient 实现了 BitComet 的客户端接口.
+type BCClient struct{}
+
+func (c *BCClient) GetClientType() string {
+	return "BitComet"
+}
+
+func (c *BCClient) ConfigPath() string {
+	return ""
+}
+
+func (c *BCClient) SetURL() bool {
+	return false
+}
+
+func (c *BCClient) Login() bool {
+	return BC_Login()
+}
+
+// FetchTorrents 获取所有活动的种子列表.
+func (c *BCClient) FetchTorrents() ([]*Torrent, error) {
+	torrents := BC_FetchTorrents()
+	if torrents == nil {
+		return nil, nil
+	}
+	var result []*Torrent
+	for id, t := range *torrents {
+		result = append(result, &Torrent{
+			Hash:       strconv.Itoa(id),
+			TotalSize:  t.TotalSize,
+			Tracker:    "Unsupported",
+			LeechCount: 233,
+		})
+	}
+	return result, nil
+}
+
+// FetchTorrentPeers 获取特定种子的 Peer 列表.
+func (c *BCClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
+	peers := BC_FetchTorrentPeers(torrent.Hash)
+	if peers == nil {
+		return nil, nil
+	}
+	var result []*Peer
+	for _, p := range *peers {
+		result = append(result, &Peer{
+			IP:         p.IP,
+			Port:       p.Port,
+			Client:     p.Client,
+			DlSpeed:    p.DlSpeed,
+			UpSpeed:    p.UpSpeed,
+			Progress:   p.Progress,
+			Downloaded: p.Downloaded,
+			Uploaded:   p.Uploaded,
+			ID:         "", // BitComet 不提供 PeerID.
+		})
+	}
+	return result, nil
+}
+
+func (c *BCClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return false // BitComet 暂未通过 WebUI 实现封禁.
+}
+
+func (c *BCClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return false // 不支持.
+}
+
 type BC_TorrentStruct struct {
 	TotalSize int64
 	UpSpeed   int64
@@ -137,7 +205,6 @@ func BC_DetectClient() bool {
 	return (apiResponseStatusCode == 401 && strings.Contains(apiResponseHeaders.Get("WWW-Authenticate"), "BitComet"))
 }
 func BC_Login() bool {
-	// BitComet 通过 Basic Auth 进行认证, 因此此处只进行验证.
 	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/panel/", false, true, false, nil)
 	return (apiResponseStatusCode == 200)
 }
@@ -224,7 +291,6 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 		var peerDownloaded int64 = -233
 		var peerUploaded int64 = -233
 		peerClient := ""
-		//peerID := ""
 		element.Find("td").EachWithBreak(func(tdIndex int, tdElement *goquery.Selection) bool {
 			switch tdIndex {
 			case 0:
@@ -241,9 +307,6 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 				peerUploaded = BC_ParseSize(tdElement.Text())
 			case 9:
 				peerClient = tdElement.Text()
-			case 10:
-				// 错误的信息.
-				// peerID = tdElement.Text()
 			}
 
 			return true

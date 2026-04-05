@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>qBittorrent-ClientBlocker Monitoring</title>
+    <style>
+        :root {
+            /* Light Mode (Default) */
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-color: #0f172a;
+            --secondary-text: #64748b;
+            --accent-color: #0ea5e9;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --border-color: #e2e8f0;
+            --log-bg: #1e293b;
+            --log-text: #f8fafc;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* Dark Mode */
+                --bg-color: #0f172a;
+                --card-bg: #1e293b;
+                --text-color: #f8fafc;
+                --secondary-text: #94a3b8;
+                --accent-color: #38bdf8;
+                --border-color: #334155;
+            }
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            font-size: 0.95rem;
+        }
+
+        .stat-label {
+            color: var(--secondary-text);
+        }
+
+        .peers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .peers-table th, .peers-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .peers-table th {
+            color: var(--secondary-text);
+            font-weight: 600;
+        }
+
+        .logs-container {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            background-color: var(--log-bg);
+            color: var(--log-text);
+            padding: 15px;
+            border-radius: 8px;
+            height: 350px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+        }
+
+        .refresh-notice {
+            font-size: 0.75rem;
+            color: var(--secondary-text);
+            text-align: right;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1 style="margin:0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.025em;">qBCB MONITOR</h1>
+            <div id="version-text" style="color: var(--secondary-text); font-size: 0.8rem; margin-top: 2px;">Checking...</div>
+        </div>
+        <div id="connection-status" class="status-badge" style="background-color: var(--secondary-text)">Connecting</div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Status & Info</h2>
+            <div class="stat-item"><span class="stat-label">Uptime</span> <span id="uptime">0s</span></div>
+            <div class="stat-item"><span class="stat-label">Client</span> <span id="client-type">-</span></div>
+            <div class="stat-item"><span class="stat-label">BTN Protocol</span> <span id="btn-status">-</span></div>
+            <div class="stat-item"><span class="stat-label">System RAM</span> <span id="memory">- MB</span></div>
+        </div>
+        <div class="card">
+            <h2>Statistics</h2>
+            <div class="stat-item" style="padding: 10px 0; border-bottom: 2px solid var(--border-color); margin-bottom: 15px;">
+                <span class="stat-label" style="font-size: 1rem; align-self: center;">Blocked IPs</span>
+                <span id="total-blocked-ips" style="color: var(--danger-color); font-size: 1.8rem; font-weight: 800;">0</span>
+            </div>
+            <div class="stat-item"><span class="stat-label">Blocked Ports</span> <span id="total-blocked-ports">0</span></div>
+            <div class="stat-item"><span class="stat-label">Last Update</span> <span id="last-update">-</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Recent Blocks</h2>
+        <div style="overflow-x: auto;">
+            <table class="peers-table">
+                <thead>
+                    <tr>
+                        <th>Peer IP</th>
+                        <th>Ports</th>
+                        <th>Module & Reason</th>
+                        <th>Blocked At</th>
+                    </tr>
+                </thead>
+                <tbody id="peers-list">
+                    <!-- Dynamic -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Live Logs</h2>
+        <div id="logs" class="logs-container">初始化中...</div>
+        <div class="refresh-notice">Auto-sync: 2s interval</div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const [statusRes, peersRes, logsRes] = await Promise.all([
+                    fetch('/api/status'),
+                    fetch('/api/peers'),
+                    fetch('/api/logs')
+                ]);
+
+                if (!statusRes.ok) throw new Error('Status failed');
+
+                const status = await statusRes.json();
+                const peers = await peersRes.json();
+                const logs = await logsRes.json();
+
+                updateUI(status, peers, logs);
+                
+                const statusBadge = document.getElementById('connection-status');
+                statusBadge.textContent = 'ONLINE';
+                statusBadge.style.backgroundColor = 'var(--success-color)';
+            } catch (err) {
+                console.error(err);
+                const statusBadge = document.getElementById('connection-status');
+                statusBadge.textContent = 'OFFLINE';
+                statusBadge.style.backgroundColor = 'var(--danger-color)';
+            }
+        }
+
+        function formatUptime(seconds) {
+            const d = Math.floor(seconds / (3600*24));
+            const h = Math.floor(seconds % (3600*24) / 3600);
+            const m = Math.floor(seconds % 3600 / 60);
+            const s = Math.floor(seconds % 60);
+            return `${d > 0 ? d + 'd ' : ''}${h}h ${m}m ${s}s`;
+        }
+
+        function updateUI(status, peers, logs) {
+            document.getElementById('version-text').textContent = "Running Version: " + (status.program_version || 'Unknown');
+            document.getElementById('uptime').textContent = formatUptime(status.uptime_seconds);
+            document.getElementById('client-type').textContent = status.client_type || 'None';
+            document.getElementById('btn-status').textContent = status.btn_status;
+            document.getElementById('memory').textContent = status.runtime.alloc_mb + ' MB';
+            document.getElementById('total-blocked-ips').textContent = status.stats.total_blocked_ips;
+            document.getElementById('total-blocked-ports').textContent = status.stats.total_blocked_ports;
+            
+            const lastUpdateTimestamp = status.stats.last_update_timestamp;
+            document.getElementById('last-update').textContent = lastUpdateTimestamp > 0 ? new Date(lastUpdateTimestamp * 1000).toLocaleString() : 'Never';
+
+            const peersList = document.getElementById('peers-list');
+            peersList.innerHTML = '';
+            
+            const sortedPeers = peers.slice(0, 15);
+            
+            if (sortedPeers.length === 0) {
+                peersList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary-text); padding: 30px;">No blocked peers in current session.</td></tr>';
+            } else {
+                sortedPeers.forEach((info) => {
+                    const tr = document.createElement('tr');
+                    const ports = (info.ports || []).join(', ');
+                    tr.innerHTML = `
+                        <td style="font-weight: 500;">${info.ip}</td>
+                        <td>${ports}</td>
+                        <td><span style="color: var(--secondary-text); font-size: 0.8rem; margin-right: 5px;">[${info.module}]</span> ${info.reason}</td>
+                        <td style="color: var(--secondary-text)">${new Date(info.timestamp * 1000).toLocaleString()}</td>
+                    `;
+                    peersList.appendChild(tr);
+                });
+            }
+
+            const logsContainer = document.getElementById('logs');
+            const newLogs = logs.join('');
+            if (logsContainer.textContent !== newLogs) {
+                const wasAtBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 20;
+                logsContainer.textContent = newLogs;
+                if (wasAtBottom) {
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            }
+        }
+
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>

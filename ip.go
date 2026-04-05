@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"sync"
+)
 
 type IPInfoStruct struct {
 	Net             *net.IPNet
@@ -10,6 +13,8 @@ type IPInfoStruct struct {
 
 var ipMap = make(map[string]IPInfoStruct)
 var lastIPMap = make(map[string]IPInfoStruct)
+var ipMapMutex sync.RWMutex
+var lastIPMapMutex sync.RWMutex
 var lastIPCleanTimestamp int64 = 0
 
 func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerUploaded int64) {
@@ -20,6 +25,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 	var clientPortMap map[int]bool
 	var clientTorrentUploadedMap map[string]int64
 
+	ipMapMutex.Lock()
 	if info, exist := ipMap[peerIP]; !exist {
 		clientPortMap = make(map[int]bool)
 		clientTorrentUploadedMap = make(map[string]int64)
@@ -36,6 +42,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 	}
 
 	ipMap[peerIP] = IPInfoStruct{Net: cidr, Port: clientPortMap, TorrentUploaded: clientTorrentUploadedMap}
+	ipMapMutex.Unlock()
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 	var totalUploaded int64 = 0
@@ -61,7 +68,10 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 }
 func IsMatchCIDR(peerNet *net.IPNet) bool {
 	if peerNet != nil {
-		if _, exist := blockCIDRMap[peerNet.String()]; exist {
+		blockCIDRMapMutex.RLock()
+		_, exist := blockCIDRMap[peerNet.String()]
+		blockCIDRMapMutex.RUnlock()
+		if exist {
 			return true
 		}
 	}
@@ -71,6 +81,11 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
 	if (config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(config.IPUpCheckInterval)) {
 		ipBlockCount := 0
+
+		ipMapMutex.Lock()
+		lastIPMapMutex.Lock()
+		defer ipMapMutex.Unlock()
+		defer lastIPMapMutex.Unlock()
 
 	ipMapLoop:
 		for ip, ipInfo := range ipMap {

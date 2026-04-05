@@ -74,6 +74,7 @@
 	"Error-Log_Write": "An error occurred while writing to log: %s",
 	"Error-IPFilter_Write": "An error occurred while writing to IPFilter: %s",
 	"Error-LoadLog_Mkdir": "An error occurred while creating log directory: %s",
+	"Error-LoadLog_Open": "An error occurred while opening log file: %s",
 	"Error-LoadLog_Close": "An error occurred while closing log: %s",
 	"Error-RegexpMatchErr": "An error occurred while matching regexp: %s",
 	"Error-Task_EmptyURL": "Detected ClientURL is empty, may not be configured and failed to automatically read client config file",

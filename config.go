@@ -81,6 +81,10 @@ type ConfigStruct struct {
 	BanByRelativePUStartMB        uint32
 	BanByRelativePUStartPrecent   float64
 	BanByRelativePUAntiErrorRatio float64
+	WebUI                         bool
+	WebUIListen                   string
+	WebUIUsername                 string
+	WebUIPassword                 string
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -100,8 +104,21 @@ var blockListCompiled sync.Map
 var ipBlockListCompiled sync.Map
 var blockListURLLastFetch int64 = 0
 var ipBlockListURLLastFetch int64 = 0
+
+// blockListFileLastMod 记录黑名单文件的最后修改时间, 用于热重载判断.
 var blockListFileLastMod = make(map[string]int64)
+
+// ipBlockListFileLastMod 记录 IP 黑名单文件的最后修改时间.
 var ipBlockListFileLastMod = make(map[string]int64)
+
+// lastModMutex 用于保护上述 LastMod Map 的并发读写.
+var lastModMutex sync.RWMutex
+
+// currentTimestamp 记录当前的 UNIX 时间戳.
+var currentTimestamp int64 = 0
+
+// configLastFetch 记录上次加载配置的具体时间.
+var configLastFetch int64 = 0
 var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
@@ -197,6 +214,10 @@ var config = ConfigStruct{
 	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPrecent:   2,
 	BanByRelativePUAntiErrorRatio: 3,
+	WebUI:                         false,
+	WebUIListen:                   "127.0.0.1:7222",
+	WebUIUsername:                 "",
+	WebUIPassword:                 "",
 }
 
 func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
@@ -235,6 +256,7 @@ func SetBlockListFromFile() bool {
 	}
 
 	setCount := 0
+	updated := false
 
 	for _, filePath := range config.BlockListFile {
 		blockListFileStat, err := os.Stat(filePath)
@@ -243,17 +265,24 @@ func SetBlockListFromFile() bool {
 			return false
 		}
 
-		// Max 8MB.
+		// 最大 8MB.
 		if blockListFileStat.Size() > 8388608 {
 			Log("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
 			continue
 		}
 
+		// 获取当前文件的最后修改时间.
 		fileLastMod := blockListFileStat.ModTime().Unix()
-		if fileLastMod == blockListFileLastMod[filePath] {
-			return false
+		// 为了线程安全, 先加读锁获取 Map 中的旧值到局部变量 lastMod.
+		lastModMutex.RLock()
+		lastMod := blockListFileLastMod[filePath]
+		lastModMutex.RUnlock()
+
+		// 如果文件未修改, 则跳过处理.
+		if fileLastMod == lastMod {
+			continue
 		}
-		if blockListFileLastMod[filePath] != 0 {
+		if lastMod != 0 {
 			Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, filePath)
 		}
 
@@ -263,7 +292,10 @@ func SetBlockListFromFile() bool {
 			return false
 		}
 
+		// 处理完成后, 加写锁更新 Map.
+		lastModMutex.Lock()
 		blockListFileLastMod[filePath] = fileLastMod
+		lastModMutex.Unlock()
 
 		var content []string
 		if filepath.Ext(filePath) == ".json" {
@@ -277,9 +309,12 @@ func SetBlockListFromFile() bool {
 		}
 
 		setCount += SetBlockListFromContent(content, filePath)
+		updated = true
 	}
 
-	Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, setCount)
+	if updated {
+		Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, setCount)
+	}
 	return true
 }
 func SetBlockListFromURL() bool {
@@ -302,7 +337,7 @@ func SetBlockListFromURL() bool {
 			continue
 		}
 
-		// Max 8MB.
+		// 最大 8MB.
 		if len(blockListContent) > 8388608 {
 			Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
 			continue
@@ -358,6 +393,7 @@ func SetIPBlockListFromFile() bool {
 	}
 
 	setCount := 0
+	updated := false
 
 	for _, filePath := range config.IPBlockListFile {
 		ipBlockListFileStat, err := os.Stat(filePath)
@@ -366,12 +402,18 @@ func SetIPBlockListFromFile() bool {
 			return false
 		}
 
+		// 获取当前文件的最后修改时间.
 		fileLastMod := ipBlockListFileStat.ModTime().Unix()
-		if fileLastMod <= ipBlockListFileLastMod[filePath] {
-			return true
+		// 加读锁获取旧值.
+		lastModMutex.RLock()
+		lastMod := ipBlockListFileLastMod[filePath]
+		lastModMutex.RUnlock()
+
+		if fileLastMod <= lastMod {
+			continue
 		}
 
-		if ipBlockListFileLastMod[filePath] != 0 {
+		if lastMod != 0 {
 			Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, filePath)
 		}
 
@@ -381,7 +423,10 @@ func SetIPBlockListFromFile() bool {
 			return false
 		}
 
+		// 加写锁更新.
+		lastModMutex.Lock()
 		ipBlockListFileLastMod[filePath] = fileLastMod
+		lastModMutex.Unlock()
 
 		var content []string
 		if filepath.Ext(filePath) == ".json" {
@@ -394,9 +439,12 @@ func SetIPBlockListFromFile() bool {
 		}
 
 		setCount += SetIPBlockListFromContent(content, filePath)
+		updated = true
 	}
 
-	Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, setCount)
+	if updated {
+		Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, setCount)
+	}
 	return true
 }
 func SetIPBlockListFromURL() bool {
@@ -457,11 +505,16 @@ func LoadConfig(filename string, notExistErr bool) int {
 	}
 
 	tmpConfigLastMod := configFileStat.ModTime().Unix()
-	if tmpConfigLastMod <= configLastMod[filename] {
+	// 加读锁获取旧值.
+	lastModMutex.RLock()
+	lastMod := configLastMod[filename]
+	lastModMutex.RUnlock()
+
+	if tmpConfigLastMod <= lastMod {
 		return -1
 	}
 
-	if configLastMod[filename] != 0 {
+	if lastMod != 0 {
 		Log("Debug-LoadConfig", GetLangText("Debug-LoadConfig_HotReload"), false, filename)
 	}
 
@@ -471,7 +524,10 @@ func LoadConfig(filename string, notExistErr bool) int {
 		return -3
 	}
 
+	// 加写锁更新.
+	lastModMutex.Lock()
 	configLastMod[filename] = tmpConfigLastMod
+	lastModMutex.Unlock()
 
 	switch filepath.Ext(strings.ToLower(filename)) {
 	case ".json":
@@ -512,7 +568,7 @@ func InitConfig() {
 	httpTransportExternal := httpTransport.Clone()
 
 	if config.Proxy == "Auto" {
-		// Aka default. 仅对外部资源使用代理.
+		// 默认模式, 仅对外部资源使用代理.
 		httpTransport.Proxy = nil
 		httpTransportExternal.Proxy = GetProxy
 	} else if config.Proxy == "All" {
@@ -552,7 +608,7 @@ func InitConfig() {
 	t := reflect.TypeOf(config)
 	v := reflect.ValueOf(config)
 	for k := 0; k < t.NumField(); k++ {
-		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, v.Field(k).Interface())
+		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, FormatConfigValueForLog(t.Field(k).Name, v.Field(k).Interface()))
 	}
 
 	EraseSyncMap(&blockListCompiled)
@@ -562,6 +618,27 @@ func InitConfig() {
 	EraseSyncMap(&ipBlockListCompiled)
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
+}
+
+func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
+	fieldName = strings.ToLower(fieldName)
+
+	if strings.Contains(fieldName, "password") || strings.Contains(fieldName, "secret") || strings.HasSuffix(fieldName, "token") {
+		switch typedValue := value.(type) {
+		case string:
+			if typedValue == "" {
+				return ""
+			}
+		case []string:
+			if len(typedValue) == 0 {
+				return typedValue
+			}
+		}
+
+		return "[REDACTED]"
+	}
+
+	return value
 }
 func LoadInitConfig(firstLoad bool) bool {
 	loadConfigStatus := LoadConfig(configFilename, true)
@@ -579,9 +656,8 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 	}
 
-	if !LoadLog() && logFile != nil {
-		logFile.Close()
-		logFile = nil
+	if !LoadLog() {
+		CloseLogFile()
 	}
 
 	if firstLoad {
@@ -604,7 +680,7 @@ func LoadInitConfig(firstLoad bool) bool {
 			lastURL = config.ClientURL
 		}
 	} else {
-		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件可能破坏首次启动后从 qBittorrent 配置文件读取的 URL.
+		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件破坏首次启动后从 qBittorrent 配置文件读取的 URL.
 		config.ClientURL = lastURL
 	}
 
@@ -615,8 +691,13 @@ func LoadInitConfig(firstLoad bool) bool {
 	if !firstLoad {
 		SetBlockListFromFile()
 		SetIPBlockListFromFile()
-		go SetBlockListFromURL()
-		go SetIPBlockListFromURL()
+		GoWithCrashLog("SetBlockListFromURL", func() {
+			SetBlockListFromURL()
+		})
+		GoWithCrashLog("SetIPBlockListFromURL", func() {
+			SetIPBlockListFromURL()
+		})
+		GoWithCrashLog("BTN_GetConfig", BTN_GetConfig)
 	}
 
 	return true

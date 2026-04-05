@@ -5,12 +5,16 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 var todayStr = ""
 var lastLogPath = ""
 var logFile *os.File
 var logwriter = LogWriter{}
+var logBuffer []string
+var logBufferMaxSize = 100
+var logBufferMutex sync.Mutex
 
 type LogWriter struct {
 	w io.Writer
@@ -20,6 +24,21 @@ func (w LogWriter) Write(p []byte) (n int, err error) {
 	Log("LogWriter", string(p), true)
 	return len(p), nil
 }
+
+func CloseLogFile() bool {
+	if logFile == nil {
+		return true
+	}
+
+	if err := logFile.Close(); err != nil {
+		Log("LoadLog", GetLangText("Error-LoadLog_Close"), false, err.Error())
+		return false
+	}
+
+	logFile = nil
+	return true
+}
+
 func Log(module string, str string, logToFile bool, args ...interface{}) {
 	if !strings.HasPrefix(module, "Debug") {
 		if module == "LogWriter" {
@@ -44,6 +63,14 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 	}
 
 	fmt.Print(logStr)
+	if config.WebUI && module != "LoadConfig_Current" {
+		logBufferMutex.Lock()
+		logBuffer = append(logBuffer, logStr)
+		if len(logBuffer) > logBufferMaxSize {
+			logBuffer = logBuffer[1:]
+		}
+		logBufferMutex.Unlock()
+	}
 }
 func LoadLog() bool {
 	if !config.LogToFile || config.LogPath == "" {
@@ -76,13 +103,15 @@ func LoadLog() bool {
 
 	tLogFile, err := os.OpenFile(config.LogPath+"/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		tLogFile.Close()
-		tLogFile = nil
-		Log("LoadLog", GetLangText("Error-LoadLog_Close"), false, err.Error())
+		Log("LoadLog", GetLangText("Error-LoadLog_Open"), false, err.Error())
 		return false
 	}
 
-	logFile.Close()
+	if !CloseLogFile() {
+		tLogFile.Close()
+		return false
+	}
+
 	logFile = tLogFile
 
 	return true
