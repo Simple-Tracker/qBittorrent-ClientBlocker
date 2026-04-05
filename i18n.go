@@ -80,12 +80,15 @@ var defaultLangContent = map[string]string{
 	"Error-UnknownStatusCode":                          "请求时发生了错误: 未知状态码 %d",
 	"Error-Parse":                                      "解析时发生了错误: %s",
 	"Error-Login":                                      "登录时发生了错误",
+	"Error-StartServer_Listen":                         "监听时发生了错误 (%s): %s",
+	"Error-StartServer_Serve":                          "启动服务器时发生了错误 (%s): %s",
 	"Error-FetchUpdate":                                "获取更新时发生了错误",
 	"Error-GenJSON":                                    "构造 JSON 时发生了错误: %s",
 	"Error-GenJSONWithID":                              "构造 JSON (%s) 时发生了错误: %s",
 	"Error-Log_Write":                                  "写入日志时发生了错误: %s",
 	"Error-IPFilter_Write":                             "写入 IPFilter 时发生了错误: %s",
 	"Error-LoadLog_Mkdir":                              "创建日志目录时发生了错误: %s",
+	"Error-LoadLog_Open":                               "打开日志文件时发生了错误: %s",
 	"Error-LoadLog_Close":                              "关闭日志时发生了错误: %s",
 	"Error-MatchRegexpErr":                             "正则匹配过程中发生了错误: %s",
 	"Error-Task_EmptyURL":                              "检测到 URL 为空, 可能是未配置且未能自动读取客户端配置文件",
@@ -115,13 +118,22 @@ var defaultLangContent = map[string]string{
 	"Success-ClearBlockPeer":                           "已清理过期客户端: %d 个",
 	"Success-ExecCommand":                              "执行命令成功, 输出: %s",
 	"Success-SyncWithServer":                           "成功与同步服务器同步",
+	"StartServer_ListeningOn":                          "监听于: %s",
 
-	// Part ShadowBan.
-	"Warning-ShadowBanAPINotExist":                     "未检测到 ShadowBan API, 将使用常规方法",
-	"Warning-ShadowBanAPIDisabled":                     "未启用 ShadowBan API, 将使用常规方法",
-	"Failed-UnknownShadowBanAPI":                       "检测到未知 Shadow Ban API, 将使用常规方法",
 	"Failed-GetQBPreferences":                          "获取 qBittorrent 偏好设置失败",
 
+	// ShadowBan 部分.
+	"Warning-ShadowBanAPINotExist": "未检测到 ShadowBan API, 将使用常规方法",
+	"Warning-ShadowBanAPIDisabled": "未启用 ShadowBan API, 将使用常规方法",
+	"Failed-UnknownShadowBanAPI":   "检测到未知 Shadow Ban API, 将使用常规方法",
+
+	// BTN 部分.
+	"Success-BTNRegLoaded":                             "BTN 规则加载成功, 版本: %s",
+	"Success-BTNExceptionLoaded":                       "BTN 例外规则加载成功, 版本: %s",
+	"Success-BTNConfigLoaded":                          "BTN 配置加载成功",
+	"Debug-BTNNoChange":                                "BTN 规则/例外无变化",
+	"Debug-BTNConfigNoChange":                          "BTN 配置无变化",
+	"Error-BTNVersionMismatch":                         "BTN 协议版本不匹配: 服务器要求 [%d, %d], 但我们支持 3。BTN 模块已禁用。",
 }
 
 func LoadLang(langCode string) bool {

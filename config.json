@@ -32,7 +32,11 @@
 		"https://cdn.jsdelivr.net/gh/PBH-BTN/BTN-Collected-Rules@main/combine/all.txt",
 		//"https://bta.iaalai.cn/BTN-Collected-Rules/qBittorrent-ClientBlocker/ipBlockList.txt",
 		"https://cdn.jsdelivr.net/gh/Simple-Tracker/qBittorrent-ClientBlocker@dev/ipBlockList.txt"
-	]
+	],
+	"webUI": false,
+	"webUIListen": "127.0.0.1:7222",
+	"webUIUsername": "",
+	"webUIPassword": ""
 	/*
 	"debug_CheckTorrent": false,
 	"debug_CheckPeer": false,

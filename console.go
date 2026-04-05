@@ -8,17 +8,19 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
 
-var loopTicker *time.Ticker
-var currentTimestamp int64 = 0
-var lastCheckUpdateTimestamp int64 = 0
-var lastCheckUpdateReleaseVer = ""
+var lastCheckUpdateVer = ""
 var lastCheckUpdateBetaVer = "None"
+var lastCheckUpdateTimestamp int64 = 0
 var githubAPIHeader = map[string]string{"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
-var isRunning bool
+var reqStopChan = make(chan struct{})
+var reqStopOnce sync.Once
+var reqStopLogged atomic.Bool
 
 type ReleaseStruct struct {
 	URL        string `json:"html_url"`
@@ -50,7 +52,7 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 
 	mainVersion, err1 := strconv.Atoi(versionSplit[0])
 
-	versionType := 0 // 0: Public, 1: Beta.
+	versionType := 0 // 0: 公共版本, 1: Beta 版本.
 	versionSplit2 := strings.SplitN(versionSplit[1], "p", 2)
 	versionSplit3 := strings.SplitN(versionSplit[1], "b", 2)
 
@@ -75,6 +77,8 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 
 	return versionType, mainVersion, subVersion, sub2Version, realVersion
 }
+
+// CheckUpdate 检查软件更新.
 func CheckUpdate() {
 	if !config.CheckUpdate || (lastCheckUpdateTimestamp+86400) > currentTimestamp {
 		return
@@ -142,19 +146,17 @@ func CheckUpdate() {
 	hasNewReleaseVersion := false
 	hasNewPreReleaseVersion := false
 
-	if matchLatestPreReleaseVersion {
-		if currentVersionType == 1 {
-			versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestPreReleaseStruct.TagName)
+	if matchLatestPreReleaseVersion && currentVersionType == 1 {
+		versionType, mainVersion, subVersion, sub2Version, _ := ProcessVersion(latestPreReleaseStruct.TagName)
 
-			if versionType == currentVersionType {
-				if mainVersion > currentMainVersion {
+		if versionType == currentVersionType {
+			if mainVersion > currentMainVersion {
+				hasNewPreReleaseVersion = true
+			} else if mainVersion == currentMainVersion {
+				if subVersion > currentSubVersion {
 					hasNewPreReleaseVersion = true
-				} else if mainVersion == currentMainVersion {
-					if subVersion > currentSubVersion {
-						hasNewPreReleaseVersion = true
-					} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
-						hasNewPreReleaseVersion = true
-					}
+				} else if subVersion == currentSubVersion && sub2Version > currentSub2Version {
+					hasNewPreReleaseVersion = true
 				}
 			}
 		}
@@ -182,8 +184,8 @@ func CheckUpdate() {
 
 	Log("CheckUpdate", GetLangText("CheckUpdate-ShowVersion"), true, currentVersion, latestReleaseStruct.TagName, latestPreReleaseStruct.TagName)
 
-	if hasNewReleaseVersion && lastCheckUpdateReleaseVer != latestReleaseStruct.TagName {
-		lastCheckUpdateReleaseVer = latestReleaseStruct.TagName
+	if hasNewReleaseVersion && lastCheckUpdateVer != latestReleaseStruct.TagName {
+		lastCheckUpdateVer = latestReleaseStruct.TagName
 		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewVersion"), true, latestReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestReleaseStruct.TagName), strings.Replace(latestReleaseStruct.Body, "\r", "", -1))
 	}
 
@@ -192,6 +194,8 @@ func CheckUpdate() {
 		Log("CheckUpdate", GetLangText("CheckUpdate-DetectNewBetaVersion"), true, latestPreReleaseStruct.TagName, ("https://github.com/Simple-Tracker/" + programName + "/releases/tag/" + latestPreReleaseStruct.TagName), strings.Replace(latestPreReleaseStruct.Body, "\r", "", -1))
 	}
 }
+
+// Task 执行主要的循环任务.
 func Task() {
 	if config.ClientURL == "" {
 		Log("Task", GetLangText("Error-Task_EmptyURL"), true)
@@ -202,8 +206,8 @@ func Task() {
 		return
 	}
 
-	torrents := FetchTorrents()
-	if torrents == nil {
+	torrents, err := FetchTorrents()
+	if err != nil || torrents == nil {
 		return
 	}
 
@@ -219,40 +223,8 @@ func Task() {
 	badPeersCount := 0
 	emptyPeersCount := 0
 
-	switch currentClientType {
-	case "qBittorrent":
-		torrents2 := torrents.(*[]qB_TorrentStruct)
-		for _, torrentInfo := range *torrents2 {
-			ProcessTorrent(torrentInfo.InfoHash, torrentInfo.Tracker, torrentInfo.NumLeechs, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
-		}
-	case "Transmission":
-		torrents2 := torrents.(*Tr_TorrentsStruct)
-		for _, torrentInfo := range torrents2.Torrents {
-			// 手动判断有无 Peer 正在下载.
-			var leecherCount int64 = 0
-			for _, torrentPeer := range torrentInfo.Peers {
-				if torrentPeer.IsUploading {
-					leecherCount++
-				}
-			}
-
-			tracker := ""
-			if torrentInfo.Private {
-				tracker = "Private"
-			}
-
-			ProcessTorrent(torrentInfo.InfoHash, tracker, leecherCount, torrentInfo.TotalSize, torrentInfo.Peers, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
-		}
-	case "BitComet":
-		// BitComet 无法通过 Torrent 列表取得 TorrentInfoHash, 因此使用 TorrentID 取代.
-		torrents2 := torrents.(*map[int]BC_TorrentStruct)
-		for torrentID, torrentInfo := range *torrents2 {
-			var leecherCount int64 = 233
-			if torrentInfo.UpSpeed > 0 {
-				leecherCount = 233
-			}
-			ProcessTorrent(strconv.Itoa(torrentID), "Unsupported", leecherCount, torrentInfo.TotalSize, nil, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
-		}
+	for _, torrentInfo := range torrents {
+		ProcessTorrent(torrentInfo, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 	}
 
 	ipBlockCount += CheckAllIP(ipMap, lastIPMap)
@@ -286,7 +258,7 @@ func Task() {
 			return true
 		})
 
-		if !config.IPUploadedCheck && iblcLen <= 0 && len(ipBlockCIDRMapFromSyncServerCompiled) <= 0 {
+		if !config.IPUploadedCheck && iblcLen <= 0 && len(syncServer_CompiledRules) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, ipBlockCount, len(blockPeerMap))
@@ -294,62 +266,78 @@ func Task() {
 	}
 
 	SyncWithServer()
+	BTN_Task()
 }
-func GC() {
-	ipMapGCCount := (len(ipMap) - 23333333)
 
+// GC 执行垃圾回收任务以清理过期数据并释放内存.
+func GC() {
+	// 保持旧阈值, 避免频繁清理.
+	const ipMapThreshold = 23333333
+	const peerMapThreshold = 2333333
+
+	ipMapMutex.Lock()
+	ipMapGCCount := (len(ipMap) - ipMapThreshold)
 	if ipMapGCCount > 0 {
 		Log("GC", GetLangText("GC_IPMap"), true, ipMapGCCount)
-		for ip, _ := range ipMap {
+		for ip := range ipMap {
 			ipMapGCCount--
 			delete(ipMap, ip)
 			if ipMapGCCount <= 0 {
 				break
 			}
 		}
-		runtime.GC()
 	}
+	ipMapMutex.Unlock()
 
+	torrentMapMutex.Lock()
 	for torrentInfoHash, torrentInfo := range torrentMap {
-		torrentInfoGCCount := (len(torrentInfo.Peers) - 2333333)
+		torrentInfoGCCount := (len(torrentInfo.Peers) - peerMapThreshold)
 		if torrentInfoGCCount > 0 {
 			Log("GC", GetLangText("GC_TorrentMap"), true, torrentInfoHash, torrentInfoGCCount)
-			for peerIP, _ := range torrentInfo.Peers {
+			for peerIP := range torrentInfo.Peers {
 				torrentInfoGCCount--
 				delete(torrentMap[torrentInfoHash].Peers, peerIP)
 				if torrentInfoGCCount <= 0 {
 					break
 				}
 			}
-			runtime.GC()
 		}
 	}
+	torrentMapMutex.Unlock()
+	runtime.GC()
 }
+
+// WaitStop 监听退出信号.
 func WaitStop() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM)
-
-	<-signalChan
-	ReqStop()
-}
-func ReqStop() {
-	if !isRunning {
-		return
+	select {
+	case <-signalChan:
+		ReqStop()
+	case <-reqStopChan:
 	}
-
-	Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
-	isRunning = false
 }
-func Stop() {
-	recoverErr := recover()
 
+// ReqStop 请求停止程序, 用于系统托盘等非信号退出路径.
+func ReqStop() {
+	reqStopOnce.Do(func() {
+		reqStopLogged.Store(true)
+		Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
+		close(reqStopChan)
+	})
+}
+
+func Stop(recoverErr any, recoverStack []byte) {
 	if recoverErr != nil {
 		Log("Stop", GetLangText("Stop_CaughtPanic"), true, recoverErr)
-		Log("Stop", GetLangText("Stop_StacktraceWhenPanic"), true, string(debug.Stack()))
-	}
-
-	if loopTicker != nil {
-		loopTicker.Stop()
+		if len(recoverStack) == 0 {
+			recoverStack = debug.Stack()
+		}
+		Log("Stop", GetLangText("Stop_StacktraceWhenPanic"), true, string(recoverStack))
+		if !reqStopLogged.Load() {
+			reqStopLogged.Store(true)
+			Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
+		}
 	}
 
 	DeleteIPFilter()
@@ -363,6 +351,8 @@ func Stop() {
 		os.Exit(2)
 	}
 }
+
+// RunConsole 启动控制台主循环.
 func RunConsole() {
 	if startDelay > 0 {
 		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, startDelay)
@@ -376,11 +366,11 @@ func RunConsole() {
 		}
 	}
 
-	isRunning = true
+	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
+	StartServer()
 
 	if config.ExecCommand_Run != "" {
 		status, out, err := ExecCommand(config.ExecCommand_Run)
-
 		if status {
 			Log("RunConsole", GetLangText("Success-ExecCommand"), true, out)
 		} else {
@@ -388,24 +378,48 @@ func RunConsole() {
 		}
 	}
 
-	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
-	loopTicker = time.NewTicker(1 * time.Second)
-	go WaitStop()
-	defer Stop()
+	stopChan := make(chan struct{})
+	doneChan := make(chan struct{})
+	var loopPanic any
+	var loopPanicStack []byte
 
-	for ; true; <-loopTicker.C {
-		if !isRunning {
-			break
-		}
+	go func() {
+		defer close(doneChan)
+		defer func() {
+			if recoverErr := recover(); recoverErr != nil {
+				loopPanic = recoverErr
+				loopPanicStack = debug.Stack()
+				WriteCrashLog("RunConsole.loop", loopPanic, loopPanicStack)
+				ReqStop()
+			}
+		}()
 
-		tmpCurrentTimestamp := time.Now().Unix()
-		if (currentTimestamp + int64(config.Interval)) <= tmpCurrentTimestamp {
-			currentTimestamp = tmpCurrentTimestamp
-			go CheckUpdate()
-			if LoadInitConfig(false) {
-				Task()
-				GC()
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-stopChan:
+				return
+			case <-ticker.C:
+				now := time.Now().Unix()
+				if (atomic.LoadInt64(&currentTimestamp) + int64(config.Interval)) <= now {
+					atomic.StoreInt64(&currentTimestamp, now)
+					GoWithCrashLog("CheckUpdate", CheckUpdate)
+
+					if LoadInitConfig(false) {
+						Task()
+						GC()
+					} else {
+						Log("RunConsole", GetLangText("Error-Task_AuthFailed"), true)
+					}
+				}
 			}
 		}
-	}
+	}()
+
+	WaitStop()
+	close(stopChan)
+	<-doneChan
+	Stop(loopPanic, loopPanicStack)
 }

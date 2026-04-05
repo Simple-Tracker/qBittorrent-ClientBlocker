@@ -1,14 +1,16 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 var fetchFailedCount = 0
 var urlETagCache = make(map[string]string)
 var urlLastModCache = make(map[string]string)
+var requestStateMutex sync.RWMutex
 
 func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowCache bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
@@ -58,6 +60,7 @@ func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowC
 			request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
 		}
 	} else if !isPOST && allowCache {
+		requestStateMutex.RLock()
 		if etag, exist := urlETagCache[url]; exist {
 			request.Header.Set("If-None-Match", etag)
 		}
@@ -65,6 +68,7 @@ func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowC
 		if lastMod, exist := urlLastModCache[url]; exist {
 			request.Header.Set("If-Modified-Since", lastMod)
 		}
+		requestStateMutex.RUnlock()
 	}
 
 	return request
@@ -86,9 +90,11 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 
 	if err != nil {
 		if config.FetchFailedThreshold > 0 && config.ExecCommand_FetchFailed != "" {
+			requestStateMutex.Lock()
 			fetchFailedCount++
 			if fetchFailedCount >= config.FetchFailedThreshold {
 				fetchFailedCount = 0
+				requestStateMutex.Unlock()
 				status, out, err := ExecCommand(config.ExecCommand_FetchFailed)
 
 				if status {
@@ -96,13 +102,15 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 				} else {
 					Log("Fetch", GetLangText("Failed-ExecCommand"), true, out, err)
 				}
+			} else {
+				requestStateMutex.Unlock()
 			}
 		}
 		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
 		return -2, nil, nil
 	}
 
-	responseBody, err := ioutil.ReadAll(response.Body)
+	responseBody, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
@@ -129,7 +137,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if response.StatusCode == 409 {
-		// 尝试获取并设置 CSRF Token.
+		// 尝试从响应头获取并设置 CSRF Token.
 		if currentClientType == "Transmission" {
 			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if trCSRFToken != "" {
@@ -163,15 +171,17 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 
 	if allowCache {
 		etag := response.Header.Get("ETag")
+		lastMod := response.Header.Get("Last-Modified")
 
+		requestStateMutex.Lock()
 		if etag != "" {
 			urlETagCache[url] = etag
 		}
 
-		lastMod := response.Header.Get("Last-Modified")
 		if lastMod != "" {
 			urlLastModCache[url] = lastMod
 		}
+		requestStateMutex.Unlock()
 	}
 
 	return response.StatusCode, response.Header, responseBody
@@ -196,7 +206,7 @@ func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHead
 		return -2, nil, nil
 	}
 
-	responseBody, err := ioutil.ReadAll(response.Body)
+	responseBody, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
@@ -223,7 +233,7 @@ func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHead
 	}
 
 	if response.StatusCode == 409 {
-		// 尝试获取并设置 CSRF Token.
+		// 尝试从响应头获取并设置 CSRF Token.
 		if currentClientType == "Transmission" {
 			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if trCSRFToken != "" {
