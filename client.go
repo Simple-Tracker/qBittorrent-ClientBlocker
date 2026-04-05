@@ -43,7 +43,7 @@ func DetectClient() bool {
 	// 先尝试 qBittorrent.
 	qb := &QBClient{}
 	if config.ClientType == "" || config.ClientType == qb.GetClientType() {
-		if qB_GetAPIVersion() {
+		if qb.Detect() {
 			currentClient = qb
 			currentClientType = qb.GetClientType()
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
@@ -54,7 +54,7 @@ func DetectClient() bool {
 	// 再尝试 Transmission.
 	tr := &TRClient{}
 	if config.ClientType == "" || config.ClientType == tr.GetClientType() {
-		if Tr_DetectVersion() {
+		if tr.Detect() {
 			currentClient = tr
 			currentClientType = tr.GetClientType()
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
@@ -65,7 +65,7 @@ func DetectClient() bool {
 	// 最后尝试 BitComet.
 	bc := &BCClient{}
 	if config.ClientType == "" || config.ClientType == bc.GetClientType() {
-		if BC_DetectClient() {
+		if bc.Detect() {
 			currentClient = bc
 			currentClientType = bc.GetClientType()
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
