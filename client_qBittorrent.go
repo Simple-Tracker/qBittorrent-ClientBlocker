@@ -157,14 +157,14 @@ func qB_Login() bool {
 	loginParams := url.Values{}
 	loginParams.Set("username", config.ClientUsername)
 	loginParams.Set("password", config.ClientPassword)
-	_, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
+	loginResponseCode, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
 	}
 
 	loginResponseBodyStr := StrTrim(string(loginResponseBody))
-	if loginResponseBodyStr == "Ok." {
+	if loginResponseCode == 204 || loginResponseBodyStr == "Ok." {
 		Log("Login", GetLangText("Success-Login"), true)
 		return true
 	} else if loginResponseBodyStr == "Fails." {
