@@ -10,6 +10,7 @@ type Client interface {
 	FetchTorrentPeers(torrent *Torrent) ([]*Peer, error)
 	SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool
 	SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool
+	Detect() bool
 }
 
 // Torrent 统一表示不同客户端返回的种子信息.

@@ -147,7 +147,7 @@ func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
 func Tr_SetURL() bool {
 	return false
 }
-func Tr_DetectVersion() bool {
+func (c *TRClient) Detect() bool {
 	detectJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get", Args: Tr_ArgsStruct{Field: []string{"version"}}})
 	if err != nil {
 		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())

@@ -207,7 +207,7 @@ func qB_SetURL() bool {
 	Log("SetURL", GetLangText("Success-SetURL"), true, qBWebUIEnabled, config.ClientURL, config.ClientUsername)
 	return true
 }
-func qB_GetAPIVersion() bool {
+func (c *QBClient) Detect() bool {
 	if !strings.HasSuffix(config.ClientURL, "/api") {
 		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL+"/api/v2/app/webapiVersion", false, false, false, nil)
 		if apiResponseStatusCodeWithSuffix == 200 || apiResponseStatusCodeWithSuffix == 403 {

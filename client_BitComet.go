@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"strconv"
 	"strings"
 )
 
 // BCClient 实现了 BitComet 的客户端接口.
-type BCClient struct{}
+type BCClient struct {
+	Version int // 1: HTML, 2: JSON (v2.09+)
+}
 
 func (c *BCClient) GetClientType() string {
 	return "BitComet"
@@ -28,6 +31,10 @@ func (c *BCClient) Login() bool {
 
 // FetchTorrents 获取所有活动的种子列表.
 func (c *BCClient) FetchTorrents() ([]*Torrent, error) {
+	if c.Version == 2 {
+		return c.FetchTorrents_v2()
+	}
+
 	torrents := BC_FetchTorrents()
 	if torrents == nil {
 		return nil, nil
@@ -46,6 +53,10 @@ func (c *BCClient) FetchTorrents() ([]*Torrent, error) {
 
 // FetchTorrentPeers 获取特定种子的 Peer 列表.
 func (c *BCClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
+	if c.Version == 2 {
+		return c.FetchTorrentPeers_v2(torrent)
+	}
+
 	peers := BC_FetchTorrentPeers(torrent.Hash)
 	if peers == nil {
 		return nil, nil
@@ -68,7 +79,101 @@ func (c *BCClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
 }
 
 func (c *BCClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	return false // BitComet 暂未通过 WebUI 实现封禁.
+	if c.Version == 2 {
+		return c.BC_SubmitBlockPeer_v2(blockPeerMap)
+	}
+	return false // BitComet 1.x 暂未通过 WebUI 实现封禁.
+}
+
+// Version 2 实现逻辑.
+func (c *BCClient) FetchTorrents_v2() ([]*Torrent, error) {
+	_, _, responseBody := Fetch(config.ClientURL+"/api_v2/task_list/get?state_group=ACTIVE", true, true, false, nil)
+	if responseBody == nil {
+		return nil, nil
+	}
+
+	var resp BC_v2_TaskListResponse
+	if err := json.Unmarshal(responseBody, &resp); err != nil {
+		Log("FetchTorrents_v2", GetLangText("Error-Parse"), true, err.Error())
+		return nil, err
+	}
+
+	var result []*Torrent
+	for _, t := range resp.TaskList {
+		if strings.ToUpper(t.Type) != "BT" {
+			continue
+		}
+		result = append(result, &Torrent{
+			Hash:       t.TaskID,
+			TotalSize:  t.Size,
+			Tracker:    "BitComet-v2",
+			LeechCount: int64(t.LeechCount),
+		})
+	}
+	return result, nil
+}
+
+func (c *BCClient) FetchTorrentPeers_v2(torrent *Torrent) ([]*Peer, error) {
+	_, _, responseBody := Fetch(config.ClientURL+"/api/task/peers/get?task_id="+torrent.Hash+"&groups=peers_connected", true, true, false, nil)
+	if responseBody == nil {
+		return nil, nil
+	}
+
+	var resp BC_v2_PeerListResponse
+	if err := json.Unmarshal(responseBody, &resp); err != nil {
+		Log("FetchTorrentPeers_v2", GetLangText("Error-Parse"), true, err.Error())
+		return nil, err
+	}
+
+	var result []*Peer
+	for _, p := range resp.PeerList {
+		result = append(result, &Peer{
+			IP:         p.IP,
+			Port:       p.Port,
+			Client:     p.Client,
+			DlSpeed:    p.DlSpeed,
+			UpSpeed:    p.UpSpeed,
+			Progress:   p.Progress / 100.0, // API 返回通常是 0-100.
+			Downloaded: p.Downloaded,
+			Uploaded:   p.Uploaded,
+		})
+	}
+	return result, nil
+}
+
+func (c *BCClient) BC_SubmitBlockPeer_v2(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	// 按 Torrent 分组 IP 以匹配 ban_ip 接口要求.
+	taskIPs := make(map[string][]string)
+	for peerIP, peerInfo := range blockPeerMap {
+		if peerInfo.InfoHash != "" {
+			taskIPs[peerInfo.InfoHash] = append(taskIPs[peerInfo.InfoHash], peerIP)
+		}
+	}
+
+	if len(taskIPs) == 0 {
+		return true
+	}
+
+	allSuccess := true
+	for taskID, ips := range taskIPs {
+		params := BC_v2_BanParams{
+			TaskID:  taskID,
+			BanTime: "ban_ip_forever",
+			IPList:  ips,
+		}
+		postData, _ := json.Marshal(params)
+		code, _, _ := Submit(config.ClientURL+"/api/task/peers/ban_ip", string(postData), true, true, &Tr_jsonHeader)
+		if code != 200 {
+			allSuccess = false
+		}
+	}
+	return allSuccess
+}
+
+type BC_v2_BanParams struct {
+	TaskID  string   `json:"task_id"`
+	BanTime string   `json:"ban_time"`
+	IPList  []string `json:"ip_list"`
 }
 
 func (c *BCClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
@@ -89,6 +194,38 @@ type BC_PeerStruct struct {
 	Uploaded   int64
 	DlSpeed    int64
 	UpSpeed    int64
+}
+
+// BitComet v2 JSON API 结构体.
+type BC_v2_CommonResponse struct {
+	Result string `json:"result"`
+}
+type BC_v2_TaskListResponse struct {
+	TaskList []BC_v2_Task `json:"movie_list"` // 该 API 实际返回的是 movie_list.
+}
+type BC_v2_Task struct {
+	TaskID    string `json:"task_id"`
+	Type      string `json:"type"`
+	Size      int64  `json:"total_size"`
+	UpSpeed   int64  `json:"upload_speed"`
+	Status    string `json:"state"`
+	InfoHash  string `json:"info_hash"`
+	Name      string `json:"name"`
+	Progress  int    `json:"progress"`
+	LeechCount int    `json:"leechers_count"`
+}
+type BC_v2_PeerListResponse struct {
+	PeerList []BC_v2_Peer `json:"peers_connected"`
+}
+type BC_v2_Peer struct {
+	IP         string  `json:"address"`
+	Port       int     `json:"remoteport"`
+	Client     string  `json:"clienttype"`
+	Progress   float64 `json:"progress"`
+	DlSpeed    int64   `json:"downrate"`
+	UpSpeed    int64   `json:"uprate"`
+	Downloaded int64   `json:"downsize"`
+	Uploaded   int64   `json:"upsize"`
 }
 
 func BC_ParseTorrentLink(torrentLinkStr string) int {
@@ -200,9 +337,24 @@ func BC_ParseIP(ipStr string) (string, int) {
 
 	return ipWithoutPortStr, port
 }
-func BC_DetectClient() bool {
+func (c *BCClient) Detect() bool {
+	// 优先探测 Version 2 (JSON API).
+	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/api_v2/task_list/get", false, false, false, nil)
+	if apiResponseStatusCode == 200 || apiResponseStatusCode == 401 {
+		c.Version = 2
+		Log("DetectClient", "BitComet (Version 2 - JSON API) Detected", true)
+		return true
+	}
+
+	// 回落探测 Version 1 (HTML).
 	apiResponseStatusCode, apiResponseHeaders, _ := Fetch(config.ClientURL+"/panel/", false, false, false, nil)
-	return (apiResponseStatusCode == 401 && strings.Contains(apiResponseHeaders.Get("WWW-Authenticate"), "BitComet"))
+	if apiResponseStatusCode == 401 && strings.Contains(apiResponseHeaders.Get("WWW-Authenticate"), "BitComet") {
+		c.Version = 1
+		Log("DetectClient", "BitComet (Version 1 - HTML) Detected", true)
+		return true
+	}
+
+	return false
 }
 func BC_Login() bool {
 	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/panel/", false, true, false, nil)
