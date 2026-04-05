@@ -7,14 +7,15 @@ import (
 )
 
 func TestClearBlockPeerExecutesUnbanCommand(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldBlockPeerMap := blockPeerMap
 	oldBlockCIDRMap := blockCIDRMap
 	oldCurrentTimestamp := currentTimestamp
 	oldLastCleanTimestamp := lastCleanTimestamp
 	oldExecPeerCommand := execPeerCommand
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		blockPeerMap = oldBlockPeerMap
 		blockCIDRMap = oldBlockCIDRMap
 		currentTimestamp = oldCurrentTimestamp
@@ -22,7 +23,8 @@ func TestClearBlockPeerExecutesUnbanCommand(t *testing.T) {
 		execPeerCommand = oldExecPeerCommand
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.CleanInterval = 0
 	config.BanTime = 1
 	config.ExecCommand_Unban = "unban {peerIP} {peerPort} {torrentInfoHash}"

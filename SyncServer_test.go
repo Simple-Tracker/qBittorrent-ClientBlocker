@@ -9,14 +9,16 @@ import (
 )
 
 func TestSyncWithServerPrepareJSON(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldCurrentTimestamp := currentTimestamp
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		currentTimestamp = oldCurrentTimestamp
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.SyncServerToken = "token-a"
 	currentTimestamp = 123456
 
@@ -54,12 +56,13 @@ func TestSyncWithServerPrepareJSON(t *testing.T) {
 
 func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 	oldClientExternal := httpClientExternal
-	oldConfig := config
+	oldConfig := *config
 	oldSyncConfig := syncServer_syncConfig
 	oldRules := syncServer_CompiledRules
 	defer func() {
 		httpClientExternal = oldClientExternal
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		syncServer_syncConfig = oldSyncConfig
 		syncServer_CompiledRules = oldRules
 	}()
@@ -77,9 +80,10 @@ func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 	defer server.Close()
 
 	httpClientExternal = *server.Client()
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.SyncServerURL = server.URL
-	syncServer_syncConfig = SyncServer_ConfigStruct{
+	syncServer_syncConfig = &SyncServer_ConfigStruct{
 		Interval:    60,
 		Status:      "",
 		BlockIPRule: map[string][]string{},

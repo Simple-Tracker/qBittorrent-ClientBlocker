@@ -241,8 +241,6 @@ func ExecCommand(command string) (bool, string, string) {
 
 // EraseSyncMap 是一个辅助函数, 用于删除 sync.Map 中的所有元素.
 // 该函数可在 Go1.23 及以上版本替换为 `Clear` 方法.
-//
-// go:build !go1.23
 func EraseSyncMap(m *sync.Map) {
 	m.Range(func(key, value any) bool {
 		m.Delete(key)

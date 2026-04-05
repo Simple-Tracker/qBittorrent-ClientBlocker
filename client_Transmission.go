@@ -223,9 +223,6 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	stopStatusCode, _, _ := Submit(config.ClientURL, string(stopJSON), true, true, &Tr_jsonHeader)
 	if stopStatusCode != 200 {
 		stopErrMsg := "status code " + strconv.Itoa(stopStatusCode)
-		if err != nil {
-			stopErrMsg = err.Error()
-		}
 		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, stopErrMsg)
 		return
 	}
@@ -242,9 +239,6 @@ func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
 	startStatusCode, _, _ := Submit(config.ClientURL, string(startJSON), true, true, &Tr_jsonHeader)
 	if startStatusCode != 200 {
 		startErrMsg := "status code " + strconv.Itoa(startStatusCode)
-		if err != nil {
-			startErrMsg = err.Error()
-		}
 		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, startErrMsg)
 		return
 	}

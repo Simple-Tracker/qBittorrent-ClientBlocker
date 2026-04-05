@@ -19,19 +19,21 @@ func TestCloseLogFileWithNilHandle(t *testing.T) {
 }
 
 func TestLoadLogFirstOpenAndReopen(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldLogFile := logFile
 	oldTodayStr := todayStr
 	oldLastLogPath := lastLogPath
 	defer func() {
 		CloseLogFile()
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		logFile = oldLogFile
 		todayStr = oldTodayStr
 		lastLogPath = oldLastLogPath
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.LogToFile = true
 	config.LogPath = t.TempDir()
 	logFile = nil

@@ -9,12 +9,14 @@ import (
 )
 
 func TestWebUIBasicAuth(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.WebUI = true
 	config.WebUIUsername = "webui-user"
 	config.WebUIPassword = "webui-pass"
@@ -46,12 +48,14 @@ func TestWebUIBasicAuth(t *testing.T) {
 }
 
 func TestWebUIBasicAuthDisabledWhenUsernameEmpty(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.WebUI = true
 	config.WebUIUsername = ""
 	config.WebUIPassword = "ignored-password"
@@ -71,13 +75,14 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 	oldCurrentTimestamp := currentTimestamp
 	oldClientType := currentClientType
 	oldBTNConfig := btnConfig
-	oldConfig := config
+	oldConfig := *config
 	defer func() {
 		blockPeerMap = oldBlockPeerMap
 		currentTimestamp = oldCurrentTimestamp
 		currentClientType = oldClientType
 		btnConfig = oldBTNConfig
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 	}()
 
 	blockPeerMap = map[string]BlockPeerInfoStruct{
@@ -97,7 +102,8 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 	currentTimestamp = 1234
 	currentClientType = "qBittorrent"
 	btnConfig = nil
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.SyncServerURL = "http://sync.example"
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api/status", nil)

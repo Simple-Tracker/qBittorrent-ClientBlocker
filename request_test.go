@@ -8,16 +8,18 @@ import (
 )
 
 func TestNewRequest_ClientHeadersAndAuth(t *testing.T) {
-	oldConfig := config
+	oldConfig := *config
 	oldClientType := currentClientType
 	oldTrToken := Tr_csrfToken
 	defer func() {
-		config = oldConfig
+		tmpConf := oldConfig
+	config = &tmpConf
 		currentClientType = oldClientType
 		Tr_csrfToken = oldTrToken
 	}()
 
-	config = oldConfig
+	tmpConf := oldConfig
+	config = &tmpConf
 	config.UseBasicAuth = true
 	config.ClientUsername = "user-a"
 	config.ClientPassword = "pass-a"
