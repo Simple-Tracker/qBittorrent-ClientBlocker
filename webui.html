@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>qBittorrent-ClientBlocker Monitoring</title>
+    <title>qBittorrent-ClientBlocker Monitor</title>
     <style>
         :root {
-            /* Light Mode (Default) */
             --bg-color: #f1f5f9;
             --card-bg: #ffffff;
             --text-color: #0f172a;
@@ -17,17 +16,18 @@
             --border-color: #e2e8f0;
             --log-bg: #1e293b;
             --log-text: #f8fafc;
+            --input-bg: #f8fafc;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                /* Dark Mode */
                 --bg-color: #0f172a;
                 --card-bg: #1e293b;
                 --text-color: #f8fafc;
                 --secondary-text: #94a3b8;
                 --accent-color: #38bdf8;
                 --border-color: #334155;
+                --input-bg: #0b1220;
             }
         }
 
@@ -47,6 +47,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 16px;
             padding: 20px;
             background-color: var(--card-bg);
             border-radius: 12px;
@@ -61,6 +62,7 @@
             font-weight: 600;
             background-color: var(--success-color);
             color: white;
+            white-space: nowrap;
         }
 
         .grid {
@@ -79,17 +81,18 @@
 
         .card h2 {
             margin-top: 0;
+            margin-bottom: 16px;
             font-size: 1.1rem;
             color: var(--accent-color);
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-weight: 700;
         }
 
         .stat-item {
             display: flex;
             justify-content: space-between;
+            gap: 16px;
             margin: 12px 0;
             font-size: 0.95rem;
         }
@@ -98,22 +101,69 @@
             color: var(--secondary-text);
         }
 
+        .controls {
+            display: grid;
+            grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(140px, 1fr)) auto;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 16px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            font-size: 0.82rem;
+            color: var(--secondary-text);
+        }
+
+        .control-input,
+        .control-select {
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+        }
+
+        .filter-count {
+            color: var(--secondary-text);
+            font-size: 0.85rem;
+            text-align: right;
+            align-self: center;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
         .peers-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
         }
 
-        .peers-table th, .peers-table td {
+        .peers-table th,
+        .peers-table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
             font-size: 0.9rem;
+            vertical-align: top;
         }
 
         .peers-table th {
             color: var(--secondary-text);
             font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--secondary-text);
+            padding: 30px;
         }
 
         .logs-container {
@@ -137,16 +187,36 @@
             margin-top: 8px;
         }
 
+        @media (max-width: 860px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-count {
+                text-align: left;
+            }
+        }
+
         @media (max-width: 640px) {
-            body { padding: 10px; }
-            .grid { grid-template-columns: 1fr; }
+            body {
+                padding: 10px;
+            }
+
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <div>
-            <h1 style="margin:0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.025em;">qBCB MONITOR</h1>
+            <h1 id="app-title" style="margin:0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.025em;">qBittorrent-ClientBlocker Monitor</h1>
             <div id="version-text" style="color: var(--secondary-text); font-size: 0.8rem; margin-top: 2px;">Checking...</div>
         </div>
         <div id="connection-status" class="status-badge" style="background-color: var(--secondary-text)">Connecting</div>
@@ -154,49 +224,272 @@
 
     <div class="grid">
         <div class="card">
-            <h2>Status & Info</h2>
-            <div class="stat-item"><span class="stat-label">Uptime</span> <span id="uptime">0s</span></div>
-            <div class="stat-item"><span class="stat-label">Client</span> <span id="client-type">-</span></div>
-            <div class="stat-item"><span class="stat-label">BTN Protocol</span> <span id="btn-status">-</span></div>
-            <div class="stat-item"><span class="stat-label">System RAM</span> <span id="memory">- MB</span></div>
+            <h2 id="status-card-title">Status and Info</h2>
+            <div class="stat-item"><span class="stat-label" id="label-uptime">Uptime</span> <span id="uptime">0s</span></div>
+            <div class="stat-item"><span class="stat-label" id="label-client">Client</span> <span id="client-type">-</span></div>
+            <div class="stat-item"><span class="stat-label" id="label-extensions">Loaded extensions</span> <span id="loaded-extensions">None</span></div>
+            <div class="stat-item"><span class="stat-label" id="label-memory">System RAM</span> <span id="memory">- MB</span></div>
         </div>
         <div class="card">
-            <h2>Statistics</h2>
+            <h2 id="stats-card-title">Statistics</h2>
             <div class="stat-item" style="padding: 10px 0; border-bottom: 2px solid var(--border-color); margin-bottom: 15px;">
-                <span class="stat-label" style="font-size: 1rem; align-self: center;">Blocked IPs</span>
+                <span class="stat-label" id="label-blocked-ips" style="font-size: 1rem; align-self: center;">Blocked IPs</span>
                 <span id="total-blocked-ips" style="color: var(--danger-color); font-size: 1.8rem; font-weight: 800;">0</span>
             </div>
-            <div class="stat-item"><span class="stat-label">Blocked Ports</span> <span id="total-blocked-ports">0</span></div>
-            <div class="stat-item"><span class="stat-label">Last Update</span> <span id="last-update">-</span></div>
+            <div class="stat-item"><span class="stat-label" id="label-blocked-ports">Blocked ports</span> <span id="total-blocked-ports">0</span></div>
+            <div class="stat-item"><span class="stat-label" id="label-last-update">Last update</span> <span id="last-update">-</span></div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Recent Blocks</h2>
-        <div style="overflow-x: auto;">
+        <h2 id="blocked-list-title">Blocked peers</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label class="control-label" id="search-label" for="peer-search">Search</label>
+                <input id="peer-search" class="control-input" type="search" placeholder="Search by IP, port, or reason">
+            </div>
+            <div class="control-group">
+                <label class="control-label" id="module-filter-label" for="module-filter">Module filter</label>
+                <select id="module-filter" class="control-select"></select>
+            </div>
+            <div class="control-group">
+                <label class="control-label" id="reason-filter-label" for="reason-filter">Reason filter</label>
+                <select id="reason-filter" class="control-select"></select>
+            </div>
+            <div id="filter-count" class="filter-count">Showing 0 / 0</div>
+        </div>
+
+        <div class="table-wrapper">
             <table class="peers-table">
                 <thead>
                     <tr>
-                        <th>Peer IP</th>
-                        <th>Ports</th>
-                        <th>Module & Reason</th>
-                        <th>Blocked At</th>
+                        <th id="th-ip">Peer IP</th>
+                        <th id="th-ports">Ports</th>
+                        <th id="th-module">Module</th>
+                        <th id="th-reason">Reason</th>
+                        <th id="th-blocked-at">Blocked at</th>
                     </tr>
                 </thead>
                 <tbody id="peers-list">
-                    <!-- Dynamic -->
+                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
     <div class="card">
-        <h2>Live Logs</h2>
-        <div id="logs" class="logs-container">初始化中...</div>
-        <div class="refresh-notice">Auto-sync: 2s interval</div>
+        <h2 id="logs-title">Live logs</h2>
+        <div id="logs" class="logs-container">Initializing...</div>
+        <div id="refresh-notice" class="refresh-notice">Auto-sync: 2 s interval</div>
     </div>
 
     <script>
+        const i18n = {
+            zh: {
+                pageTitle: 'qBittorrent-ClientBlocker Monitor',
+                checking: '检查中...',
+                connecting: '连接中',
+                online: '在线',
+                offline: '离线',
+                statusAndInfo: '状态与信息',
+                uptime: '运行时长',
+                client: '客户端',
+                loadedExtensions: '载入扩展',
+                systemRam: '系统内存',
+                statistics: '统计信息',
+                blockedIPs: '已封禁 IP',
+                blockedPorts: '已封禁端口',
+                lastUpdate: '上次更新',
+                blockedPeers: '封禁列表',
+                search: '搜索',
+                searchPlaceholder: '按 IP, 端口或原因搜索',
+                moduleFilter: '模块筛选',
+                reasonFilter: '原因筛选',
+                allModules: '全部模块',
+                allReasons: '全部原因',
+                showingCount: '显示 {shown} / {total}',
+                peerIP: 'Peer IP',
+                ports: '端口',
+                module: '模块',
+                reason: '原因',
+                blockedAt: '封禁时间',
+                noBlockedPeers: '当前会话没有封禁记录',
+                noMatchedPeers: '没有匹配的封禁记录',
+                liveLogs: '实时日志',
+                initializing: '初始化中...',
+                autoSync: '自动同步: 2 s 间隔',
+                runningVersion: '运行版本: ',
+                never: '从未',
+                none: 'None',
+                unknown: '未知',
+                loading: '加载中...',
+                allPorts: 'ALL'
+            },
+            en: {
+                pageTitle: 'qBittorrent-ClientBlocker Monitor',
+                checking: 'Checking...',
+                connecting: 'Connecting',
+                online: 'Online',
+                offline: 'Offline',
+                statusAndInfo: 'Status and Info',
+                uptime: 'Uptime',
+                client: 'Client',
+                loadedExtensions: 'Loaded extensions',
+                systemRam: 'System RAM',
+                statistics: 'Statistics',
+                blockedIPs: 'Blocked IPs',
+                blockedPorts: 'Blocked ports',
+                lastUpdate: 'Last update',
+                blockedPeers: 'Blocked peers',
+                search: 'Search',
+                searchPlaceholder: 'Search by IP, port, or reason',
+                moduleFilter: 'Module filter',
+                reasonFilter: 'Reason filter',
+                allModules: 'All modules',
+                allReasons: 'All reasons',
+                showingCount: 'Showing {shown} / {total}',
+                peerIP: 'Peer IP',
+                ports: 'Ports',
+                module: 'Module',
+                reason: 'Reason',
+                blockedAt: 'Blocked at',
+                noBlockedPeers: 'No blocked peers in the current session.',
+                noMatchedPeers: 'No blocked peers match the current filters.',
+                liveLogs: 'Live logs',
+                initializing: 'Initializing...',
+                autoSync: 'Auto-sync: 2 s interval',
+                runningVersion: 'Running version: ',
+                never: 'Never',
+                none: 'None',
+                unknown: 'Unknown',
+                loading: 'Loading...',
+                allPorts: 'ALL'
+            }
+        };
+
+        const locale = (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+        const text = i18n[locale];
+        let allPeers = [];
+
+        function t(key) {
+            return text[key] || i18n.en[key] || key;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function setStaticText() {
+            document.documentElement.lang = locale;
+            document.title = t('pageTitle');
+            document.getElementById('app-title').textContent = t('pageTitle');
+            document.getElementById('version-text').textContent = t('checking');
+            document.getElementById('connection-status').textContent = t('connecting');
+            document.getElementById('status-card-title').textContent = t('statusAndInfo');
+            document.getElementById('label-uptime').textContent = t('uptime');
+            document.getElementById('label-client').textContent = t('client');
+            document.getElementById('label-extensions').textContent = t('loadedExtensions');
+            document.getElementById('label-memory').textContent = t('systemRam');
+            document.getElementById('stats-card-title').textContent = t('statistics');
+            document.getElementById('label-blocked-ips').textContent = t('blockedIPs');
+            document.getElementById('label-blocked-ports').textContent = t('blockedPorts');
+            document.getElementById('label-last-update').textContent = t('lastUpdate');
+            document.getElementById('blocked-list-title').textContent = t('blockedPeers');
+            document.getElementById('search-label').textContent = t('search');
+            document.getElementById('peer-search').placeholder = t('searchPlaceholder');
+            document.getElementById('module-filter-label').textContent = t('moduleFilter');
+            document.getElementById('reason-filter-label').textContent = t('reasonFilter');
+            document.getElementById('th-ip').textContent = t('peerIP');
+            document.getElementById('th-ports').textContent = t('ports');
+            document.getElementById('th-module').textContent = t('module');
+            document.getElementById('th-reason').textContent = t('reason');
+            document.getElementById('th-blocked-at').textContent = t('blockedAt');
+            document.getElementById('logs-title').textContent = t('liveLogs');
+            document.getElementById('logs').textContent = t('initializing');
+            document.getElementById('refresh-notice').textContent = t('autoSync');
+            document.getElementById('peers-list').innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('loading'))}</td></tr>`;
+        }
+
+        function formatUptime(seconds) {
+            const d = Math.floor(seconds / (3600 * 24));
+            const h = Math.floor(seconds % (3600 * 24) / 3600);
+            const m = Math.floor(seconds % 3600 / 60);
+            const s = Math.floor(seconds % 60);
+            return `${d > 0 ? d + 'd ' : ''}${h}h ${m}m ${s}s`;
+        }
+
+        function formatLoadedExtensions(extensions) {
+            return extensions && extensions.length > 0 ? extensions.join(', ') : t('none');
+        }
+
+        function populateSelect(selectId, values, allLabel) {
+            const select = document.getElementById(selectId);
+            const previousValue = select.value;
+            const options = [`<option value="">${escapeHtml(allLabel)}</option>`].concat(
+                values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+            );
+            select.innerHTML = options.join('');
+            if (previousValue && values.includes(previousValue)) {
+                select.value = previousValue;
+            }
+        }
+
+        function updateFilters(peers) {
+            const modules = [...new Set(peers.map((peer) => peer.module).filter(Boolean))].sort();
+            const reasons = [...new Set(peers.map((peer) => peer.reason).filter(Boolean))].sort();
+            populateSelect('module-filter', modules, t('allModules'));
+            populateSelect('reason-filter', reasons, t('allReasons'));
+        }
+
+        function renderPeers() {
+            const searchValue = document.getElementById('peer-search').value.trim().toLowerCase();
+            const moduleFilter = document.getElementById('module-filter').value;
+            const reasonFilter = document.getElementById('reason-filter').value;
+
+            const filteredPeers = allPeers.filter((peer) => {
+                const ports = (peer.ports || []).join(', ');
+                const matchesSearch = !searchValue || peer.ip.toLowerCase().includes(searchValue) ||
+                    ports.toLowerCase().includes(searchValue) ||
+                    (peer.reason || '').toLowerCase().includes(searchValue);
+                const matchesModule = !moduleFilter || peer.module === moduleFilter;
+                const matchesReason = !reasonFilter || peer.reason === reasonFilter;
+                return matchesSearch && matchesModule && matchesReason;
+            });
+
+            document.getElementById('filter-count').textContent = t('showingCount')
+                .replace('{shown}', filteredPeers.length)
+                .replace('{total}', allPeers.length);
+
+            const peersList = document.getElementById('peers-list');
+            if (allPeers.length === 0) {
+                peersList.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('noBlockedPeers'))}</td></tr>`;
+                return;
+            }
+            if (filteredPeers.length === 0) {
+                peersList.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(t('noMatchedPeers'))}</td></tr>`;
+                return;
+            }
+
+            peersList.innerHTML = filteredPeers.map((peer) => {
+                const ports = (peer.ports || []).map((port) => port === 'ALL' ? t('allPorts') : port).join(', ');
+                return `
+                    <tr>
+                        <td style="font-weight: 500;">${escapeHtml(peer.ip)}</td>
+                        <td>${escapeHtml(ports)}</td>
+                        <td>${escapeHtml(peer.module || '-')}</td>
+                        <td>${escapeHtml(peer.reason || '-')}</td>
+                        <td style="color: var(--secondary-text)">${escapeHtml(new Date(peer.timestamp * 1000).toLocaleString())}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
         async function fetchData() {
             try {
                 const [statusRes, peersRes, logsRes] = await Promise.all([
@@ -205,77 +498,60 @@
                     fetch('/api/logs')
                 ]);
 
-                if (!statusRes.ok) throw new Error('Status failed');
+                if (!statusRes.ok || !peersRes.ok || !logsRes.ok) {
+                    throw new Error('Request failed');
+                }
 
                 const status = await statusRes.json();
                 const peers = await peersRes.json();
                 const logs = await logsRes.json();
 
-                updateUI(status, peers, logs);
-                
+                allPeers = Array.isArray(peers) ? peers : [];
+                updateFilters(allPeers);
+                updateUI(status, logs);
+                renderPeers();
+
                 const statusBadge = document.getElementById('connection-status');
-                statusBadge.textContent = 'ONLINE';
+                statusBadge.textContent = t('online');
                 statusBadge.style.backgroundColor = 'var(--success-color)';
             } catch (err) {
                 console.error(err);
                 const statusBadge = document.getElementById('connection-status');
-                statusBadge.textContent = 'OFFLINE';
+                statusBadge.textContent = t('offline');
                 statusBadge.style.backgroundColor = 'var(--danger-color)';
             }
         }
 
-        function formatUptime(seconds) {
-            const d = Math.floor(seconds / (3600*24));
-            const h = Math.floor(seconds % (3600*24) / 3600);
-            const m = Math.floor(seconds % 3600 / 60);
-            const s = Math.floor(seconds % 60);
-            return `${d > 0 ? d + 'd ' : ''}${h}h ${m}m ${s}s`;
-        }
-
-        function updateUI(status, peers, logs) {
-            document.getElementById('version-text').textContent = "Running Version: " + (status.program_version || 'Unknown');
+        function updateUI(status, logs) {
+            document.getElementById('version-text').textContent = t('runningVersion') + (status.program_version || t('unknown'));
             document.getElementById('uptime').textContent = formatUptime(status.uptime_seconds);
-            document.getElementById('client-type').textContent = status.client_type || 'None';
-            document.getElementById('btn-status').textContent = status.btn_status;
+            document.getElementById('client-type').textContent = status.client_type || t('none');
+            document.getElementById('loaded-extensions').textContent = formatLoadedExtensions(status.loaded_extensions || []);
             document.getElementById('memory').textContent = status.runtime.alloc_mb + ' MB';
             document.getElementById('total-blocked-ips').textContent = status.stats.total_blocked_ips;
             document.getElementById('total-blocked-ports').textContent = status.stats.total_blocked_ports;
-            
-            const lastUpdateTimestamp = status.stats.last_update_timestamp;
-            document.getElementById('last-update').textContent = lastUpdateTimestamp > 0 ? new Date(lastUpdateTimestamp * 1000).toLocaleString() : 'Never';
 
-            const peersList = document.getElementById('peers-list');
-            peersList.innerHTML = '';
-            
-            const sortedPeers = peers.slice(0, 15);
-            
-            if (sortedPeers.length === 0) {
-                peersList.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--secondary-text); padding: 30px;">No blocked peers in current session.</td></tr>';
-            } else {
-                sortedPeers.forEach((info) => {
-                    const tr = document.createElement('tr');
-                    const ports = (info.ports || []).join(', ');
-                    tr.innerHTML = `
-                        <td style="font-weight: 500;">${info.ip}</td>
-                        <td>${ports}</td>
-                        <td><span style="color: var(--secondary-text); font-size: 0.8rem; margin-right: 5px;">[${info.module}]</span> ${info.reason}</td>
-                        <td style="color: var(--secondary-text)">${new Date(info.timestamp * 1000).toLocaleString()}</td>
-                    `;
-                    peersList.appendChild(tr);
-                });
-            }
+            const lastUpdateTimestamp = status.stats.last_update_timestamp;
+            document.getElementById('last-update').textContent = lastUpdateTimestamp > 0
+                ? new Date(lastUpdateTimestamp * 1000).toLocaleString()
+                : t('never');
 
             const logsContainer = document.getElementById('logs');
-            const newLogs = logs.join('');
+            const newLogs = Array.isArray(logs) ? logs.join('') : '';
             if (logsContainer.textContent !== newLogs) {
                 const wasAtBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 20;
-                logsContainer.textContent = newLogs;
+                logsContainer.textContent = newLogs || t('initializing');
                 if (wasAtBottom) {
                     logsContainer.scrollTop = logsContainer.scrollHeight;
                 }
             }
         }
 
+        document.getElementById('peer-search').addEventListener('input', renderPeers);
+        document.getElementById('module-filter').addEventListener('change', renderPeers);
+        document.getElementById('reason-filter').addEventListener('change', renderPeers);
+
+        setStaticText();
         setInterval(fetchData, 2000);
         fetchData();
     </script>

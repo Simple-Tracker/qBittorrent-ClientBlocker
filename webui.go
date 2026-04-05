@@ -17,14 +17,14 @@ import (
 var WebUI_Index_HTML []byte
 
 type StatusResponse struct {
-	ProgramName    string  `json:"program_name"`
-	ProgramVersion string  `json:"program_version"`
-	UptimeSeconds  int64   `json:"uptime_seconds"`
-	ClientType     string  `json:"client_type"`
-	ClientURL      string  `json:"client_url"`
-	CurrentStats   Stats   `json:"stats"`
-	BTNStatus      string  `json:"btn_status"`
-	Runtime        Runtime `json:"runtime"`
+	ProgramName      string   `json:"program_name"`
+	ProgramVersion   string   `json:"program_version"`
+	UptimeSeconds    int64    `json:"uptime_seconds"`
+	ClientType       string   `json:"client_type"`
+	ClientURL        string   `json:"client_url"`
+	LoadedExtensions []string `json:"loaded_extensions"`
+	CurrentStats     Stats    `json:"stats"`
+	Runtime          Runtime  `json:"runtime"`
 }
 
 type Stats struct {
@@ -128,13 +128,12 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	btnStatus := "Not Loaded"
+	loadedExtensions := []string{}
+	if config.SyncServerURL != "" {
+		loadedExtensions = append(loadedExtensions, "SyncServer")
+	}
 	if btnConfig != nil {
-		if ability, exists := btnConfig.Ability["reconfigure"]; exists {
-			btnStatus = "Active (" + ability.Version + ")"
-		} else {
-			btnStatus = "Active"
-		}
+		loadedExtensions = append(loadedExtensions, "BTN")
 	}
 
 	totalBlockedIPs, totalBlockedPorts := GetWebUIBlockStats()
@@ -145,13 +144,13 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := StatusResponse{
-		ProgramName:    programName,
-		ProgramVersion: programVersion,
-		UptimeSeconds:  time.Now().Unix() - startTimestamp,
-		ClientType:     currentClientType,
-		ClientURL:      config.ClientURL,
-		CurrentStats:   stats,
-		BTNStatus:      btnStatus,
+		ProgramName:      programName,
+		ProgramVersion:   programVersion,
+		UptimeSeconds:    time.Now().Unix() - startTimestamp,
+		ClientType:       currentClientType,
+		ClientURL:        config.ClientURL,
+		LoadedExtensions: loadedExtensions,
+		CurrentStats:     stats,
 		Runtime: Runtime{
 			GoVersion:    runtime.Version(),
 			NumGoroutine: runtime.NumGoroutine(),

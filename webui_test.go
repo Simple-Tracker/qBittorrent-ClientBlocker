@@ -71,11 +71,13 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 	oldCurrentTimestamp := currentTimestamp
 	oldClientType := currentClientType
 	oldBTNConfig := btnConfig
+	oldConfig := config
 	defer func() {
 		blockPeerMap = oldBlockPeerMap
 		currentTimestamp = oldCurrentTimestamp
 		currentClientType = oldClientType
 		btnConfig = oldBTNConfig
+		config = oldConfig
 	}()
 
 	blockPeerMap = map[string]BlockPeerInfoStruct{
@@ -95,6 +97,8 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 	currentTimestamp = 1234
 	currentClientType = "qBittorrent"
 	btnConfig = nil
+	config = oldConfig
+	config.SyncServerURL = "http://sync.example"
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -116,6 +120,9 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 	}
 	if resp.CurrentStats.LastUpdateTimestamp != 1234 {
 		t.Fatalf("LastUpdateTimestamp=%d, want 1234", resp.CurrentStats.LastUpdateTimestamp)
+	}
+	if len(resp.LoadedExtensions) != 1 || resp.LoadedExtensions[0] != "SyncServer" {
+		t.Fatalf("LoadedExtensions=%#v, want []string{\"SyncServer\"}", resp.LoadedExtensions)
 	}
 }
 
