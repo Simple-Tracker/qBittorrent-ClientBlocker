@@ -266,6 +266,7 @@ func Task() {
 	}
 
 	SyncWithServer()
+	BTN_Task()
 }
 
 // GC 执行垃圾回收任务以清理过期数据并释放内存.

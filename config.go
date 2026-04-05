@@ -59,6 +59,9 @@ type ConfigStruct struct {
 	ExecCommand_Unban             string
 	SyncServerURL                 string
 	SyncServerToken               string
+	BTNConfigureURL               string
+	BTNAppID                      string
+	BTNAppSecret                  string
 	BlockList                     []string
 	BlockListURL                  []string
 	BlockListFile                 []string
@@ -192,6 +195,7 @@ var config = ConfigStruct{
 	ExecCommand_Unban:             "",
 	SyncServerURL:                 "",
 	SyncServerToken:               "",
+	BTNConfigureURL:               "",
 	BlockList:                     []string{},
 	BlockListURL:                  []string{},
 	BlockListFile:                 []string{},
