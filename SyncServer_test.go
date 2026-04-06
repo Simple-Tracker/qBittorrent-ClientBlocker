@@ -37,7 +37,7 @@ func TestSyncWithServerPrepareJSON(t *testing.T) {
 	}
 
 	var body SyncServer_SubmitStruct
-	if err := json.Unmarshal(payload, &body); err != nil {
+	if err := json.Unmarshal([]byte(payload), &body); err != nil {
 		t.Fatalf("failed to decode payload: %v", err)
 	}
 	if body.Version != 1 {

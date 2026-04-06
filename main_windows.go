@@ -49,7 +49,7 @@ func RegSysTray() {
 	}
 
 	systray.Run(func() {
-		defer RecoverAndStop("RegSysTray.onReady")
+		defer RecoverAndStop("RegSysTray.onReady", true)
 
 		systray.SetIcon(icon_Windows)
 		systray.SetTitle(programName)
@@ -67,12 +67,12 @@ func RegSysTray() {
 			}
 		})
 	}, func() {
-		defer RecoverAndStop("RegSysTray.onExit")
+		defer RecoverAndStop("RegSysTray.onExit", true)
 		ReqStop()
 	})
 }
 func main() {
-	defer RecoverAndStop("main_windows")
+	defer RecoverAndStop("main_windows", true)
 
 	if PrepareEnv() {
 		if needHideWindow && showWindow {
