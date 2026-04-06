@@ -162,7 +162,7 @@ func (c *BCClient) BC_SubmitBlockPeer_v2(blockPeerMap map[string]BlockPeerInfoSt
 			IPList:  ips,
 		}
 		postData, _ := json.Marshal(params)
-		code, _, _ := Submit(config.ClientURL+"/api/task/peers/ban_ip", string(postData), true, true, &Tr_jsonHeader)
+		code, _, _ := Submit(config.ClientURL+"/api/task/peers/ban_ip", postData, true, true, &Tr_jsonHeader)
 		if code != 200 {
 			allSuccess = false
 		}
@@ -303,19 +303,19 @@ func BC_ParseSpeed(speedStr string) int64 {
 
 	return BC_ParseSize(speedStrSplit[0])
 }
-func BC_ParsePrecent(precentStr string) float64 {
-	precentStr = StrTrim(precentStr)
-	if len(precentStr) < 2 {
+func BC_ParsePercent(percentStr string) float64 {
+	percentStr = StrTrim(percentStr)
+	if len(percentStr) < 2 {
 		return -1
 	}
 
-	precentStr = precentStr[:(len(precentStr) - 1)]
-	precent, err := strconv.ParseFloat(precentStr, 64)
+	percentStr = percentStr[:(len(percentStr) - 1)]
+	percent, err := strconv.ParseFloat(percentStr, 64)
 	if err != nil {
 		return -2
 	}
 
-	return precent
+	return percent
 }
 func BC_ParseIP(ipStr string) (string, int) {
 	ipStr = strings.ToLower(StrTrim(ipStr))
@@ -448,7 +448,7 @@ func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 			case 0:
 				peerIP, peerPort = BC_ParseIP(tdElement.Text())
 			case 1:
-				peerProgress = BC_ParsePrecent(tdElement.Text())
+				peerProgress = BC_ParsePercent(tdElement.Text())
 			case 2:
 				peerDlSpeed = BC_ParseSpeed(tdElement.Text())
 			case 3:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"strings"
@@ -12,14 +13,28 @@ var urlETagCache = make(map[string]string)
 var urlLastModCache = make(map[string]string)
 var requestStateMutex sync.RWMutex
 
-func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowCache bool, withHeader *map[string]string) *http.Request {
+func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, allowCache bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
 
-	if !isPOST {
+	if !isPost {
 		request, err = http.NewRequest("GET", url, nil)
 	} else {
-		request, err = http.NewRequest("POST", url, strings.NewReader(postdata))
+		var bodyReader io.Reader
+		if postdata != nil {
+			switch v := postdata.(type) {
+			case string:
+				bodyReader = strings.NewReader(v)
+			case []byte:
+				bodyReader = bytes.NewReader(v)
+			case io.Reader:
+				bodyReader = v
+			default:
+				Log("NewRequest", GetLangText("Error-NewRequest"), true, url, "Unsupported postdata type")
+				return nil
+			}
+		}
+		request, err = http.NewRequest("POST", url, bodyReader)
 	}
 
 	if err != nil {
@@ -47,19 +62,24 @@ func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowC
 		request.Header.Set("User-Agent", programUserAgent)
 	}
 
-	if !setContentType && isPOST {
+	if !setContentType && isPost {
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
 	if clientReq {
-		if currentClientType == "Transmission" && Tr_csrfToken != "" {
-			request.Header.Set("X-Transmission-Session-Id", Tr_csrfToken)
+		if currentClientType == "Transmission" {
+			Tr_csrfTokenMutex.RLock()
+			token := Tr_csrfToken
+			Tr_csrfTokenMutex.RUnlock()
+			if token != "" {
+				request.Header.Set("X-Transmission-Session-Id", token)
+			}
 		}
 
 		if config.UseBasicAuth && config.ClientUsername != "" {
 			request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
 		}
-	} else if !isPOST && allowCache {
+	} else if !isPost && allowCache {
 		requestStateMutex.RLock()
 		if etag, exist := urlETagCache[url]; exist {
 			request.Header.Set("If-None-Match", etag)
@@ -74,7 +94,7 @@ func NewRequest(isPOST bool, url string, postdata string, clientReq bool, allowC
 	return request
 }
 func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeader *map[string]string) (int, http.Header, []byte) {
-	request := NewRequest(false, url, "", clientReq, allowCache, withHeader)
+	request := NewRequest(false, url, nil, clientReq, allowCache, withHeader)
 	if request == nil {
 		return -1, nil, nil
 	}
@@ -110,8 +130,8 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 		return -2, nil, nil
 	}
 
-	responseBody, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
 
 	if err != nil {
 		Log("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
@@ -186,7 +206,8 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 
 	return response.StatusCode, response.Header, responseBody
 }
-func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHeader *map[string]string) (int, http.Header, []byte) {
+
+func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, withHeader *map[string]string) (int, http.Header, []byte) {
 	request := NewRequest(true, url, postdata, clientReq, false, withHeader)
 	if request == nil {
 		return -1, nil, nil
@@ -206,8 +227,8 @@ func Submit(url string, postdata string, tryLogin bool, clientReq bool, withHead
 		return -2, nil, nil
 	}
 
-	responseBody, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())

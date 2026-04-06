@@ -52,19 +52,23 @@ func WriteCrashLog(location string, recoverErr any, recoverStack []byte) {
 	_, _ = crashFile.Write([]byte("\n"))
 }
 
-func RecoverAndStop(location string) {
+func RecoverAndStop(location string, isFatal bool) {
 	if recoverErr := recover(); recoverErr != nil {
 		recoverStack := debug.Stack()
-		crashStopOnce.Do(func() {
+		if isFatal {
+			crashStopOnce.Do(func() {
+				WriteCrashLog(location, recoverErr, recoverStack)
+				Stop(recoverErr, recoverStack)
+			})
+		} else {
 			WriteCrashLog(location, recoverErr, recoverStack)
-			Stop(recoverErr, recoverStack)
-		})
+		}
 	}
 }
 
 func GoWithCrashLog(location string, fn func()) {
 	go func() {
-		defer RecoverAndStop(location)
+		defer RecoverAndStop(location, false)
 		fn()
 	}()
 }

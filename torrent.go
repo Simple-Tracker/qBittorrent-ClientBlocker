@@ -72,7 +72,7 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 // IsProgressNotMatchUploaded 判断 Peer 报告进度是否与已上传量不匹配.
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
 	if config.BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
-		startUploaded := (float64(torrentTotalSize) * (config.BanByPUStartPrecent / 100))
+		startUploaded := (float64(torrentTotalSize) * (config.BanByPUStartPercent / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
 		if (clientUploaded/1024/1024) >= int64(config.BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded*config.BanByPUAntiErrorRatio) < float64(clientUploaded) {
 			return true
@@ -91,15 +91,15 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 	}
 
 	if torrentTotalSize > 0 && peerInfo.Uploaded > 0 && (float64(relativeUploaded)/1024/1024) > float64(config.BanByRelativePUStartMB) {
-		var relativeUploadedPrecent float64 = 0
+		var relativeUploadedPercent float64 = 0
 		if peerInfo.Uploaded > 0 {
 			if peerInfo.Uploaded < lastPeerInfo.Uploaded {
-				relativeUploadedPrecent = 1
+				relativeUploadedPercent = 1
 			} else {
-				relativeUploadedPrecent = (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
+				relativeUploadedPercent = (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
 			}
 		}
-		if relativeUploadedPrecent > (config.BanByRelativePUStartPrecent / 100) {
+		if relativeUploadedPercent > (config.BanByRelativePUStartPercent / 100) {
 			var peerReportProgress float64 = 0
 			if peerInfo.Progress > 0 {
 				if peerInfo.Progress < lastPeerInfo.Progress {
@@ -108,7 +108,7 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 					peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
 				}
 			}
-			if relativeUploadedPrecent > (peerReportProgress * config.BanByRelativePUAntiErrorRatio) {
+			if relativeUploadedPercent > (peerReportProgress * config.BanByRelativePUAntiErrorRatio) {
 				return relativeUploaded
 			}
 		}
@@ -129,6 +129,15 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 		for torrentInfoHash, torrentInfo := range torrentMap {
 			for peerIP, peerInfo := range torrentInfo.Peers {
+				lastTorrentInfo, exist := lastTorrentMap[torrentInfoHash]
+				if exist {
+					if lastPeerInfo, exist := lastTorrentInfo.Peers[peerIP]; exist {
+						if lastPeerInfo.Uploaded == peerInfo.Uploaded {
+							continue
+						}
+					}
+				}
+
 				if IsBlockedPeer(peerIP, -1, true) {
 					continue
 				}

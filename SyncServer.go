@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/tidwall/jsonc"
 	"net"
 	"sync"
 	"sync/atomic"
+
+	"github.com/tidwall/jsonc"
 )
 
 type SyncServer_ConfigStruct struct {
@@ -139,7 +140,7 @@ func SyncWithServer() bool {
 			syncServer_CompiledRules = nil
 		}
 		ipBlockCIDRMapMutex.Unlock()
-		
+
 		syncServer_syncConfig = &SyncServer_ConfigStruct{
 			Interval:    60,
 			Status:      "",

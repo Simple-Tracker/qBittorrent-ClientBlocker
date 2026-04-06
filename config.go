@@ -86,16 +86,16 @@ type ConfigStruct struct {
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
-	IPUpCheckPerTorrentRatio      float64
-	MaxIPPortCount                uint32
-	BanByProgressUploaded         bool
-	BanByPUStartMB                uint32
-	BanByPUStartPrecent           float64
-	BanByPUAntiErrorRatio         float64
-	BanByRelativeProgressUploaded bool
-	BanByRelativePUStartMB        uint32
-	BanByRelativePUStartPrecent   float64
-	BanByRelativePUAntiErrorRatio float64
+	IPUpCheckPerTorrentRatio      float64 `json:"ipUpCheckPerTorrentRatio" toml:"ipUpCheckPerTorrentRatio"`
+	MaxIPPortCount                uint32  `json:"maxIPPortCount" toml:"maxIPPortCount"`
+	BanByProgressUploaded         bool    `json:"banByProgressUploaded" toml:"banByProgressUploaded"`
+	BanByPUStartMB                uint32  `json:"banByPUStartMB" toml:"banByPUStartMB"`
+	BanByPUStartPercent           float64 `json:"banByPUStartPercent" toml:"banByPUStartPercent"`
+	BanByPUAntiErrorRatio         float64 `json:"banByPUAntiErrorRatio" toml:"banByPUAntiErrorRatio"`
+	BanByRelativeProgressUploaded bool    `json:"banByRelativeProgressUploaded" toml:"banByRelativeProgressUploaded"`
+	BanByRelativePUStartMB        uint32  `json:"banByRelativePUStartMB" toml:"banByRelativePUStartMB"`
+	BanByRelativePUStartPercent   float64 `json:"banByRelativePUStartPercent" toml:"banByRelativePUStartPercent"`
+	BanByRelativePUAntiErrorRatio float64 `json:"banByRelativePUAntiErrorRatio" toml:"banByRelativePUAntiErrorRatio"`
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -158,19 +158,13 @@ var httpTransport = &http.Transport{
 var httpClient http.Client
 var httpClientExternal http.Client // 没有 Cookie.
 
-var httpServer = http.Server{
-	ReadTimeout:  30,
-	WriteTimeout: 30,
-	Handler:      &httpServerHandler{},
-}
-
+var configLock sync.RWMutex
 var config *ConfigStruct = &ConfigStruct{
 	CheckUpdate:                   true,
 	Debug:                         false,
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,
 	Interval:                      6,
-	CleanInterval:                 3600,
 	UpdateInterval:                86400,
 	RestartInterval:               6,
 	TorrentMapCleanInterval:       60,
@@ -222,8 +216,8 @@ var config *ConfigStruct = &ConfigStruct{
 	BlockListFile:                 []string{},
 	PortBlockList:                 []uint32{},
 	IPBlockList:                   []string{},
-	IPBlockListURL:                nil,
-	IPBlockListFile:               nil,
+	IPBlockListURL:                []string{},
+	IPBlockListFile:               []string{},
 	IgnoreByDownloaded:            100,
 	GenIPDat:                      0,
 	IPUploadedCheck:               false,
@@ -233,12 +227,16 @@ var config *ConfigStruct = &ConfigStruct{
 	MaxIPPortCount:                0,
 	BanByProgressUploaded:         false,
 	BanByPUStartMB:                20,
-	BanByPUStartPrecent:           2,
+	BanByPUStartPercent:           2,
 	BanByPUAntiErrorRatio:         3,
-	BanByRelativeProgressUploaded: false,
-	BanByRelativePUStartMB:        20,
-	BanByRelativePUStartPrecent:   2,
+	BanByRelativePUStartPercent:   3,
 	BanByRelativePUAntiErrorRatio: 3,
+}
+
+var httpServer = http.Server{
+	ReadTimeout:  30 * time.Second,
+	WriteTimeout: 30 * time.Second,
+	Handler:      &httpServerHandler{},
 }
 
 func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
@@ -272,7 +270,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 	return setCount
 }
 func SetBlockListFromFile() bool {
-	if config.BlockListFile == nil || len(config.BlockListFile) == 0 {
+	if len(config.BlockListFile) == 0 {
 		return true
 	}
 
@@ -368,7 +366,7 @@ func SetBlockListFromURL() bool {
 		if strings.HasSuffix(strings.ToLower(strings.Split(httpHeader.Get("Content-Type"), ";")[0]), "json") {
 			err := json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
 			if err != nil {
-				Log("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
+				Log("SetBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
 				continue
 			}
 		} else {
@@ -409,7 +407,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 	return setCount
 }
 func SetIPBlockListFromFile() bool {
-	if config.IPBlockListFile == nil || len(config.IPBlockListFile) == 0 {
+	if len(config.IPBlockListFile) == 0 {
 		return true
 	}
 
@@ -674,7 +672,9 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
+			configLock.Lock()
 			config = &newConfig
+			configLock.Unlock()
 			InitConfig()
 		}
 	}
