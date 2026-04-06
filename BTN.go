@@ -369,7 +369,7 @@ func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp i
 	}
 
 	authHeader := getBTNSubmitHeader()
-	_, _, response := Submit(ability.Endpoint, buf.String(), false, false, &authHeader)
+	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
 		Log("BTN_SubmitPeers", GetLangText("Error-FetchResponse"), true)
 	}
@@ -437,7 +437,7 @@ func BTN_SubmitBans(blockPeerMap map[string]BlockPeerInfoStruct, currentTimestam
 	}
 
 	authHeader := getBTNSubmitHeader()
-	_, _, response := Submit(ability.Endpoint, buf.String(), false, false, &authHeader)
+	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
 		Log("BTN_SubmitBans", GetLangText("Error-FetchResponse"), true)
 	}
@@ -530,7 +530,7 @@ func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap
 	}
 
 	authHeader := getBTNSubmitHeader()
-	_, _, response := Submit(ability.Endpoint, buf.String(), false, false, &authHeader)
+	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
 		Log("BTN_SubmitHistories", GetLangText("Error-FetchResponse"), true)
 	}

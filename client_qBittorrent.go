@@ -331,7 +331,7 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 }
 
 func qB_GetPreferences() map[string]interface{} {
-	_, _, responseBody := Submit(config.ClientURL+"/v2/app/preferences", "", true, true, nil)
+	_, _, responseBody := Fetch(config.ClientURL+"/v2/app/preferences", true, true, false, nil)
 	if responseBody == nil {
 		Log("GetPreferences", GetLangText("Failed-GetQBPreferences"), true)
 		return nil

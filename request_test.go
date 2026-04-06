@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,7 +16,9 @@ func TestNewRequest_ClientHeadersAndAuth(t *testing.T) {
 		tmpConf := oldConfig
 	config = &tmpConf
 		currentClientType = oldClientType
+		Tr_csrfTokenMutex.Lock()
 		Tr_csrfToken = oldTrToken
+		Tr_csrfTokenMutex.Unlock()
 	}()
 
 	tmpConf := oldConfig
@@ -24,7 +27,7 @@ func TestNewRequest_ClientHeadersAndAuth(t *testing.T) {
 	config.ClientUsername = "user-a"
 	config.ClientPassword = "pass-a"
 	currentClientType = "Transmission"
-	Tr_csrfToken = "csrf-a"
+	Tr_SetCSRFToken("csrf-a")
 
 	req := NewRequest(true, "http://example.com", "a=1", true, false, nil)
 	if req == nil {
@@ -127,7 +130,9 @@ func TestFetch_Transmission409SetsCSRF(t *testing.T) {
 	defer func() {
 		httpClient = oldClient
 		currentClientType = oldClientType
+		Tr_csrfTokenMutex.Lock()
 		Tr_csrfToken = oldToken
+		Tr_csrfTokenMutex.Unlock()
 	}()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +143,9 @@ func TestFetch_Transmission409SetsCSRF(t *testing.T) {
 
 	httpClient = *server.Client()
 	currentClientType = "Transmission"
+	Tr_csrfTokenMutex.Lock()
 	Tr_csrfToken = ""
+	Tr_csrfTokenMutex.Unlock()
 
 	code, _, body := Fetch(server.URL, false, true, false, nil)
 	if code != http.StatusConflict {
@@ -147,8 +154,11 @@ func TestFetch_Transmission409SetsCSRF(t *testing.T) {
 	if body != nil {
 		t.Fatalf("body should be nil for 409 token bootstrap path")
 	}
-	if Tr_csrfToken != "csrf-new" {
-		t.Fatalf("Tr_csrfToken=%q, want %q", Tr_csrfToken, "csrf-new")
+	Tr_csrfTokenMutex.RLock()
+	token := Tr_csrfToken
+	Tr_csrfTokenMutex.RUnlock()
+	if token != "csrf-new" {
+		t.Fatalf("Tr_csrfToken=%q, want %q", token, "csrf-new")
 	}
 }
 
@@ -166,5 +176,26 @@ func TestNewRequest_CustomHeadersPreserved(t *testing.T) {
 	}
 	if !strings.Contains(req.Header.Get("User-Agent"), "unit-test-agent") {
 		t.Fatalf("unexpected user-agent: %q", req.Header.Get("User-Agent"))
+	}
+}
+
+func TestSubmit_InputTypes(t *testing.T) {
+	var capturedBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Test string input.
+	Submit(server.URL, "string-data", false, false, nil)
+	if string(capturedBody) != "string-data" {
+		t.Fatalf("unexpected body for string input: %q", string(capturedBody))
+	}
+
+	// Test byte slice input.
+	Submit(server.URL, []byte("byte-data"), false, false, nil)
+	if string(capturedBody) != "byte-data" {
+		t.Fatalf("unexpected body for byte slice input: %q", string(capturedBody))
 	}
 }

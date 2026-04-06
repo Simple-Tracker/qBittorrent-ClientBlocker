@@ -183,9 +183,6 @@ func ClearBlockPeer() int {
 		blockCIDRMapMutex.Lock()
 		for peerIP, peerInfo := range blockPeerMap {
 			if currentTimestamp > (peerInfo.Timestamp + int64(config.BanTime)) {
-				cleanCount++
-				delete(blockPeerMap, peerIP)
-
 				peerNet := ParseIPCIDRByConfig(peerIP)
 
 				if peerNet != nil {
@@ -200,12 +197,14 @@ func ClearBlockPeer() int {
 						delete(blockCIDRInfo.IPs, peerIP)
 						if len(blockCIDRInfo.IPs) <= 0 {
 							delete(blockCIDRMap, peerNetStr)
-							continue
+						} else {
+							blockCIDRMap[peerNetStr] = blockCIDRInfo
 						}
-
-						blockCIDRMap[peerNetStr] = blockCIDRInfo
 					}
 				}
+
+				cleanCount++
+				delete(blockPeerMap, peerIP)
 
 				if config.ExecCommand_Unban != "" {
 					for peerPort := range peerInfo.Port {
@@ -329,8 +328,8 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		}
 	}
 
-	for port := range config.PortBlockList {
-		if port == peerPort {
+	for _, port := range config.PortBlockList {
+		if int(port) == peerPort {
 			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 			AddBlockPeer("CheckPeer", "Bad-Port", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
 			return 1, peerNet

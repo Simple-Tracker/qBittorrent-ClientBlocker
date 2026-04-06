@@ -3,9 +3,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
+	"sync"
 )
 
 // TRClient 实现了 Transmission 的客户端接口.
@@ -127,7 +126,8 @@ type Tr_PeerStruct struct {
 	UpSpeed     int64   `json:"rateToPeer"`
 }
 
-var Tr_csrfToken = ""
+var Tr_csrfToken string
+var Tr_csrfTokenMutex sync.RWMutex
 var Tr_ipfilterStr = ""
 var Tr_jsonHeader = map[string]string{"Content-Type": "application/json"}
 
@@ -145,7 +145,19 @@ func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 func Tr_SetURL() bool {
-	return false
+	if config.ClientURL == "" {
+		return false
+	}
+
+	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: config.SyncServerURL + "/ipfilter.dat"}})
+	if err != nil {
+		Log("SetURL", GetLangText("Error-GenJSON"), true, err.Error())
+		return false
+	}
+
+	Submit(config.ClientURL, tr_SessionSetJSON, false, true, &Tr_jsonHeader)
+
+	return true
 }
 func (c *TRClient) Detect() bool {
 	detectJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get", Args: Tr_ArgsStruct{Field: []string{"version"}}})
@@ -154,7 +166,7 @@ func (c *TRClient) Detect() bool {
 		return false
 	}
 
-	detectStatusCode, _, _ := Submit(config.ClientURL, string(detectJSON), false, false, &Tr_jsonHeader)
+	detectStatusCode, _, _ := Submit(config.ClientURL, detectJSON, false, false, &Tr_jsonHeader)
 	return (detectStatusCode == 200 || detectStatusCode == 409)
 }
 func Tr_Login() bool {
@@ -164,9 +176,12 @@ func Tr_Login() bool {
 		return false
 	}
 
-	Submit(config.ClientURL, string(loginJSON), false, true, nil)
+	Submit(config.ClientURL, loginJSON, false, true, nil)
 
-	if Tr_csrfToken == "" {
+	Tr_csrfTokenMutex.RLock()
+	token := Tr_csrfToken
+	Tr_csrfTokenMutex.RUnlock()
+	if token == "" {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
 	}
@@ -174,134 +189,47 @@ func Tr_Login() bool {
 	return true
 }
 func Tr_SetCSRFToken(csrfToken string) {
+	Tr_csrfTokenMutex.Lock()
 	Tr_csrfToken = csrfToken
+	Tr_csrfTokenMutex.Unlock()
 	Log("SetCSRFToken", GetLangText("Success-SetCSRFToken"), true, csrfToken)
 }
 func Tr_FetchTorrents() *Tr_TorrentsStruct {
-	loginJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-get", Args: Tr_ArgsStruct{Field: []string{"hashString", "totalSize", "isPrivate", "peers"}}})
+	fetchJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-get", Args: Tr_ArgsStruct{Field: []string{"hashString", "totalSize", "private", "peers"}}})
 	if err != nil {
 		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
 		return nil
 	}
 
-	_, _, torrentsResponseBody := Submit(config.ClientURL, string(loginJSON), true, true, &Tr_jsonHeader)
-	if torrentsResponseBody == nil {
-		Log("FetchTorrents", GetLangText("Error"), true)
+	_, _, fetchResponseBody := Submit(config.ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
+	if fetchResponseBody == nil {
+		Log("FetchTorrents", GetLangText("Error-FetchResponse"), true)
 		return nil
 	}
 
-	var torrentsResponse Tr_TorrentsResponseStruct
-	if err := json.Unmarshal(torrentsResponseBody, &torrentsResponse); err != nil {
+	var fetchResponse Tr_TorrentsResponseStruct
+	if err := json.Unmarshal(fetchResponseBody, &fetchResponse); err != nil {
 		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
-	if torrentsResponse.Result != "success" {
-		Log("FetchTorrents", GetLangText("Error-Parse"), true, torrentsResponse.Result)
-		return nil
-	}
-
-	return &torrentsResponse.Args
-}
-
-func Tr_RestartTorrentByMap(blockPeerMap map[string]BlockPeerInfoStruct) {
-	peerInfoHashes := []string{}
-	for _, peerInfo := range blockPeerMap {
-		peerInfoHashes = append(peerInfoHashes, peerInfo.InfoHash)
-	}
-
-	if len(peerInfoHashes) <= 0 {
-		return
-	}
-
-	stopJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-stop", Args: Tr_ArgTorrentsStruct{IDs: peerInfoHashes}})
-	if err != nil {
-		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
-		return
-	}
-
-	stopStatusCode, _, _ := Submit(config.ClientURL, string(stopJSON), true, true, &Tr_jsonHeader)
-	if stopStatusCode != 200 {
-		stopErrMsg := "status code " + strconv.Itoa(stopStatusCode)
-		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Stop"), true, stopErrMsg)
-		return
-	}
-
-	Log("RestartTorrentByMap", GetLangText("Debug-RestartTorrentByMap_Wait"), true, config.Interval)
-	time.Sleep(time.Duration(config.RestartInterval) * time.Second)
-
-	startJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-start", Args: Tr_ArgTorrentsStruct{IDs: peerInfoHashes}})
-	if err != nil {
-		Log("RestartTorrentByMap", GetLangText("Error-GenJSON"), true, err.Error())
-		return
-	}
-
-	startStatusCode, _, _ := Submit(config.ClientURL, string(startJSON), true, true, &Tr_jsonHeader)
-	if startStatusCode != 200 {
-		startErrMsg := "status code " + strconv.Itoa(startStatusCode)
-		Log("RestartTorrentByMap", GetLangText("Error-RestartTorrentByMap_Start"), true, startErrMsg)
-		return
-	}
+	return &fetchResponse.Args
 }
 func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	ipfilterCount, ipfilterStr := GenIPFilter(2, blockPeerMap)
-	Tr_ipfilterStr = ipfilterStr
-
-	blocklistURL := ""
-	if strings.Contains(config.Listen, ".") {
-		blocklistURL = "http://" + config.Listen
-	} else {
-		blocklistURL = "http://127.0.0.1" + config.Listen
+	ipfilterList := []string{}
+	for peerIP := range blockPeerMap {
+		ipfilterList = append(ipfilterList, peerIP)
 	}
-	blocklistURL += "/ipfilter.dat?t=" + strconv.FormatInt(currentTimestamp, 10)
 
-	sessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistSize: ipfilterCount, BlocklistURL: blocklistURL}})
+	Tr_ipfilterStr = strings.Join(ipfilterList, "\n")
+
+	tr_BlockListUpdateJSON, err := json.Marshal(Tr_RequestStruct{Method: "blocklist-update"})
 	if err != nil {
 		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
-	_, _, sessionResponseBody := Submit(config.ClientURL, string(sessionSetJSON), true, true, &Tr_jsonHeader)
-	if sessionResponseBody == nil {
-		Log("SubmitBlockPeer", GetLangText("Error"), true)
-		return false
-	}
-
-	var sessionResponse Tr_ResponseStruct
-	if err := json.Unmarshal(sessionResponseBody, &sessionResponse); err != nil {
-		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, err.Error())
-		return false
-	}
-
-	if sessionResponse.Result != "success" {
-		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, sessionResponse.Result)
-		return false
-	}
-
-	blocklistUpdateJSON, err := json.Marshal(Tr_RequestStruct{Method: "blocklist-update"})
-	if err != nil {
-		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
-		return false
-	}
-
-	_, _, blocklistUpdateResponseBody := Submit(config.ClientURL, string(blocklistUpdateJSON), true, true, &Tr_jsonHeader)
-	if blocklistUpdateResponseBody == nil {
-		Log("SubmitBlockPeer", GetLangText("Error"), true)
-		return false
-	}
-
-	var blocklistUpdateResponse Tr_ResponseStruct
-	if err := json.Unmarshal(blocklistUpdateResponseBody, &blocklistUpdateResponse); err != nil {
-		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, err.Error())
-		return false
-	}
-
-	if blocklistUpdateResponse.Result != "success" {
-		Log("SubmitBlockPeer", GetLangText("Error-Parse"), true, blocklistUpdateResponse.Result)
-		return false
-	}
-
-	Tr_RestartTorrentByMap(blockPeerMap)
+	Submit(config.ClientURL, tr_BlockListUpdateJSON, true, true, &Tr_jsonHeader)
 
 	return true
 }

@@ -13,7 +13,7 @@ func TestSyncWithServerPrepareJSON(t *testing.T) {
 	oldCurrentTimestamp := currentTimestamp
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 		currentTimestamp = oldCurrentTimestamp
 	}()
 
@@ -37,7 +37,7 @@ func TestSyncWithServerPrepareJSON(t *testing.T) {
 	}
 
 	var body SyncServer_SubmitStruct
-	if err := json.Unmarshal([]byte(payload), &body); err != nil {
+	if err := json.Unmarshal(payload, &body); err != nil {
 		t.Fatalf("failed to decode payload: %v", err)
 	}
 	if body.Version != 1 {
@@ -62,7 +62,7 @@ func TestSyncWithServerSubmitCompilesCIDRs(t *testing.T) {
 	defer func() {
 		httpClientExternal = oldClientExternal
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 		syncServer_syncConfig = oldSyncConfig
 		syncServer_CompiledRules = oldRules
 	}()

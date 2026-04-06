@@ -5,7 +5,7 @@ package main
 func Platform_Stop() {
 }
 func main() {
-	defer RecoverAndStop("main")
+	defer RecoverAndStop("main", true)
 
 	/*
 		torrentMap2 := make(map[string]TorrentInfoStruct)
