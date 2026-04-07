@@ -229,6 +229,8 @@ var config *ConfigStruct = &ConfigStruct{
 	BanByPUStartMB:                20,
 	BanByPUStartPercent:           2,
 	BanByPUAntiErrorRatio:         3,
+	BanByRelativeProgressUploaded: false,
+	BanByRelativePUStartMB:        20,
 	BanByRelativePUStartPercent:   3,
 	BanByRelativePUAntiErrorRatio: 3,
 }
