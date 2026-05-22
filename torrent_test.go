@@ -2,6 +2,45 @@ package main
 
 import "testing"
 
+func TestExtractTrackerURI(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		// 完整 URL: 应剥离 scheme+host, 只保留 path+query
+		{"FullURL_PathOnly", "https://tracker.example.com/announce", "/announce"},
+		{"FullURL_WithPasskey", "https://tracker.example.com/announce?passkey=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6", "/announce?passkey=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"},
+		{"FullURL_PathToken", "https://tracker.example.com/0123456789abcdef0123456789abcdef/announce", "/0123456789abcdef0123456789abcdef/announce"},
+		{"FullURL_MultiQuery", "https://t.example.com/announce?authkey=abcdefabcdefabcdefabcdefabcdefab&torrent_pass=xyz", "/announce?authkey=abcdefabcdefabcdefabcdefabcdefab&torrent_pass=xyz"},
+
+		// issue 中的长域名: 域名必须被剥离
+		{"LongDomain", "http://aboutbeautifulgallopinghorsesinthegreenpasture.online/announce", "/announce"},
+
+		// 带端口
+		{"WithPort", "http://tracker.example.com:8080/announce?key=abc123", "/announce?key=abc123"},
+
+		// 纯路径 (无 scheme): 应原样保留
+		{"BarePathOnly", "/announce", "/announce"},
+		{"BarePathWithQuery", "/announce?passkey=abc", "/announce?passkey=abc"},
+
+		// 空字符串
+		{"EmptyString", "", ""},
+
+		// UDP Tracker
+		{"UDPTracker", "udp://tracker.opentrackr.org:1337/announce", "/announce"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := ExtractTrackerURI(c.input)
+			if got != c.want {
+				t.Fatalf("ExtractTrackerURI(%q) = %q, want %q", c.input, got, c.want)
+			}
+		})
+	}
+}
+
 func TestCheckTorrent(t *testing.T) {
 	oldConfig := *config
 	oldClient := currentClient
@@ -44,9 +83,43 @@ func TestCheckTorrent(t *testing.T) {
 		tmpConf := oldConfig
 	config = &tmpConf
 		config.IgnorePTTorrent = true
+		config.IgnorePTTorrentByRandomStr = true
 		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "https://tracker/announce?x=0123456789abcdef0123456789abcdef"})
 		if status != -4 {
 			t.Fatalf("status=%d, want -4", status)
+		}
+	})
+
+	t.Run("IgnorePathTokenTracker", func(t *testing.T) {
+		tmpConf := oldConfig
+	config = &tmpConf
+		config.IgnorePTTorrent = true
+		config.IgnorePTTorrentByRandomStr = true
+		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "https://tracker/0123456789abcdef0123456789abcdef/announce"})
+		if status != -4 {
+			t.Fatalf("status=%d, want -4", status)
+		}
+	})
+
+	t.Run("LongDomainPublicTracker_NotPT", func(t *testing.T) {
+		tmpConf := oldConfig
+	config = &tmpConf
+		config.IgnorePTTorrent = true
+		config.IgnorePTTorrentByRandomStr = true
+		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "http://aboutbeautifulgallopinghorsesinthegreenpasture.online/announce"})
+		if status == -4 {
+			t.Fatalf("status=%d, long domain public tracker should NOT be detected as PT", status)
+		}
+	})
+
+	t.Run("TokenDetectionDisabled", func(t *testing.T) {
+		tmpConf := oldConfig
+	config = &tmpConf
+		config.IgnorePTTorrent = true
+		config.IgnorePTTorrentByRandomStr = false
+		status, _ := CheckTorrent(&Torrent{Hash: "abc", Tracker: "https://tracker/announce?x=0123456789abcdef0123456789abcdef"})
+		if status == -4 {
+			t.Fatalf("status=%d, token detection disabled should NOT detect as PT", status)
 		}
 	})
 
