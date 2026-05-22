@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -16,6 +17,20 @@ type PeerInfoStruct struct {
 	Progress   float64
 	Downloaded int64
 	Uploaded   int64
+}
+
+// ExtractTrackerURI 从 Tracker URL 中提取路径和查询参数部分, 剥离 scheme 和域名.
+// 用于避免域名中的长字符串被误匹配为 PT Token.
+func ExtractTrackerURI(trackerURL string) string {
+	u, err := url.Parse(trackerURL)
+	if err != nil {
+		return trackerURL
+	}
+	uri := u.Path
+	if u.RawQuery != "" {
+		uri += "?" + u.RawQuery
+	}
+	return uri
 }
 
 var torrentMap = make(map[string]TorrentInfoStruct)
@@ -157,11 +172,14 @@ func CheckTorrent(torrentInfoHash string, torrentTracker string, torrentLeecherC
 			return -4, nil
 		}
 
-		randomStrMatched, err := randomStrRegexp.MatchString(lowerTorrentTracker)
-		if err != nil {
-			Log("CheckTorrent_MatchTracker", GetLangText("Error-MatchRegexpErr"), true, err.Error())
-		} else if randomStrMatched {
-			return -4, nil
+		if config.IgnorePTTorrentByRandomStr {
+			trackerURI := ExtractTrackerURI(lowerTorrentTracker)
+			randomStrMatched, err := randomStrRegexp.MatchString(trackerURI)
+			if err != nil {
+				Log("CheckTorrent_MatchTracker", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+			} else if randomStrMatched {
+				return -4, nil
+			}
 		}
 	}
 

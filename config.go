@@ -36,6 +36,7 @@ type ConfigStruct struct {
 	IgnoreEmptyPeer               bool
 	IgnoreNoLeechersTorrent       bool
 	IgnorePTTorrent               bool
+	IgnorePTTorrentByRandomStr    bool
 	IgnoreFailureExit             bool
 	SleepTime                     uint32
 	Timeout                       uint32
@@ -95,7 +96,7 @@ var needRegHotKey bool
 var needHideWindow bool
 var needHideSystray bool
 
-var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
+var randomStrRegexp = regexp2.MustCompile("(?:=|/)[a-zA-Z0-9]{32}(?:[&/]|$)", 0)
 var blockListCompiled sync.Map
 var ipBlockListCompiled sync.Map
 var blockListURLLastFetch int64 = 0
@@ -152,6 +153,7 @@ var config = ConfigStruct{
 	IgnoreEmptyPeer:               true,
 	IgnoreNoLeechersTorrent:       false,
 	IgnorePTTorrent:               true,
+	IgnorePTTorrentByRandomStr:    true,
 	IgnoreFailureExit:             false,
 	SleepTime:                     20,
 	Timeout:                       6,

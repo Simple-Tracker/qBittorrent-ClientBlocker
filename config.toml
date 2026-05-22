@@ -41,6 +41,7 @@ ipBlockListURL = [
 # ignoreEmptyPeer = true
 # ignoreNoLeechersTorrent = true
 # ignorePTTorrent = true
+# ignorePTTorrentByRandomStr = true
 # ignoreAuthFailed = false
 # sleepTime = 20
 # proxy = "Auto"
