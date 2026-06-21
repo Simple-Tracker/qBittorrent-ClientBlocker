@@ -218,7 +218,7 @@ func Tr_FetchTorrents() *Tr_TorrentsStruct {
 func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	ipfilterList := []string{}
 	for peerIP := range blockPeerMap {
-		ipfilterList = append(ipfilterList, peerIP)
+		ipfilterList = append(ipfilterList, ":" + peerIP + "-" + peerIP)
 	}
 
 	Tr_ipfilterStr = strings.Join(ipfilterList, "\n")
