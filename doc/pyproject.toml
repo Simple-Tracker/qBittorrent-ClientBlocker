@@ -1,0 +1,9 @@
+[project]
+name = "qbittorrent-clientblocker-docs"
+version = "0.0.1"
+description = "A client blocker compatible with qBittorrent/Transmission (Beta)/BitComet (Beta, Partial) which is prohibited to include but not limited to clients such as Xunlei."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mkdocs-material>=9.5.44",
+]
