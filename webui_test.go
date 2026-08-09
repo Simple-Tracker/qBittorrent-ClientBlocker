@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestWebUIBasicAuth(t *testing.T) {
 	oldConfig := *config
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 	}()
 
 	tmpConf := oldConfig
@@ -51,7 +52,7 @@ func TestWebUIBasicAuthDisabledWhenUsernameEmpty(t *testing.T) {
 	oldConfig := *config
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 	}()
 
 	tmpConf := oldConfig
@@ -82,7 +83,7 @@ func TestWebUIGetStatusCounts(t *testing.T) {
 		currentClientType = oldClientType
 		btnConfig = oldBTNConfig
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 	}()
 
 	blockPeerMap = map[string]BlockPeerInfoStruct{
@@ -176,6 +177,196 @@ func TestWebUIGetPeersResponse(t *testing.T) {
 	}
 	if strings.Join(peers[1].Ports, ",") != "6881,6882" {
 		t.Fatalf("unexpected sorted ports: %#v", peers[1].Ports)
+	}
+}
+
+func TestWebUIGetPeersSyncReturnsFullThenDeltas(t *testing.T) {
+	oldConfig := *config
+	testConfig := oldConfig
+	testConfig.WebUI = true
+	testConfig.ExecCommand_Ban = ""
+	config = &testConfig
+	blockPeerMapMutex.Lock()
+	oldBlockPeerMap := blockPeerMap
+	blockPeerMap = map[string]BlockPeerInfoStruct{
+		"203.0.113.1": {Timestamp: 10, Module: "CheckPeer", Reason: "Bad-Port", Port: map[int]bool{6881: true}},
+	}
+	blockPeerMapMutex.Unlock()
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 0
+	webUIPeerSyncEvents = nil
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		blockPeerMapMutex.Lock()
+		blockPeerMap = oldBlockPeerMap
+		blockPeerMapMutex.Unlock()
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+
+	requestSync := func(rawQuery string) WebUIBlockPeerSyncResponse {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		WebUI_GetPeers(recorder, httptest.NewRequest(http.MethodGet, "http://example.com/api/peers?"+rawQuery, nil))
+		var response WebUIBlockPeerSyncResponse
+		if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			t.Fatalf("unmarshal sync response: %v", err)
+		}
+		return response
+	}
+
+	initial := requestSync("sync=1")
+	if !initial.Reset || initial.Cursor != 0 || len(initial.Peers) != 1 || initial.Peers[0].IP != "203.0.113.1" {
+		t.Fatalf("unexpected initial sync: %#v", initial)
+	}
+
+	blockPeerMapMutex.Lock()
+	blockPeerMap["203.0.113.2"] = BlockPeerInfoStruct{Timestamp: 20, Module: "BTN", Reason: "Reputation", Port: map[int]bool{-1: true}}
+	blockPeerMapMutex.Unlock()
+	WebUI_RecordBlockPeerAdded("203.0.113.2")
+	added := requestSync("sync=1&cursor=0")
+	if added.Reset || added.Cursor != 1 || len(added.Peers) != 1 || added.Peers[0].IP != "203.0.113.2" {
+		t.Fatalf("unexpected add delta: %#v", added)
+	}
+
+	blockPeerMapMutex.Lock()
+	delete(blockPeerMap, "203.0.113.1")
+	blockPeerMapMutex.Unlock()
+	WebUI_RecordBlockPeerRemoved("203.0.113.1")
+	removed := requestSync("sync=1&cursor=1")
+	if removed.Reset || removed.Cursor != 2 || len(removed.Peers) != 0 || len(removed.RemovedIP) != 1 || removed.RemovedIP[0] != "203.0.113.1" {
+		t.Fatalf("unexpected remove delta: %#v", removed)
+	}
+}
+
+func TestWebUIGetPeersSyncResetsExpiredCursor(t *testing.T) {
+	blockPeerMapMutex.Lock()
+	oldBlockPeerMap := blockPeerMap
+	blockPeerMap = map[string]BlockPeerInfoStruct{
+		"203.0.113.8": {Timestamp: 80, Port: map[int]bool{6881: true}},
+	}
+	blockPeerMapMutex.Unlock()
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 10
+	webUIPeerSyncEvents = []webUIBlockPeerEvent{{Cursor: 8, RemovedIP: "203.0.113.7"}}
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		blockPeerMapMutex.Lock()
+		blockPeerMap = oldBlockPeerMap
+		blockPeerMapMutex.Unlock()
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+
+	recorder := httptest.NewRecorder()
+	WebUI_GetPeers(recorder, httptest.NewRequest(http.MethodGet, "http://example.com/api/peers?sync=1&cursor=3", nil))
+	var response WebUIBlockPeerSyncResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.Reset || response.Cursor != 10 || len(response.Peers) != 1 || response.Peers[0].IP != "203.0.113.8" {
+		t.Fatalf("expired cursor did not receive a full reset: %#v", response)
+	}
+}
+
+func TestWebUIPeerSyncEventBufferKeepsNewestEventsInOrder(t *testing.T) {
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 0
+	webUIPeerSyncEvents = nil
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+
+	for index := 0; index < webUIMaxPeerEvents+2; index++ {
+		appendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: strconv.Itoa(index)})
+	}
+
+	webUIPeerSyncMutex.Lock()
+	defer webUIPeerSyncMutex.Unlock()
+	if len(webUIPeerSyncEvents) != webUIMaxPeerEvents {
+		t.Fatalf("event count=%d, want %d", len(webUIPeerSyncEvents), webUIMaxPeerEvents)
+	}
+	if first := webUIBlockPeerEventAt(0); first.Cursor != 3 || first.RemovedIP != "2" {
+		t.Fatalf("oldest event=%#v", first)
+	}
+	if last := webUIBlockPeerEventAt(len(webUIPeerSyncEvents) - 1); last.Cursor != webUIMaxPeerEvents+2 {
+		t.Fatalf("newest event=%#v", last)
+	}
+}
+
+func TestAddBlockPeerRecordsOnlyNewWebUIPeers(t *testing.T) {
+	oldConfig := *config
+	oldCurrentTimestamp := currentTimestamp
+	blockPeerMapMutex.Lock()
+	oldBlockPeerMap := blockPeerMap
+	blockPeerMap = map[string]BlockPeerInfoStruct{}
+	blockPeerMapMutex.Unlock()
+	blockCIDRMapMutex.Lock()
+	oldBlockCIDRMap := blockCIDRMap
+	blockCIDRMap = map[string]BlockCIDRInfoStruct{}
+	blockCIDRMapMutex.Unlock()
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 0
+	webUIPeerSyncEvents = nil
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		currentTimestamp = oldCurrentTimestamp
+		blockPeerMapMutex.Lock()
+		blockPeerMap = oldBlockPeerMap
+		blockPeerMapMutex.Unlock()
+		blockCIDRMapMutex.Lock()
+		blockCIDRMap = oldBlockCIDRMap
+		blockCIDRMapMutex.Unlock()
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+
+	testConfig := oldConfig
+	testConfig.WebUI = true
+	testConfig.ExecCommand_Ban = ""
+	config = &testConfig
+	currentTimestamp = 10
+	AddBlockPeer("CheckPeer", "first", "203.0.113.20", 6881, "hash", "id", "client", 1, 2)
+	currentTimestamp = 20
+	AddBlockPeer("CheckPeer", "updated", "203.0.113.20", 6882, "hash", "id", "client", 3, 4)
+
+	response := getWebUIBlockPeerSync("1")
+	if response.Cursor != 1 || len(response.Peers) != 0 || len(response.RemovedIP) != 0 {
+		t.Fatalf("existing peer produced an update delta: %#v", response)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -50,6 +51,25 @@ type WebUIBlockPeer struct {
 	Uploaded   int64    `json:"uploaded"`
 }
 
+type WebUIBlockPeerSyncResponse struct {
+	Reset     bool             `json:"reset"`
+	Cursor    uint64           `json:"cursor"`
+	Peers     []WebUIBlockPeer `json:"peers"`
+	RemovedIP []string         `json:"removed_ips"`
+}
+
+type webUIBlockPeerEvent struct {
+	Cursor    uint64
+	Peer      *WebUIBlockPeer
+	RemovedIP string
+}
+
+const webUIMaxPeerEvents = 4096
+
+var webUIPeerSyncMutex sync.Mutex
+var webUIPeerSyncCursor uint64
+var webUIPeerSyncEvents []webUIBlockPeerEvent
+var webUIPeerSyncEventStart int
 
 func WebUI_IsPath(path string) bool {
 	return path == "/" || path == "/api/status" || path == "/api/peers" || path == "/api/logs"
@@ -130,6 +150,144 @@ func GetWebUIBlockPeers() []WebUIBlockPeer {
 	return peers
 }
 
+func getWebUIBlockPeer(peerIP string) (WebUIBlockPeer, bool) {
+	blockPeerMapMutex.RLock()
+	defer blockPeerMapMutex.RUnlock()
+	peerInfo, exists := blockPeerMap[peerIP]
+	if !exists {
+		return WebUIBlockPeer{}, false
+	}
+
+	ports := make([]int, 0, len(peerInfo.Port))
+	for port := range peerInfo.Port {
+		ports = append(ports, port)
+	}
+	sort.Ints(ports)
+	portLabels := make([]string, 0, len(ports))
+	for _, port := range ports {
+		if port == -1 {
+			portLabels = append(portLabels, "ALL")
+		} else {
+			portLabels = append(portLabels, strconv.Itoa(port))
+		}
+	}
+
+	return WebUIBlockPeer{
+		IP:         peerIP,
+		Timestamp:  peerInfo.Timestamp,
+		Module:     peerInfo.Module,
+		Reason:     peerInfo.Reason,
+		Ports:      portLabels,
+		ID:         peerInfo.ID,
+		Client:     peerInfo.Client,
+		Downloaded: peerInfo.Downloaded,
+		Uploaded:   peerInfo.Uploaded,
+	}, true
+}
+
+func appendWebUIBlockPeerEvent(event webUIBlockPeerEvent) {
+	webUIPeerSyncMutex.Lock()
+	webUIPeerSyncCursor++
+	event.Cursor = webUIPeerSyncCursor
+	if len(webUIPeerSyncEvents) < webUIMaxPeerEvents {
+		webUIPeerSyncEvents = append(webUIPeerSyncEvents, event)
+	} else {
+		webUIPeerSyncEvents[webUIPeerSyncEventStart] = event
+		webUIPeerSyncEventStart = (webUIPeerSyncEventStart + 1) % webUIMaxPeerEvents
+	}
+	webUIPeerSyncMutex.Unlock()
+}
+
+func WebUI_RecordBlockPeerAdded(peerIP string) {
+	if !config.WebUI {
+		return
+	}
+	peer, exists := getWebUIBlockPeer(peerIP)
+	if exists {
+		appendWebUIBlockPeerEvent(webUIBlockPeerEvent{Peer: &peer})
+	}
+}
+
+func WebUI_RecordBlockPeerRemoved(peerIP string) {
+	if !config.WebUI {
+		return
+	}
+	appendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: peerIP})
+}
+
+func webUIBlockPeerEventAt(index int) webUIBlockPeerEvent {
+	return webUIPeerSyncEvents[(webUIPeerSyncEventStart+index)%len(webUIPeerSyncEvents)]
+}
+
+func fullWebUIBlockPeerSyncLocked() WebUIBlockPeerSyncResponse {
+	return WebUIBlockPeerSyncResponse{
+		Reset:     true,
+		Cursor:    webUIPeerSyncCursor,
+		Peers:     GetWebUIBlockPeers(),
+		RemovedIP: []string{},
+	}
+}
+
+func getWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
+	webUIPeerSyncMutex.Lock()
+	defer webUIPeerSyncMutex.Unlock()
+
+	if cursorValue == "" {
+		return fullWebUIBlockPeerSyncLocked()
+	}
+	cursor, err := strconv.ParseUint(cursorValue, 10, 64)
+	if err != nil || cursor > webUIPeerSyncCursor {
+		return fullWebUIBlockPeerSyncLocked()
+	}
+	if len(webUIPeerSyncEvents) == 0 {
+		if cursor != webUIPeerSyncCursor {
+			return fullWebUIBlockPeerSyncLocked()
+		}
+		return WebUIBlockPeerSyncResponse{Cursor: webUIPeerSyncCursor, Peers: []WebUIBlockPeer{}, RemovedIP: []string{}}
+	}
+	if cursor+1 < webUIBlockPeerEventAt(0).Cursor {
+		return fullWebUIBlockPeerSyncLocked()
+	}
+
+	upserts := make(map[string]WebUIBlockPeer)
+	removed := make(map[string]struct{})
+	for index := range webUIPeerSyncEvents {
+		event := webUIBlockPeerEventAt(index)
+		if event.Cursor <= cursor {
+			continue
+		}
+		if event.Peer != nil {
+			upserts[event.Peer.IP] = *event.Peer
+			delete(removed, event.Peer.IP)
+		} else {
+			delete(upserts, event.RemovedIP)
+			removed[event.RemovedIP] = struct{}{}
+		}
+	}
+
+	peers := make([]WebUIBlockPeer, 0, len(upserts))
+	for _, peer := range upserts {
+		peers = append(peers, peer)
+	}
+	sort.Slice(peers, func(i, j int) bool {
+		if peers[i].Timestamp == peers[j].Timestamp {
+			return peers[i].IP < peers[j].IP
+		}
+		return peers[i].Timestamp > peers[j].Timestamp
+	})
+	removedIPs := make([]string, 0, len(removed))
+	for peerIP := range removed {
+		removedIPs = append(removedIPs, peerIP)
+	}
+	sort.Strings(removedIPs)
+
+	return WebUIBlockPeerSyncResponse{
+		Cursor:    webUIPeerSyncCursor,
+		Peers:     peers,
+		RemovedIP: removedIPs,
+	}
+}
+
 func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	loadedExtensions := []string{}
 	if config.SyncServerURL != "" {
@@ -166,6 +324,10 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 
 func WebUI_GetPeers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if _, syncRequested := r.URL.Query()["sync"]; syncRequested {
+		json.NewEncoder(w).Encode(getWebUIBlockPeerSync(r.URL.Query().Get("cursor")))
+		return
+	}
 	json.NewEncoder(w).Encode(GetWebUIBlockPeers())
 }
 

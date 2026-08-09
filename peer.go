@@ -46,9 +46,11 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	var torrentUploaded map[string]int64
 	var torrentDownloadedRaw map[string]int64
 	var torrentUploadedRaw map[string]int64
+	isNewPeer := false
 
 	blockPeerMapMutex.Lock()
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
+		isNewPeer = true
 		blockPeerPortMap = make(map[int]bool)
 		torrentDownloaded = make(map[string]int64)
 		torrentUploaded = make(map[string]int64)
@@ -135,6 +137,9 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	blockPeerMapMutex.Unlock()
 
 	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
+	if isNewPeer {
+		WebUI_RecordBlockPeerAdded(peerIP)
+	}
 
 	if config.ExecCommand_Ban != "" {
 		execCommand_Ban := config.ExecCommand_Ban
@@ -178,6 +183,7 @@ func AddBlockCIDR(peerIP string, peerNet *net.IPNet) {
 func ClearBlockPeer() int {
 	cleanCount := 0
 	execCommands := []string{}
+	removedPeerIPs := []string{}
 	if (blockPeerMap != nil && config.CleanInterval == 0) || (lastCleanTimestamp+int64(config.CleanInterval) < currentTimestamp) {
 		blockPeerMapMutex.Lock()
 		blockCIDRMapMutex.Lock()
@@ -205,6 +211,7 @@ func ClearBlockPeer() int {
 
 				cleanCount++
 				delete(blockPeerMap, peerIP)
+				removedPeerIPs = append(removedPeerIPs, peerIP)
 
 				if config.ExecCommand_Unban != "" {
 					for peerPort := range peerInfo.Port {
@@ -219,6 +226,9 @@ func ClearBlockPeer() int {
 		}
 		blockCIDRMapMutex.Unlock()
 		blockPeerMapMutex.Unlock()
+		for _, peerIP := range removedPeerIPs {
+			WebUI_RecordBlockPeerRemoved(peerIP)
+		}
 		if cleanCount != 0 {
 			lastCleanTimestamp = currentTimestamp
 			Log("ClearBlockPeer", GetLangText("Success-ClearBlockPeer"), true, cleanCount)
