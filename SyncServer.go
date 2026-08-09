@@ -38,7 +38,7 @@ var ipBlockCIDRMapMutex sync.RWMutex
 
 func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, string) {
 	torrentMapMutex.RLock()
-	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: atomic.LoadInt64(&currentTimestamp), Token: config.SyncServerToken, TorrentMap: torrentMap})
+	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: atomic.LoadInt64(&currentTimestamp), Token: configSnapshot().SyncServerToken, TorrentMap: torrentMap})
 	torrentMapMutex.RUnlock()
 	if err != nil {
 		Log("SyncWithServer_PrepareJSON", GetLangText("Error-GenJSON"), true, err.Error())
@@ -48,7 +48,7 @@ func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, 
 	return true, string(syncJSON)
 }
 func SyncWithServer_Submit(syncJSON string) bool {
-	_, _, syncServerContent := Submit(config.SyncServerURL, syncJSON, false, false, nil)
+	_, _, syncServerContent := Submit(configSnapshot().SyncServerURL, syncJSON, false, false, nil)
 	if syncServerContent == nil {
 		Log("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
 		return false
@@ -134,7 +134,7 @@ func SyncWithServer_FullSubmit(syncJSON string) bool {
 }
 
 func SyncWithServer() bool {
-	if config.SyncServerURL == "" {
+	if configSnapshot().SyncServerURL == "" {
 		ipBlockCIDRMapMutex.Lock()
 		if len(syncServer_CompiledRules) > 0 {
 			syncServer_CompiledRules = nil

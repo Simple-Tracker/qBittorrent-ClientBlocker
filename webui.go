@@ -76,14 +76,14 @@ func WebUI_IsPath(path string) bool {
 }
 
 func WebUI_CheckBasicAuth(w http.ResponseWriter, r *http.Request) bool {
-	if config.WebUIUsername == "" {
+	if configSnapshot().WebUIUsername == "" {
 		return true
 	}
 
 	username, password, ok := r.BasicAuth()
 	if ok &&
-		subtle.ConstantTimeCompare([]byte(username), []byte(config.WebUIUsername)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(password), []byte(config.WebUIPassword)) == 1 {
+		subtle.ConstantTimeCompare([]byte(username), []byte(configSnapshot().WebUIUsername)) == 1 &&
+		subtle.ConstantTimeCompare([]byte(password), []byte(configSnapshot().WebUIPassword)) == 1 {
 		return true
 	}
 
@@ -199,7 +199,7 @@ func appendWebUIBlockPeerEvent(event webUIBlockPeerEvent) {
 }
 
 func WebUI_RecordBlockPeerAdded(peerIP string) {
-	if !config.WebUI {
+	if !configSnapshot().WebUI {
 		return
 	}
 	peer, exists := getWebUIBlockPeer(peerIP)
@@ -209,7 +209,7 @@ func WebUI_RecordBlockPeerAdded(peerIP string) {
 }
 
 func WebUI_RecordBlockPeerRemoved(peerIP string) {
-	if !config.WebUI {
+	if !configSnapshot().WebUI {
 		return
 	}
 	appendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: peerIP})
@@ -290,7 +290,7 @@ func getWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
 
 func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	loadedExtensions := []string{}
-	if config.SyncServerURL != "" {
+	if configSnapshot().SyncServerURL != "" {
 		loadedExtensions = append(loadedExtensions, "SyncServer")
 	}
 	if btnConfig != nil {
@@ -309,7 +309,7 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 		ProgramVersion:   programVersion,
 		UptimeSeconds:    time.Now().Unix() - programStartTimestamp,
 		ClientType:       currentClientType,
-		ClientURL:        config.ClientURL,
+		ClientURL:        configSnapshot().ClientURL,
 		LoadedExtensions: loadedExtensions,
 		CurrentStats:     stats,
 		Runtime: Runtime{

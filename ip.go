@@ -19,7 +19,7 @@ var lastIPMapMutex sync.RWMutex
 var lastIPCleanTimestamp int64 = 0
 
 func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerDownloaded int64, peerUploaded int64) {
-	if !(config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) {
+	if !(configSnapshot().MaxIPPortCount > 0 || (configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckIncrementMB > 0)) {
 		return
 	}
 
@@ -50,7 +50,7 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 	var totalUploaded int64 = 0
 
 	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if config.IPUpCheckIncrementMB > 0 {
+		if configSnapshot().IPUpCheckIncrementMB > 0 {
 			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
 				totalUploaded += torrentUploaded
 			} else {
@@ -63,9 +63,9 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 		}
 	}
 
-	if config.IPUpCheckIncrementMB > 0 {
+	if configSnapshot().IPUpCheckIncrementMB > 0 {
 		var totalUploadedMB int64 = (totalUploaded / 1024 / 1024)
-		if totalUploadedMB > int64(config.IPUpCheckIncrementMB) {
+		if totalUploadedMB > int64(configSnapshot().IPUpCheckIncrementMB) {
 			return totalUploadedMB
 		}
 	}
@@ -85,7 +85,7 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
-	if (config.MaxIPPortCount > 0 || (config.IPUploadedCheck && config.IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(config.IPUpCheckInterval)) {
+	if (configSnapshot().MaxIPPortCount > 0 || (configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(configSnapshot().IPUpCheckInterval)) {
 		ipBlockCount := 0
 
 		ipMapMutex.Lock()
@@ -105,8 +105,8 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				}
 			}
 
-			if config.MaxIPPortCount > 0 {
-				if len(ipInfo.Port) > int(config.MaxIPPortCount) {
+			if configSnapshot().MaxIPPortCount > 0 {
+				if len(ipInfo.Port) > int(configSnapshot().MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
 					AddBlockPeer("CheckAllIP", "Too many ports", ip, -1, "", "", "", 0, 0)
@@ -115,24 +115,24 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				}
 			}
 
-				if lastIPInfo, exist := lastIPMap[ip]; exist {
-					if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
-						Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
-						ipBlockCount++
+			if lastIPInfo, exist := lastIPMap[ip]; exist {
+				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
+					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
+					ipBlockCount++
 
-						var totalDownloaded int64 = 0
-						var totalUploaded int64 = 0
-						for _, v := range ipInfo.TorrentDownloaded {
-							totalDownloaded += v
-						}
-						for _, v := range ipInfo.TorrentUploaded {
-							totalUploaded += v
-						}
-
-						AddBlockPeer("CheckAllIP", "Global-Too high uploaded", ip, -1, "", "", "", totalDownloaded, totalUploaded)
-						AddBlockCIDR(ip, ipInfo.Net)
+					var totalDownloaded int64 = 0
+					var totalUploaded int64 = 0
+					for _, v := range ipInfo.TorrentDownloaded {
+						totalDownloaded += v
 					}
+					for _, v := range ipInfo.TorrentUploaded {
+						totalUploaded += v
+					}
+
+					AddBlockPeer("CheckAllIP", "Global-Too high uploaded", ip, -1, "", "", "", totalDownloaded, totalUploaded)
+					AddBlockCIDR(ip, ipInfo.Net)
 				}
+			}
 		}
 
 		lastIPCleanTimestamp = currentTimestamp

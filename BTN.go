@@ -63,17 +63,17 @@ type BTN_PeerHistoryStruct struct {
 }
 
 type BTN_SubmitHistoriesStruct struct {
-	PopulateTime int64                    `json:"populate_time"`
+	PopulateTime int64                   `json:"populate_time"`
 	Peers        []BTN_PeerHistoryStruct `json:"peers"`
 }
 
 type BTN_BanInfo struct {
-	BtnBan       bool                   `json:"btn_ban"`
-	Module       string                 `json:"module"`
-	Rule         string                 `json:"rule"`
-	Peer         BTN_PeerInternalStruct `json:"peer"`
-	BanAt        int64                  `json:"ban_at"`
-	BanUniqueID  string                 `json:"ban_unique_id"`
+	BtnBan      bool                   `json:"btn_ban"`
+	Module      string                 `json:"module"`
+	Rule        string                 `json:"rule"`
+	Peer        BTN_PeerInternalStruct `json:"peer"`
+	BanAt       int64                  `json:"ban_at"`
+	BanUniqueID string                 `json:"ban_unique_id"`
 }
 
 type BTN_SubmitBansStruct struct {
@@ -113,10 +113,10 @@ func getBTNAuthHeader() map[string]string {
 	h := map[string]string{
 		"User-Agent": btnUserAgent,
 	}
-	if config.BTNAppID != "" && config.BTNAppSecret != "" {
-		h["Authorization"] = "Bearer " + config.BTNAppID + "@" + config.BTNAppSecret
-		h["X-BTN-AppID"] = config.BTNAppID
-		h["X-BTN-AppSecret"] = config.BTNAppSecret
+	if configSnapshot().BTNAppID != "" && configSnapshot().BTNAppSecret != "" {
+		h["Authorization"] = "Bearer " + configSnapshot().BTNAppID + "@" + configSnapshot().BTNAppSecret
+		h["X-BTN-AppID"] = configSnapshot().BTNAppID
+		h["X-BTN-AppSecret"] = configSnapshot().BTNAppSecret
 	}
 	return h
 }
@@ -259,14 +259,14 @@ func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, 
 }
 
 func BTN_GetConfig() {
-	if config.BTNConfigureURL == "" {
+	if configSnapshot().BTNConfigureURL == "" {
 		btnConfig = nil
 		btnRules = &BTN_RulesStruct{}
 		btnExceptions = &BTN_ExceptionStruct{}
 		return
 	}
 
-	if (atomic.LoadInt64(&btn_lastGetConfig)+int64(btn_configureInterval)) > atomic.LoadInt64(&currentTimestamp) {
+	if (atomic.LoadInt64(&btn_lastGetConfig) + int64(btn_configureInterval)) > atomic.LoadInt64(&currentTimestamp) {
 		return
 	}
 	if !btn_isGettingConfig.CompareAndSwap(false, true) {
@@ -279,7 +279,7 @@ func BTN_GetConfig() {
 	atomic.StoreInt64(&btn_lastGetConfig, atomic.LoadInt64(&currentTimestamp))
 
 	authHeader := getBTNAuthHeader()
-	_, _, btnConfigContent := Fetch(config.BTNConfigureURL, false, false, false, &authHeader)
+	_, _, btnConfigContent := Fetch(configSnapshot().BTNConfigureURL, false, false, false, &authHeader)
 	if btnConfigContent == nil {
 		Log("BTN_GetConfig", GetLangText("Error-FetchResponse"), true)
 		return
@@ -636,7 +636,7 @@ func BTN_Exception() {
 }
 
 func BTN_Task() {
-	if config.BTNConfigureURL == "" || btn_isGettingConfig.Load() || btn_isTaskRunning.Load() || btnConfig == nil {
+	if configSnapshot().BTNConfigureURL == "" || btn_isGettingConfig.Load() || btn_isTaskRunning.Load() || btnConfig == nil {
 		return
 	}
 
@@ -680,19 +680,19 @@ func BTN_Task() {
 				}
 			}
 
-			if config.BTNSubmitPeers {
+			if configSnapshot().BTNSubmitPeers {
 				executeTask("submit_peers", func() { BTN_SubmitPeers(torrentMap, ts) })
 			}
-			if config.BTNSubmitBans {
+			if configSnapshot().BTNSubmitBans {
 				executeTask("submit_bans", func() { BTN_SubmitBans(blockPeerMap, ts) })
 			}
-			if config.BTNSubmitHistories {
+			if configSnapshot().BTNSubmitHistories {
 				executeTask("submit_histories", func() { BTN_SubmitHistories(torrentMap, lastTorrentMap, ts) })
 			}
-			if config.BTNSyncRules {
+			if configSnapshot().BTNSyncRules {
 				executeTask("rules", func() { BTN_Rules() })
 			}
-			if config.BTNSyncException {
+			if configSnapshot().BTNSyncException {
 				executeTask("exception", func() { BTN_Exception() })
 			}
 			executeTask("reconfigure", func() { BTN_Reconfigure() })

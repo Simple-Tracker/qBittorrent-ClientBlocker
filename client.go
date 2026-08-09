@@ -29,7 +29,7 @@ func InitClient() {
 
 // SetURLFromClient 尝试从本地配置文件读取并设置客户端 API 地址.
 func SetURLFromClient() {
-	if config.ClientURL == "" {
+	if configSnapshot().ClientURL == "" {
 		qb := &QBClient{}
 		if !qb.SetURL() {
 			tr := &TRClient{}
@@ -42,7 +42,7 @@ func SetURLFromClient() {
 func DetectClient() bool {
 	// 先尝试 qBittorrent.
 	qb := &QBClient{}
-	if config.ClientType == "" || config.ClientType == qb.GetClientType() {
+	if configSnapshot().ClientType == "" || configSnapshot().ClientType == qb.GetClientType() {
 		if qb.Detect() {
 			currentClient = qb
 			currentClientType = qb.GetClientType()
@@ -53,7 +53,7 @@ func DetectClient() bool {
 
 	// 再尝试 Transmission.
 	tr := &TRClient{}
-	if config.ClientType == "" || config.ClientType == tr.GetClientType() {
+	if configSnapshot().ClientType == "" || configSnapshot().ClientType == tr.GetClientType() {
 		if tr.Detect() {
 			currentClient = tr
 			currentClientType = tr.GetClientType()
@@ -64,7 +64,7 @@ func DetectClient() bool {
 
 	// 最后尝试 BitComet.
 	bc := &BCClient{}
-	if config.ClientType == "" || config.ClientType == bc.GetClientType() {
+	if configSnapshot().ClientType == "" || configSnapshot().ClientType == bc.GetClientType() {
 		if bc.Detect() {
 			currentClient = bc
 			currentClientType = bc.GetClientType()
@@ -74,8 +74,8 @@ func DetectClient() bool {
 	}
 
 	// 如果指定了 ClientType 但探测失败, 则强制创建对应实例.
-	if config.ClientType != "" {
-		currentClientType = config.ClientType
+	if configSnapshot().ClientType != "" {
+		currentClientType = configSnapshot().ClientType
 		switch currentClientType {
 		case "qBittorrent":
 			currentClient = &QBClient{}
@@ -123,7 +123,7 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 
 	if currentClient != nil {
-		if currentClientType == "qBittorrent" && config.UseShadowBan {
+		if currentClientType == "qBittorrent" && configSnapshot().UseShadowBan {
 			return currentClient.SubmitShadowBanPeer(blockPeerMap)
 		}
 		return currentClient.SubmitBlockPeer(blockPeerMap)

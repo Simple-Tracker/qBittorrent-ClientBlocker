@@ -76,8 +76,8 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 			}
 		}
 
-		if config.UseBasicAuth && config.ClientUsername != "" {
-			request.SetBasicAuth(config.ClientUsername, config.ClientPassword)
+		if configSnapshot().UseBasicAuth && configSnapshot().ClientUsername != "" {
+			request.SetBasicAuth(configSnapshot().ClientUsername, configSnapshot().ClientPassword)
 		}
 	} else if !isPost && allowCache {
 		requestStateMutex.RLock()
@@ -109,13 +109,13 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if err != nil {
-		if config.FetchFailedThreshold > 0 && config.ExecCommand_FetchFailed != "" {
+		if configSnapshot().FetchFailedThreshold > 0 && configSnapshot().ExecCommand_FetchFailed != "" {
 			requestStateMutex.Lock()
 			fetchFailedCount++
-			if fetchFailedCount >= config.FetchFailedThreshold {
+			if fetchFailedCount >= configSnapshot().FetchFailedThreshold {
 				fetchFailedCount = 0
 				requestStateMutex.Unlock()
-				status, out, err := ExecCommand(config.ExecCommand_FetchFailed)
+				status, out, err := ExecCommand(configSnapshot().ExecCommand_FetchFailed)
 
 				if status {
 					Log("Fetch", GetLangText("Success-ExecCommand"), true, out)

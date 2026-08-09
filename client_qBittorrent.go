@@ -191,40 +191,48 @@ func qB_SetURL() bool {
 		Log("SetURL", GetLangText("Abandon-SetURL"), true, qBWebUIEnabled, qBAddress)
 		return false
 	}
+	clientURL := ""
 	if qBHTTPSEnabled {
-		config.ClientURL = "https://" + qBAddress
+		clientURL = "https://" + qBAddress
 		if qBPort != 443 {
-			config.ClientURL += ":" + strconv.Itoa(qBPort)
+			clientURL += ":" + strconv.Itoa(qBPort)
 		}
 	} else {
-		config.ClientURL = "http://" + qBAddress
+		clientURL = "http://" + qBAddress
 		if qBPort != 80 {
-			config.ClientURL += ":" + strconv.Itoa(qBPort)
+			clientURL += ":" + strconv.Itoa(qBPort)
 		}
 	}
-	config.ClientURL += "/api"
-	config.ClientUsername = Username
-	Log("SetURL", GetLangText("Success-SetURL"), true, qBWebUIEnabled, config.ClientURL, config.ClientUsername)
+	clientURL += "/api"
+	updateConfig(func(newConfig *ConfigStruct) {
+		newConfig.ClientURL = clientURL
+		newConfig.ClientUsername = Username
+	})
+	Log("SetURL", GetLangText("Success-SetURL"), true, qBWebUIEnabled, clientURL, Username)
 	return true
 }
 func (c *QBClient) Detect() bool {
-	if !strings.HasSuffix(config.ClientURL, "/api") {
-		apiResponseStatusCodeWithSuffix, _, _ := Fetch(config.ClientURL+"/api/v2/app/webapiVersion", false, false, false, nil)
+	clientURL := configSnapshot().ClientURL
+	if !strings.HasSuffix(clientURL, "/api") {
+		apiResponseStatusCodeWithSuffix, _, _ := Fetch(clientURL+"/api/v2/app/webapiVersion", false, false, false, nil)
 		if apiResponseStatusCodeWithSuffix == 200 || apiResponseStatusCodeWithSuffix == 403 {
-			config.ClientURL += "/api"
-			Log("qB_GetAPIVersion", GetLangText("ClientQB_Detect-OldClientURL"), true, config.ClientURL)
+			clientURL += "/api"
+			updateConfig(func(newConfig *ConfigStruct) {
+				newConfig.ClientURL = clientURL
+			})
+			Log("qB_GetAPIVersion", GetLangText("ClientQB_Detect-OldClientURL"), true, clientURL)
 			return true
 		}
 	}
 
-	apiResponseStatusCode, _, _ := Fetch(config.ClientURL+"/v2/app/webapiVersion", false, false, false, nil)
+	apiResponseStatusCode, _, _ := Fetch(clientURL+"/v2/app/webapiVersion", false, false, false, nil)
 	return (apiResponseStatusCode == 200 || apiResponseStatusCode == 403)
 }
 func qB_Login() bool {
 	loginParams := url.Values{}
-	loginParams.Set("username", config.ClientUsername)
-	loginParams.Set("password", config.ClientPassword)
-	loginResponseCode, _, loginResponseBody := Submit(config.ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
+	loginParams.Set("username", configSnapshot().ClientUsername)
+	loginParams.Set("password", configSnapshot().ClientPassword)
+	loginResponseCode, _, loginResponseBody := Submit(configSnapshot().ClientURL+"/v2/auth/login", loginParams.Encode(), false, true, nil)
 
 	// see: https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues/159
 	if loginResponseCode == 204 {
@@ -249,7 +257,7 @@ func qB_Login() bool {
 	return false
 }
 func qB_FetchTorrents() *[]qB_TorrentStruct {
-	_, _, torrentsResponseBody := Fetch(config.ClientURL+"/v2/torrents/info?filter=active", true, true, false, nil)
+	_, _, torrentsResponseBody := Fetch(configSnapshot().ClientURL+"/v2/torrents/info?filter=active", true, true, false, nil)
 	if torrentsResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error"), true)
 		return nil
@@ -264,7 +272,7 @@ func qB_FetchTorrents() *[]qB_TorrentStruct {
 	return &torrentsResult
 }
 func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
-	_, _, torrentPeersResponseBody := Fetch(config.ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, false, nil)
+	_, _, torrentPeersResponseBody := Fetch(configSnapshot().ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, false, nil)
 	if torrentPeersResponseBody == nil {
 		Log("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
@@ -293,7 +301,7 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 				firstPeer = false
 			}
 			for peerIP, peerInfo := range blockPeerMap {
-				if _, exist := peerInfo.Port[-1]; config.BanAllPort || exist {
+				if _, exist := peerInfo.Port[-1]; configSnapshot().BanAllPort || exist {
 					for port := 0; port <= 65535; port++ {
 						portString := strconv.Itoa(port)
 						if IsIPv6(peerIP) {
@@ -333,10 +341,10 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/banPeers", "peers="+banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(configSnapshot().ClientURL+"/v2/transfer/banPeers", "peers="+banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		_, _, banResponseBody = Submit(config.ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(configSnapshot().ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
 	}
 
 	if banResponseBody == nil {
@@ -348,7 +356,7 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 }
 
 func qB_GetPreferences() map[string]interface{} {
-	_, _, responseBody := Fetch(config.ClientURL+"/v2/app/preferences", true, true, false, nil)
+	_, _, responseBody := Fetch(configSnapshot().ClientURL+"/v2/app/preferences", true, true, false, nil)
 	if responseBody == nil {
 		Log("GetPreferences", GetLangText("Failed-GetQBPreferences"), true)
 		return nil
@@ -383,7 +391,7 @@ func qB_TestShadowBanAPI() bool {
 		return false
 	}
 
-	code, _, _ := Submit(config.ClientURL+"/v2/transfer/shadowbanPeers", "peers=", true, true, nil)
+	code, _, _ := Submit(configSnapshot().ClientURL+"/v2/transfer/shadowbanPeers", "peers=", true, true, nil)
 	if code != 200 {
 		Log("TestShadowBanAPI", GetLangText("Warning-ShadowBanAPINotExist"), true)
 		return false
@@ -414,7 +422,7 @@ func qB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/shadowbanPeers", "peers="+banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(configSnapshot().ClientURL+"/v2/transfer/shadowbanPeers", "peers="+banIPPortsStr, true, true, nil)
 	} else {
 		return true
 	}

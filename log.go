@@ -47,8 +47,8 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 				return
 			}
 		}
-	} else if config.Debug {
-		if config.LogDebug {
+	} else if configSnapshot().Debug {
+		if configSnapshot().LogDebug {
 			logToFile = true
 		}
 	} else {
@@ -56,14 +56,14 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 	}
 
 	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
-	if config.LogToFile && logToFile && logFile != nil {
+	if configSnapshot().LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
 			Log("Log", GetLangText("Error-Log_Write"), false, err.Error())
 		}
 	}
 
 	fmt.Print(logStr)
-	if config.WebUI && module != "LoadConfig_Current" {
+	if configSnapshot().WebUI && module != "LoadConfig_Current" {
 		logBufferMutex.Lock()
 		logBuffer = append(logBuffer, logStr)
 		if len(logBuffer) > logBufferMaxSize {
@@ -73,18 +73,18 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 	}
 }
 func LoadLog() bool {
-	if !config.LogToFile || config.LogPath == "" {
+	if !configSnapshot().LogToFile || configSnapshot().LogPath == "" {
 		return false
 	}
 
-	if err := os.Mkdir(config.LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(configSnapshot().LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
 		Log("LoadLog", GetLangText("Error-LoadLog_Mkdir"), false, err.Error())
 		return false
 	}
 
 	tmpTodayStr := GetDateTime(false)
 	newDay := (todayStr != tmpTodayStr)
-	newLogPath := (lastLogPath != config.LogPath)
+	newLogPath := (lastLogPath != configSnapshot().LogPath)
 
 	if !newDay && !newLogPath {
 		return true
@@ -96,12 +96,12 @@ func LoadLog() bool {
 
 	if newLogPath {
 		if lastLogPath != "" {
-			Log("LoadLog", GetLangText("LoadLog_HotReload"), false, config.LogPath)
+			Log("LoadLog", GetLangText("LoadLog_HotReload"), false, configSnapshot().LogPath)
 		}
-		lastLogPath = config.LogPath
+		lastLogPath = configSnapshot().LogPath
 	}
 
-	tLogFile, err := os.OpenFile(config.LogPath+"/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	tLogFile, err := os.OpenFile(configSnapshot().LogPath+"/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		Log("LoadLog", GetLangText("Error-LoadLog_Open"), false, err.Error())
 		return false

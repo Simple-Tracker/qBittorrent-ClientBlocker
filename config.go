@@ -135,7 +135,7 @@ var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
 var configLastMod = make(map[string]int64)
-var configFilename string = "config.json"
+var configFilename string = "configSnapshot().json"
 var shortFlag_configFilename string
 var longFlag_configFilename string
 var additionConfigFilename string = "config_additional.json"
@@ -233,6 +233,30 @@ var config *ConfigStruct = &ConfigStruct{
 	BanByRelativePUAntiErrorRatio: 3,
 }
 
+// configSnapshot 返回当前不可变配置快照。配置更新必须通过 replaceConfig
+// 或 updateConfig 发布新副本，确保运行中的读取不会与热重载发生竞争。
+func configSnapshot() *ConfigStruct {
+	configLock.RLock()
+	currentConfig := config
+	configLock.RUnlock()
+	return currentConfig
+}
+
+func replaceConfig(newConfig *ConfigStruct) {
+	configLock.Lock()
+	config = newConfig
+	configLock.Unlock()
+}
+
+func updateConfig(update func(*ConfigStruct)) *ConfigStruct {
+	configLock.Lock()
+	newConfig := *config
+	update(&newConfig)
+	config = &newConfig
+	configLock.Unlock()
+	return &newConfig
+}
+
 var httpServer = http.Server{
 	ReadTimeout:  30 * time.Second,
 	WriteTimeout: 30 * time.Second,
@@ -270,14 +294,14 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 	return setCount
 }
 func SetBlockListFromFile() bool {
-	if len(config.BlockListFile) == 0 {
+	if len(configSnapshot().BlockListFile) == 0 {
 		return true
 	}
 
 	setCount := 0
 	updated := false
 
-	for _, filePath := range config.BlockListFile {
+	for _, filePath := range configSnapshot().BlockListFile {
 		blockListFileStat, err := os.Stat(filePath)
 		if err != nil {
 			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
@@ -337,21 +361,21 @@ func SetBlockListFromFile() bool {
 	return true
 }
 func SetBlockListFromURL() bool {
-	if len(config.BlockListURL) == 0 || (blockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+	if len(configSnapshot().BlockListURL) == 0 || (blockListURLLastFetch+int64(configSnapshot().UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
 	blockListURLLastFetch = currentTimestamp
 	setCount := 0
 
-	for _, blockListURL := range config.BlockListURL {
+	for _, blockListURL := range configSnapshot().BlockListURL {
 		httpStatusCode, httpHeader, blockListContent := Fetch(blockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
 		}
 
 		if blockListContent == nil {
-			//blockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+			//blockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
 			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
@@ -407,14 +431,14 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 	return setCount
 }
 func SetIPBlockListFromFile() bool {
-	if len(config.IPBlockListFile) == 0 {
+	if len(configSnapshot().IPBlockListFile) == 0 {
 		return true
 	}
 
 	setCount := 0
 	updated := false
 
-	for _, filePath := range config.IPBlockListFile {
+	for _, filePath := range configSnapshot().IPBlockListFile {
 		ipBlockListFileStat, err := os.Stat(filePath)
 		if err != nil {
 			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
@@ -467,21 +491,21 @@ func SetIPBlockListFromFile() bool {
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if len(config.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(config.UpdateInterval)) > currentTimestamp {
+	if len(configSnapshot().IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(configSnapshot().UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
 	ipBlockListURLLastFetch = currentTimestamp
 	setCount := 0
 
-	for _, ipBlockListURL := range config.IPBlockListURL {
+	for _, ipBlockListURL := range configSnapshot().IPBlockListURL {
 		httpStatusCode, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
 		}
 
 		if ipBlockListContent == nil {
-			//ipBlockListURLLastFetch -= (int64(config.UpdateInterval) + 900)
+			//ipBlockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
 			Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
@@ -543,11 +567,6 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 		return -3
 	}
 
-	// 加写锁更新.
-	lastModMutex.Lock()
-	configLastMod[filename] = tmpConfigLastMod
-	lastModMutex.Unlock()
-
 	switch filepath.Ext(strings.ToLower(filename)) {
 	case ".json":
 		if err := json.Unmarshal(jsonc.ToJSON(configFile), targetConfig); err != nil {
@@ -561,24 +580,29 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 		}
 	}
 
+	// 仅在成功解析后记录修改时间, 以便原文件修复后可以重试.
+	lastModMutex.Lock()
+	configLastMod[filename] = tmpConfigLastMod
+	lastModMutex.Unlock()
+
 	Log("LoadConfig", GetLangText("Success-LoadConfig"), true, filename)
 
 	return 0
 }
 func InitConfig() {
-	if config.Interval < 1 {
-		config.Interval = 1
-	}
+	currentConfig := updateConfig(func(newConfig *ConfigStruct) {
+		if newConfig.Interval < 1 {
+			newConfig.Interval = 1
+		}
+		if newConfig.Timeout < 1 {
+			newConfig.Timeout = 1
+		}
+		if newConfig.ClientURL != "" {
+			newConfig.ClientURL = strings.TrimRight(newConfig.ClientURL, "/")
+		}
+	})
 
-	if config.Timeout < 1 {
-		config.Timeout = 1
-	}
-
-	if config.ClientURL != "" {
-		config.ClientURL = strings.TrimRight(config.ClientURL, "/")
-	}
-
-	if config.SkipCertVerification {
+	if currentConfig.SkipCertVerification {
 		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	} else {
 		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
@@ -586,11 +610,11 @@ func InitConfig() {
 
 	httpTransportExternal := httpTransport.Clone()
 
-	if config.Proxy == "Auto" {
+	if currentConfig.Proxy == "Auto" {
 		// 默认模式, 仅对外部资源使用代理.
 		httpTransport.Proxy = nil
 		httpTransportExternal.Proxy = GetProxy
-	} else if config.Proxy == "All" {
+	} else if currentConfig.Proxy == "All" {
 		httpTransport.Proxy = GetProxy
 		httpTransportExternal.Proxy = GetProxy
 	} else {
@@ -598,11 +622,11 @@ func InitConfig() {
 		httpTransportExternal.Proxy = nil
 	}
 
-	if config.LongConnection {
+	if currentConfig.LongConnection {
 		httpTransport.DisableKeepAlives = false
 	}
 
-	currentTimeout := time.Duration(config.Timeout) * time.Second
+	currentTimeout := time.Duration(currentConfig.Timeout) * time.Second
 
 	httpClient = http.Client{
 		Timeout:   currentTimeout,
@@ -624,19 +648,19 @@ func InitConfig() {
 	httpServer.ReadTimeout = currentTimeout
 	httpServer.WriteTimeout = currentTimeout
 
-	t := reflect.TypeOf(*config)
-	v := reflect.ValueOf(*config)
+	t := reflect.TypeOf(*currentConfig)
+	v := reflect.ValueOf(*currentConfig)
 	for k := 0; k < t.NumField(); k++ {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, FormatConfigValueForLog(t.Field(k).Name, v.Field(k).Interface()))
 	}
 
 	EraseSyncMap(&blockListCompiled)
 	blockListURLLastFetch = 0
-	SetBlockListFromContent(config.BlockList, "BlockList")
+	SetBlockListFromContent(currentConfig.BlockList, "BlockList")
 
 	EraseSyncMap(&ipBlockListCompiled)
 	ipBlockListURLLastFetch = 0
-	SetIPBlockListFromContent(config.IPBlockList, "IPBlockList")
+	SetIPBlockListFromContent(currentConfig.IPBlockList, "IPBlockList")
 }
 
 func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
@@ -660,7 +684,7 @@ func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
 	return value
 }
 func LoadInitConfig(firstLoad bool) bool {
-	newConfig := *config
+	newConfig := *configSnapshot()
 	loadConfigStatus := LoadConfig(configFilename, true, &newConfig)
 
 	if loadConfigStatus < -1 {
@@ -672,9 +696,7 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
-			configLock.Lock()
-			config = &newConfig
-			configLock.Unlock()
+			replaceConfig(&newConfig)
 			InitConfig()
 		}
 	}
@@ -688,8 +710,9 @@ func LoadInitConfig(firstLoad bool) bool {
 		SetURLFromClient()
 	}
 
-	if config.ClientURL != "" {
-		if lastURL != config.ClientURL {
+	currentConfig := configSnapshot()
+	if currentConfig.ClientURL != "" {
+		if lastURL != currentConfig.ClientURL {
 			if !DetectClient() {
 				Log("LoadInitConfig", GetLangText("LoadInitConfig_DetectClientFailed"), true)
 				return false
@@ -700,15 +723,19 @@ func LoadInitConfig(firstLoad bool) bool {
 			}
 			InitClient()
 			SubmitBlockPeer(nil)
-			lastURL = config.ClientURL
+			lastURL = configSnapshot().ClientURL
 		}
 	} else {
 		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件破坏首次启动后从 qBittorrent 配置文件读取的 URL.
-		config.ClientURL = lastURL
+		currentConfig = updateConfig(func(newConfig *ConfigStruct) {
+			newConfig.ClientURL = lastURL
+		})
 	}
 
-	if config.UseShadowBan && TestShadowBanAPI() <= 0 {
-		config.UseShadowBan = false
+	if currentConfig.UseShadowBan && TestShadowBanAPI() <= 0 {
+		updateConfig(func(newConfig *ConfigStruct) {
+			newConfig.UseShadowBan = false
+		})
 	}
 
 	if !firstLoad {
@@ -726,19 +753,23 @@ func LoadInitConfig(firstLoad bool) bool {
 	return true
 }
 func RegFlag() {
+	debug := configSnapshot().Debug
 	flag.BoolVar(&shortFlag_ShowVersion, "v", false, GetLangText("ProgramVersion"))
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, GetLangText("ProgramVersion"))
 	flag.StringVar(&shortFlag_configFilename, "c", "", GetLangText("ConfigPath"))
 	flag.StringVar(&longFlag_configFilename, "config", "", GetLangText("ConfigPath"))
 	flag.StringVar(&shortFlag_additionConfigFilename, "ca", "", GetLangText("AdditionalConfigPath"))
 	flag.StringVar(&longFlag_additionConfigFilename, "config_additional", "", GetLangText("AdditionalConfigPath"))
-	flag.BoolVar(&config.Debug, "debug", false, GetLangText("DebugMode"))
+	flag.BoolVar(&debug, "debug", false, GetLangText("DebugMode"))
 	flag.UintVar(&startDelay, "startdelay", 0, GetLangText("StartDelay"))
 	flag.BoolVar(&noChdir, "nochdir", false, GetLangText("NoChdir"))
 	flag.BoolVar(&needRegHotKey, "reghotkey", true, GetLangText("RegHotKey"))
 	flag.BoolVar(&needHideWindow, "hidewindow", false, GetLangText("HideWindow"))
 	flag.BoolVar(&needHideSystray, "hidesystray", false, GetLangText("HideSystray"))
 	flag.Parse()
+	updateConfig(func(newConfig *ConfigStruct) {
+		newConfig.Debug = debug
+	})
 }
 func ShowVersion() {
 	Log("ShowVersion", "%s %s", false, programName, programVersion)

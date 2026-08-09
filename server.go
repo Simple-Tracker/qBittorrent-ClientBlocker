@@ -21,7 +21,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// WebUI 路由.
-	if config.WebUI {
+	if configSnapshot().WebUI {
 		if WebUI_IsPath(r.URL.Path) {
 			if !WebUI_CheckBasicAuth(w, r) {
 				return
@@ -75,19 +75,19 @@ func StartServer() {
 	// 收集需要监听的地址.
 	var addrs []string
 	if currentClientType == "Transmission" {
-		addrs = append(addrs, config.Listen)
+		addrs = append(addrs, configSnapshot().Listen)
 	}
-	if config.WebUI {
+	if configSnapshot().WebUI {
 		// 检查是否与 Transmission 监听地址冲突, 冲突则只监听一次.
 		conflict := false
 		for _, a := range addrs {
-			if a == config.WebUIListen {
+			if a == configSnapshot().WebUIListen {
 				conflict = true
 				break
 			}
 		}
 		if !conflict {
-			addrs = append(addrs, config.WebUIListen)
+			addrs = append(addrs, configSnapshot().WebUIListen)
 		}
 	}
 

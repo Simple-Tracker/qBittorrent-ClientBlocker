@@ -145,17 +145,17 @@ func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 func Tr_SetURL() bool {
-	if config.ClientURL == "" {
+	if configSnapshot().ClientURL == "" {
 		return false
 	}
 
-	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: config.SyncServerURL + "/ipfilter.dat"}})
+	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: configSnapshot().SyncServerURL + "/ipfilter.dat"}})
 	if err != nil {
 		Log("SetURL", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
-	Submit(config.ClientURL, tr_SessionSetJSON, false, true, &Tr_jsonHeader)
+	Submit(configSnapshot().ClientURL, tr_SessionSetJSON, false, true, &Tr_jsonHeader)
 
 	return true
 }
@@ -166,7 +166,7 @@ func (c *TRClient) Detect() bool {
 		return false
 	}
 
-	detectStatusCode, _, _ := Submit(config.ClientURL, detectJSON, false, false, &Tr_jsonHeader)
+	detectStatusCode, _, _ := Submit(configSnapshot().ClientURL, detectJSON, false, false, &Tr_jsonHeader)
 	return (detectStatusCode == 200 || detectStatusCode == 409)
 }
 func Tr_Login() bool {
@@ -176,7 +176,7 @@ func Tr_Login() bool {
 		return false
 	}
 
-	Submit(config.ClientURL, loginJSON, false, true, nil)
+	Submit(configSnapshot().ClientURL, loginJSON, false, true, nil)
 
 	Tr_csrfTokenMutex.RLock()
 	token := Tr_csrfToken
@@ -201,7 +201,7 @@ func Tr_FetchTorrents() *Tr_TorrentsStruct {
 		return nil
 	}
 
-	_, _, fetchResponseBody := Submit(config.ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
+	_, _, fetchResponseBody := Submit(configSnapshot().ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
 	if fetchResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error-FetchResponse"), true)
 		return nil
@@ -229,7 +229,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		return false
 	}
 
-	Submit(config.ClientURL, tr_BlockListUpdateJSON, true, true, &Tr_jsonHeader)
+	Submit(configSnapshot().ClientURL, tr_BlockListUpdateJSON, true, true, &Tr_jsonHeader)
 
 	return true
 }
