@@ -229,8 +229,8 @@ func ClearBlockPeer() int {
 		for _, peerIP := range removedPeerIPs {
 			WebUI_RecordBlockPeerRemoved(peerIP)
 		}
+		lastCleanTimestamp = currentTimestamp
 		if cleanCount != 0 {
-			lastCleanTimestamp = currentTimestamp
 			Log("ClearBlockPeer", GetLangText("Success-ClearBlockPeer"), true, cleanCount)
 		}
 	}

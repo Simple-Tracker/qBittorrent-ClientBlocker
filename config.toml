@@ -2,6 +2,7 @@ checkUpdate = true
 debug = false
 interval = 6
 cleanInterval = 3_600
+gcInterval = 60
 banTime = 86_400
 timeout = 6
 logToFile = true

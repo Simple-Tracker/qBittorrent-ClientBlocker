@@ -21,6 +21,8 @@ var githubAPIHeader = map[string]string{"Accept": "application/vnd.github+json",
 var reqStopChan = make(chan struct{})
 var reqStopOnce sync.Once
 var reqStopLogged atomic.Bool
+var lastGCTimestamp int64
+var runRuntimeGC = runtime.GC
 
 type ReleaseStruct struct {
 	URL        string `json:"html_url"`
@@ -271,6 +273,16 @@ func Task() {
 
 // GC 执行垃圾回收任务以清理过期数据并释放内存.
 func GC() {
+	now := atomic.LoadInt64(&currentTimestamp)
+	gcInterval := int64(config.GCInterval)
+	if gcInterval <= 0 {
+		return
+	}
+	lastRun := atomic.LoadInt64(&lastGCTimestamp)
+	if now <= 0 || now < lastRun+gcInterval || !atomic.CompareAndSwapInt64(&lastGCTimestamp, lastRun, now) {
+		return
+	}
+
 	// 保持旧阈值, 避免频繁清理.
 	const ipMapThreshold = 23333333
 	const peerMapThreshold = 2333333
@@ -304,7 +316,7 @@ func GC() {
 		}
 	}
 	torrentMapMutex.Unlock()
-	runtime.GC()
+	runRuntimeGC()
 }
 
 // WaitStop 监听退出信号.

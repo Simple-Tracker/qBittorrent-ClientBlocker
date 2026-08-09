@@ -28,6 +28,7 @@ type ConfigStruct struct {
 	Debug_CheckPeer               bool
 	Interval                      uint32
 	CleanInterval                 uint32
+	GCInterval                    uint32
 	UpdateInterval                uint32
 	RestartInterval               uint32
 	TorrentMapCleanInterval       uint32
@@ -164,6 +165,7 @@ var config *ConfigStruct = &ConfigStruct{
 	Debug_CheckTorrent:            false,
 	Debug_CheckPeer:               false,
 	Interval:                      6,
+	GCInterval:                    60,
 	UpdateInterval:                86400,
 	RestartInterval:               6,
 	TorrentMapCleanInterval:       60,

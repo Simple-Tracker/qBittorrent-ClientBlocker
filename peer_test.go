@@ -60,6 +60,59 @@ func TestClearBlockPeerExecutesUnbanCommand(t *testing.T) {
 	}
 }
 
+func TestClearBlockPeerSchedulesNextScanWhenNothingExpires(t *testing.T) {
+	oldConfig := *config
+	oldBlockPeerMap := blockPeerMap
+	oldBlockCIDRMap := blockCIDRMap
+	oldCurrentTimestamp := currentTimestamp
+	oldLastCleanTimestamp := lastCleanTimestamp
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		blockPeerMap = oldBlockPeerMap
+		blockCIDRMap = oldBlockCIDRMap
+		currentTimestamp = oldCurrentTimestamp
+		lastCleanTimestamp = oldLastCleanTimestamp
+	})
+
+	testConfig := oldConfig
+	testConfig.CleanInterval = 10
+	testConfig.BanTime = 1000
+	testConfig.ExecCommand_Unban = ""
+	testConfig.WebUI = false
+	config = &testConfig
+	blockPeerMap = map[string]BlockPeerInfoStruct{
+		"1.2.3.4": {Timestamp: 99, Port: map[int]bool{6881: true}},
+	}
+	blockCIDRMap = map[string]BlockCIDRInfoStruct{}
+	lastCleanTimestamp = 0
+	currentTimestamp = 100
+
+	if count := ClearBlockPeer(); count != 0 {
+		t.Fatalf("first clean count=%d, want 0", count)
+	}
+	if lastCleanTimestamp != 100 {
+		t.Fatalf("lastCleanTimestamp=%d, want 100", lastCleanTimestamp)
+	}
+
+	peer := blockPeerMap["1.2.3.4"]
+	peer.Timestamp = 0
+	blockPeerMap["1.2.3.4"] = peer
+	testConfig.BanTime = 1
+	currentTimestamp = 105
+	if count := ClearBlockPeer(); count != 0 {
+		t.Fatalf("early clean count=%d, want 0", count)
+	}
+	if _, exists := blockPeerMap["1.2.3.4"]; !exists {
+		t.Fatal("peer was scanned before the clean interval elapsed")
+	}
+
+	currentTimestamp = 111
+	if count := ClearBlockPeer(); count != 1 {
+		t.Fatalf("scheduled clean count=%d, want 1", count)
+	}
+}
+
 func TestAddBlockCIDRStoresFirstPeerIP(t *testing.T) {
 	oldBlockCIDRMap := blockCIDRMap
 	oldCurrentTimestamp := currentTimestamp

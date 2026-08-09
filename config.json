@@ -3,6 +3,7 @@
 	"debug": false,
 	"interval": 6,
 	"cleanInterval": 3600,
+	"gcInterval": 60,
 	"banTime": 86400,
 	"timeout": 6,
 	"logToFile": true,
