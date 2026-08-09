@@ -8,6 +8,12 @@ import (
 	"testing"
 )
 
+func TestDefaultConfigFilename(t *testing.T) {
+	if configFilename != "config.json" {
+		t.Fatalf("default config filename=%q, want config.json", configFilename)
+	}
+}
+
 func TestLoadConfigRetriesParseFailure(t *testing.T) {
 	filename := filepath.Join(t.TempDir(), "config.json")
 	if err := os.WriteFile(filename, []byte(`{"Interval":`), 0o600); err != nil {

@@ -135,7 +135,7 @@ var cookieJar, _ = cookiejar.New(nil)
 
 var lastURL = ""
 var configLastMod = make(map[string]int64)
-var configFilename string = "configSnapshot().json"
+var configFilename string = "config.json"
 var shortFlag_configFilename string
 var longFlag_configFilename string
 var additionConfigFilename string = "config_additional.json"
