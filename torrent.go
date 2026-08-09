@@ -29,7 +29,7 @@ var lastTorrentCleanTimestamp int64 = 0
 
 // AddTorrentInfo 添加种子信息, 以便后续进行上传进度比分析.
 func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerDownloaded int64, peerUploaded int64, peerID string, peerClient string) {
-	if !((configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckPerTorrentRatio > 0) || configSnapshot().BanByRelativeProgressUploaded || configSnapshot().SyncServerURL != "") {
+	if !((ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0) || ConfigSnapshot().BanByRelativeProgressUploaded || ConfigSnapshot().SyncServerURL != "") {
 		return
 	}
 
@@ -56,10 +56,10 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 
 // IsProgressNotMatchUploaded 判断 Peer 报告进度是否与已上传量不匹配.
 func IsProgressNotMatchUploaded(torrentTotalSize int64, clientProgress float64, clientUploaded int64) bool {
-	if configSnapshot().BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
-		startUploaded := (float64(torrentTotalSize) * (configSnapshot().BanByPUStartPercent / 100))
+	if ConfigSnapshot().BanByProgressUploaded && torrentTotalSize > 0 && clientProgress >= 0 && clientUploaded > 0 {
+		startUploaded := (float64(torrentTotalSize) * (ConfigSnapshot().BanByPUStartPercent / 100))
 		peerReportDownloaded := (float64(torrentTotalSize) * clientProgress)
-		if (clientUploaded/1024/1024) >= int64(configSnapshot().BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded*configSnapshot().BanByPUAntiErrorRatio) < float64(clientUploaded) {
+		if (clientUploaded/1024/1024) >= int64(ConfigSnapshot().BanByPUStartMB) && float64(clientUploaded) >= startUploaded && (peerReportDownloaded*ConfigSnapshot().BanByPUAntiErrorRatio) < float64(clientUploaded) {
 			return true
 		}
 	}
@@ -75,7 +75,7 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 		relativeUploaded = (peerInfo.Uploaded - lastPeerInfo.Uploaded)
 	}
 
-	if torrentTotalSize > 0 && peerInfo.Uploaded > 0 && (float64(relativeUploaded)/1024/1024) > float64(configSnapshot().BanByRelativePUStartMB) {
+	if torrentTotalSize > 0 && peerInfo.Uploaded > 0 && (float64(relativeUploaded)/1024/1024) > float64(ConfigSnapshot().BanByRelativePUStartMB) {
 		var relativeUploadedPercent float64 = 0
 		if peerInfo.Uploaded > 0 {
 			if peerInfo.Uploaded < lastPeerInfo.Uploaded {
@@ -84,7 +84,7 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 				relativeUploadedPercent = (1 - (float64(lastPeerInfo.Uploaded) / float64(peerInfo.Uploaded)))
 			}
 		}
-		if relativeUploadedPercent > (configSnapshot().BanByRelativePUStartPercent / 100) {
+		if relativeUploadedPercent > (ConfigSnapshot().BanByRelativePUStartPercent / 100) {
 			var peerReportProgress float64 = 0
 			if peerInfo.Progress > 0 {
 				if peerInfo.Progress < lastPeerInfo.Progress {
@@ -93,7 +93,7 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 					peerReportProgress = (1 - (lastPeerInfo.Progress / peerInfo.Progress))
 				}
 			}
-			if relativeUploadedPercent > (peerReportProgress * configSnapshot().BanByRelativePUAntiErrorRatio) {
+			if relativeUploadedPercent > (peerReportProgress * ConfigSnapshot().BanByRelativePUAntiErrorRatio) {
 				return relativeUploaded
 			}
 		}
@@ -103,7 +103,7 @@ func IsProgressNotMatchUploaded_Relative(torrentTotalSize int64, peerInfo PeerIn
 
 // CheckAllTorrent 对所有种子和 Peer 进行分析.
 func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map[string]TorrentInfoStruct) (int, int) {
-	if ((configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckPerTorrentRatio > 0) || configSnapshot().BanByRelativeProgressUploaded || configSnapshot().BTNSubmitHistories) && (currentTimestamp > (lastTorrentCleanTimestamp + int64(configSnapshot().TorrentMapCleanInterval))) {
+	if ((ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0) || ConfigSnapshot().BanByRelativeProgressUploaded || ConfigSnapshot().BTNSubmitHistories) && (currentTimestamp > (lastTorrentCleanTimestamp + int64(ConfigSnapshot().TorrentMapCleanInterval))) {
 		blockCount := 0
 		ipBlockCount := 0
 
@@ -127,8 +127,8 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					continue
 				}
 
-				if configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckPerTorrentRatio > 0 {
-					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * configSnapshot().IPUpCheckPerTorrentRatio) {
+				if ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0 {
+					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * ConfigSnapshot().IPUpCheckPerTorrentRatio) {
 						Log("CheckAllTorrent_AddBlockPeer (Torrent-Too high uploaded)", "%s (Uploaded: %.2f MB)", true, peerIP, (float64(peerInfo.Uploaded) / 1024 / 1024))
 						ipBlockCount++
 						AddBlockPeer("CheckAllTorrent", "Torrent-Too high uploaded", peerIP, -1, torrentInfoHash, peerInfo.ID, peerInfo.Client, 0, peerInfo.Uploaded)
@@ -137,7 +137,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					}
 				}
 
-				if configSnapshot().BanByRelativeProgressUploaded {
+				if ConfigSnapshot().BanByRelativeProgressUploaded {
 					if lastPeerInfo, exist := lastTorrentMap[torrentInfoHash].Peers[peerIP]; exist {
 						if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentInfo.Size, peerInfo, lastPeerInfo); uploadDuring > 0 {
 							for port := range peerInfo.Port {
@@ -171,7 +171,7 @@ func CheckTorrent(torrent *Torrent) (int, []*Peer) {
 		return -1, nil
 	}
 
-	if configSnapshot().IgnorePTTorrent && torrent.Tracker != "" {
+	if ConfigSnapshot().IgnorePTTorrent && torrent.Tracker != "" {
 		if torrent.Tracker == "Private" {
 			return -4, nil
 		}
@@ -189,7 +189,7 @@ func CheckTorrent(torrent *Torrent) (int, []*Peer) {
 		}
 	}
 
-	if configSnapshot().IgnoreNoLeechersTorrent && torrent.LeechCount <= 0 {
+	if ConfigSnapshot().IgnoreNoLeechersTorrent && torrent.LeechCount <= 0 {
 		return -2, nil
 	}
 
@@ -209,7 +209,7 @@ func CheckTorrent(torrent *Torrent) (int, []*Peer) {
 func ProcessTorrent(torrent *Torrent, emptyHashCount *int, noLeechersCount *int, badTorrentInfoCount *int, ptTorrentCount *int, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	torrent.Hash = strings.ToLower(torrent.Hash)
 	torrentStatus, peers := CheckTorrent(torrent)
-	if configSnapshot().Debug_CheckTorrent {
+	if ConfigSnapshot().Debug_CheckTorrent {
 		Log("Debug-CheckTorrent", "%s (Status: %d)", false, torrent.Hash, torrentStatus)
 	}
 
@@ -233,7 +233,7 @@ func ProcessTorrent(torrent *Torrent, emptyHashCount *int, noLeechersCount *int,
 		}
 	}
 
-	if !skipSleep && configSnapshot().SleepTime != 0 {
-		time.Sleep(time.Duration(configSnapshot().SleepTime) * time.Millisecond)
+	if !skipSleep && ConfigSnapshot().SleepTime != 0 {
+		time.Sleep(time.Duration(ConfigSnapshot().SleepTime) * time.Millisecond)
 	}
 }

@@ -141,8 +141,8 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		WebUI_RecordBlockPeerAdded(peerIP)
 	}
 
-	if configSnapshot().ExecCommand_Ban != "" {
-		execCommand_Ban := configSnapshot().ExecCommand_Ban
+	if ConfigSnapshot().ExecCommand_Ban != "" {
+		execCommand_Ban := ConfigSnapshot().ExecCommand_Ban
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerIP}", peerIP, -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerPort}", strconv.Itoa(peerPort), -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{torrentInfoHash}", torrentInfoHash, -1)
@@ -184,11 +184,11 @@ func ClearBlockPeer() int {
 	cleanCount := 0
 	execCommands := []string{}
 	removedPeerIPs := []string{}
-	if (blockPeerMap != nil && configSnapshot().CleanInterval == 0) || (lastCleanTimestamp+int64(configSnapshot().CleanInterval) < currentTimestamp) {
+	if (blockPeerMap != nil && ConfigSnapshot().CleanInterval == 0) || (lastCleanTimestamp+int64(ConfigSnapshot().CleanInterval) < currentTimestamp) {
 		blockPeerMapMutex.Lock()
 		blockCIDRMapMutex.Lock()
 		for peerIP, peerInfo := range blockPeerMap {
-			if currentTimestamp > (peerInfo.Timestamp + int64(configSnapshot().BanTime)) {
+			if currentTimestamp > (peerInfo.Timestamp + int64(ConfigSnapshot().BanTime)) {
 				peerNet := ParseIPCIDRByConfig(peerIP)
 
 				if peerNet != nil {
@@ -213,9 +213,9 @@ func ClearBlockPeer() int {
 				delete(blockPeerMap, peerIP)
 				removedPeerIPs = append(removedPeerIPs, peerIP)
 
-				if configSnapshot().ExecCommand_Unban != "" {
+				if ConfigSnapshot().ExecCommand_Unban != "" {
 					for peerPort := range peerInfo.Port {
-						execCommandUnban := configSnapshot().ExecCommand_Unban
+						execCommandUnban := ConfigSnapshot().ExecCommand_Unban
 						execCommandUnban = strings.Replace(execCommandUnban, "{peerIP}", peerIP, -1)
 						execCommandUnban = strings.Replace(execCommandUnban, "{peerPort}", strconv.Itoa(peerPort), -1)
 						execCommandUnban = strings.Replace(execCommandUnban, "{torrentInfoHash}", peerInfo.InfoHash, -1)
@@ -338,7 +338,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		}
 	}
 
-	for _, port := range configSnapshot().PortBlockList {
+	for _, port := range ConfigSnapshot().PortBlockList {
 		if int(port) == peerPort {
 			Log("CheckPeer_AddBlockPeer (Bad-Port)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 			AddBlockPeer("CheckPeer", "Bad-Port", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
@@ -401,8 +401,8 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 	}
 
 	ignoreByDownloaded := false
-	if !configSnapshot().IgnoreEmptyPeer || hasPeerClient {
-		if configSnapshot().IgnoreByDownloaded > 0 && (peerDownloaded/1024/1024) >= int64(configSnapshot().IgnoreByDownloaded) {
+	if !ConfigSnapshot().IgnoreEmptyPeer || hasPeerClient {
+		if ConfigSnapshot().IgnoreByDownloaded > 0 && (peerDownloaded/1024/1024) >= int64(ConfigSnapshot().IgnoreByDownloaded) {
 			ignoreByDownloaded = true
 		}
 		if !ignoreByDownloaded && IsProgressNotMatchUploaded(torrentTotalSize, peerProgress, peerUploaded) {
@@ -412,7 +412,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		}
 	}
 
-	if (configSnapshot().IgnoreEmptyPeer && !hasPeerClient) || ignoreByDownloaded {
+	if (ConfigSnapshot().IgnoreEmptyPeer && !hasPeerClient) || ignoreByDownloaded {
 		return -2, peerNet
 	}
 
@@ -423,7 +423,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 func ProcessPeer(peer *Peer, torrentInfoHash string, torrentTotalSize int64, blockCount *int, ipBlockCount *int, badPeersCount *int, emptyPeersCount *int) {
 	peerIP := ProcessIP(peer.IP)
 	peerStatus, peerNet := CheckPeer(peerIP, peer.Port, peer.ID, peer.Client, peer.DlSpeed, peer.UpSpeed, peer.Progress, peer.Downloaded, peer.Uploaded, torrentInfoHash, torrentTotalSize)
-	if configSnapshot().Debug_CheckPeer {
+	if ConfigSnapshot().Debug_CheckPeer {
 		Log("Debug-CheckPeer", "%s:%d %s|%s (TorrentInfoHash: %s, TorrentTotalSize: %.2f MB, PeerDlSpeed: %.2f MB/s, PeerUpSpeed: %.2f MB/s, Progress: %.2f%%, Downloaded: %.2f MB, Uploaded: %.2f MB, PeerStatus: %d)", false, peerIP, peer.Port, strconv.QuoteToASCII(peer.ID), strconv.QuoteToASCII(peer.Client), torrentInfoHash, (float64(torrentTotalSize) / 1024 / 1024), (float64(peer.DlSpeed) / 1024 / 1024), (float64(peer.UpSpeed) / 1024 / 1024), (peer.Progress * 100), (float64(peer.Downloaded) / 1024 / 1024), (float64(peer.Uploaded) / 1024 / 1024), peerStatus)
 	}
 

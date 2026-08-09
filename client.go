@@ -29,7 +29,7 @@ func InitClient() {
 
 // SetURLFromClient 尝试从本地配置文件读取并设置客户端 API 地址.
 func SetURLFromClient() {
-	if configSnapshot().ClientURL == "" {
+	if ConfigSnapshot().ClientURL == "" {
 		qb := &QBClient{}
 		if !qb.SetURL() {
 			tr := &TRClient{}
@@ -42,7 +42,7 @@ func SetURLFromClient() {
 func DetectClient() bool {
 	// 先尝试 qBittorrent.
 	qb := &QBClient{}
-	if configSnapshot().ClientType == "" || configSnapshot().ClientType == qb.GetClientType() {
+	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == qb.GetClientType() {
 		if qb.Detect() {
 			currentClient = qb
 			currentClientType = qb.GetClientType()
@@ -53,7 +53,7 @@ func DetectClient() bool {
 
 	// 再尝试 Transmission.
 	tr := &TRClient{}
-	if configSnapshot().ClientType == "" || configSnapshot().ClientType == tr.GetClientType() {
+	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == tr.GetClientType() {
 		if tr.Detect() {
 			currentClient = tr
 			currentClientType = tr.GetClientType()
@@ -64,7 +64,7 @@ func DetectClient() bool {
 
 	// 最后尝试 BitComet.
 	bc := &BCClient{}
-	if configSnapshot().ClientType == "" || configSnapshot().ClientType == bc.GetClientType() {
+	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == bc.GetClientType() {
 		if bc.Detect() {
 			currentClient = bc
 			currentClientType = bc.GetClientType()
@@ -74,8 +74,8 @@ func DetectClient() bool {
 	}
 
 	// 如果指定了 ClientType 但探测失败, 则强制创建对应实例.
-	if configSnapshot().ClientType != "" {
-		currentClientType = configSnapshot().ClientType
+	if ConfigSnapshot().ClientType != "" {
+		currentClientType = ConfigSnapshot().ClientType
 		switch currentClientType {
 		case "qBittorrent":
 			currentClient = &QBClient{}
@@ -123,7 +123,7 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 
 	if currentClient != nil {
-		if currentClientType == "qBittorrent" && configSnapshot().UseShadowBan {
+		if currentClientType == "qBittorrent" && ConfigSnapshot().UseShadowBan {
 			return currentClient.SubmitShadowBanPeer(blockPeerMap)
 		}
 		return currentClient.SubmitBlockPeer(blockPeerMap)
@@ -136,7 +136,7 @@ func SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 func TestShadowBanAPI() int {
 	// -1: 不支持 (错误), 0: 不支持 (静默), 1: 支持.
 	if currentClientType == "qBittorrent" {
-		if qB_TestShadowBanAPI() {
+		if QB_TestShadowBanAPI() {
 			return 1
 		}
 		return -1

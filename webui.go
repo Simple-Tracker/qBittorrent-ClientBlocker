@@ -76,14 +76,14 @@ func WebUI_IsPath(path string) bool {
 }
 
 func WebUI_CheckBasicAuth(w http.ResponseWriter, r *http.Request) bool {
-	if configSnapshot().WebUIUsername == "" {
+	if ConfigSnapshot().WebUIUsername == "" {
 		return true
 	}
 
 	username, password, ok := r.BasicAuth()
 	if ok &&
-		subtle.ConstantTimeCompare([]byte(username), []byte(configSnapshot().WebUIUsername)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(password), []byte(configSnapshot().WebUIPassword)) == 1 {
+		subtle.ConstantTimeCompare([]byte(username), []byte(ConfigSnapshot().WebUIUsername)) == 1 &&
+		subtle.ConstantTimeCompare([]byte(password), []byte(ConfigSnapshot().WebUIPassword)) == 1 {
 		return true
 	}
 
@@ -150,7 +150,7 @@ func GetWebUIBlockPeers() []WebUIBlockPeer {
 	return peers
 }
 
-func getWebUIBlockPeer(peerIP string) (WebUIBlockPeer, bool) {
+func GetWebUIBlockPeer(peerIP string) (WebUIBlockPeer, bool) {
 	blockPeerMapMutex.RLock()
 	defer blockPeerMapMutex.RUnlock()
 	peerInfo, exists := blockPeerMap[peerIP]
@@ -185,7 +185,7 @@ func getWebUIBlockPeer(peerIP string) (WebUIBlockPeer, bool) {
 	}, true
 }
 
-func appendWebUIBlockPeerEvent(event webUIBlockPeerEvent) {
+func AppendWebUIBlockPeerEvent(event webUIBlockPeerEvent) {
 	webUIPeerSyncMutex.Lock()
 	webUIPeerSyncCursor++
 	event.Cursor = webUIPeerSyncCursor
@@ -199,27 +199,27 @@ func appendWebUIBlockPeerEvent(event webUIBlockPeerEvent) {
 }
 
 func WebUI_RecordBlockPeerAdded(peerIP string) {
-	if !configSnapshot().WebUI {
+	if !ConfigSnapshot().WebUI {
 		return
 	}
-	peer, exists := getWebUIBlockPeer(peerIP)
+	peer, exists := GetWebUIBlockPeer(peerIP)
 	if exists {
-		appendWebUIBlockPeerEvent(webUIBlockPeerEvent{Peer: &peer})
+		AppendWebUIBlockPeerEvent(webUIBlockPeerEvent{Peer: &peer})
 	}
 }
 
 func WebUI_RecordBlockPeerRemoved(peerIP string) {
-	if !configSnapshot().WebUI {
+	if !ConfigSnapshot().WebUI {
 		return
 	}
-	appendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: peerIP})
+	AppendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: peerIP})
 }
 
-func webUIBlockPeerEventAt(index int) webUIBlockPeerEvent {
+func WebUIBlockPeerEventAt(index int) webUIBlockPeerEvent {
 	return webUIPeerSyncEvents[(webUIPeerSyncEventStart+index)%len(webUIPeerSyncEvents)]
 }
 
-func fullWebUIBlockPeerSyncLocked() WebUIBlockPeerSyncResponse {
+func FullWebUIBlockPeerSyncLocked() WebUIBlockPeerSyncResponse {
 	return WebUIBlockPeerSyncResponse{
 		Reset:     true,
 		Cursor:    webUIPeerSyncCursor,
@@ -228,31 +228,31 @@ func fullWebUIBlockPeerSyncLocked() WebUIBlockPeerSyncResponse {
 	}
 }
 
-func getWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
+func GetWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
 	webUIPeerSyncMutex.Lock()
 	defer webUIPeerSyncMutex.Unlock()
 
 	if cursorValue == "" {
-		return fullWebUIBlockPeerSyncLocked()
+		return FullWebUIBlockPeerSyncLocked()
 	}
 	cursor, err := strconv.ParseUint(cursorValue, 10, 64)
 	if err != nil || cursor > webUIPeerSyncCursor {
-		return fullWebUIBlockPeerSyncLocked()
+		return FullWebUIBlockPeerSyncLocked()
 	}
 	if len(webUIPeerSyncEvents) == 0 {
 		if cursor != webUIPeerSyncCursor {
-			return fullWebUIBlockPeerSyncLocked()
+			return FullWebUIBlockPeerSyncLocked()
 		}
 		return WebUIBlockPeerSyncResponse{Cursor: webUIPeerSyncCursor, Peers: []WebUIBlockPeer{}, RemovedIP: []string{}}
 	}
-	if cursor+1 < webUIBlockPeerEventAt(0).Cursor {
-		return fullWebUIBlockPeerSyncLocked()
+	if cursor+1 < WebUIBlockPeerEventAt(0).Cursor {
+		return FullWebUIBlockPeerSyncLocked()
 	}
 
 	upserts := make(map[string]WebUIBlockPeer)
 	removed := make(map[string]struct{})
 	for index := range webUIPeerSyncEvents {
-		event := webUIBlockPeerEventAt(index)
+		event := WebUIBlockPeerEventAt(index)
 		if event.Cursor <= cursor {
 			continue
 		}
@@ -290,7 +290,7 @@ func getWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
 
 func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	loadedExtensions := []string{}
-	if configSnapshot().SyncServerURL != "" {
+	if ConfigSnapshot().SyncServerURL != "" {
 		loadedExtensions = append(loadedExtensions, "SyncServer")
 	}
 	if btnConfig != nil {
@@ -309,7 +309,7 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 		ProgramVersion:   programVersion,
 		UptimeSeconds:    time.Now().Unix() - programStartTimestamp,
 		ClientType:       currentClientType,
-		ClientURL:        configSnapshot().ClientURL,
+		ClientURL:        ConfigSnapshot().ClientURL,
 		LoadedExtensions: loadedExtensions,
 		CurrentStats:     stats,
 		Runtime: Runtime{
@@ -325,7 +325,7 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 func WebUI_GetPeers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if _, syncRequested := r.URL.Query()["sync"]; syncRequested {
-		json.NewEncoder(w).Encode(getWebUIBlockPeerSync(r.URL.Query().Get("cursor")))
+		json.NewEncoder(w).Encode(GetWebUIBlockPeerSync(r.URL.Query().Get("cursor")))
 		return
 	}
 	json.NewEncoder(w).Encode(GetWebUIBlockPeers())

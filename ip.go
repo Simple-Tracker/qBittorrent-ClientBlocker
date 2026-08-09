@@ -19,7 +19,7 @@ var lastIPMapMutex sync.RWMutex
 var lastIPCleanTimestamp int64 = 0
 
 func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerDownloaded int64, peerUploaded int64) {
-	if !(configSnapshot().MaxIPPortCount > 0 || (configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckIncrementMB > 0)) {
+	if !(ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) {
 		return
 	}
 
@@ -50,7 +50,7 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 	var totalUploaded int64 = 0
 
 	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if configSnapshot().IPUpCheckIncrementMB > 0 {
+		if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
 			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
 				totalUploaded += torrentUploaded
 			} else {
@@ -63,9 +63,9 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 		}
 	}
 
-	if configSnapshot().IPUpCheckIncrementMB > 0 {
+	if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
 		var totalUploadedMB int64 = (totalUploaded / 1024 / 1024)
-		if totalUploadedMB > int64(configSnapshot().IPUpCheckIncrementMB) {
+		if totalUploadedMB > int64(ConfigSnapshot().IPUpCheckIncrementMB) {
 			return totalUploadedMB
 		}
 	}
@@ -85,7 +85,7 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
-	if (configSnapshot().MaxIPPortCount > 0 || (configSnapshot().IPUploadedCheck && configSnapshot().IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(configSnapshot().IPUpCheckInterval)) {
+	if (ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(ConfigSnapshot().IPUpCheckInterval)) {
 		ipBlockCount := 0
 
 		ipMapMutex.Lock()
@@ -105,8 +105,8 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				}
 			}
 
-			if configSnapshot().MaxIPPortCount > 0 {
-				if len(ipInfo.Port) > int(configSnapshot().MaxIPPortCount) {
+			if ConfigSnapshot().MaxIPPortCount > 0 {
+				if len(ipInfo.Port) > int(ConfigSnapshot().MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
 					AddBlockPeer("CheckAllIP", "Too many ports", ip, -1, "", "", "", 0, 0)

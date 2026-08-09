@@ -19,7 +19,7 @@ type coverageRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f coverageRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-func coverageResponse(code int, body string, headers map[string]string) *http.Response {
+func CoverageResponse(code int, body string, headers map[string]string) *http.Response {
 	h := make(http.Header)
 	for key, value := range headers {
 		h.Set(key, value)
@@ -81,7 +81,7 @@ func TestCheckUpdateReleaseSelectionAndFailures(t *testing.T) {
 	lastCheckUpdateTimestamp = 0
 	programVersion = "3.8b8"
 	httpClientExternal = http.Client{Transport: coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-		return coverageResponse(200, `[
+		return CoverageResponse(200, `[
 			{"tag_name":"","prerelease":false},
 			{"tag_name":"3.8b9","body":"beta\rnotes","prerelease":true},
 			{"tag_name":"3.9","body":"stable\rnotes","prerelease":false}
@@ -108,7 +108,7 @@ func TestCheckUpdateReleaseSelectionAndFailures(t *testing.T) {
 		currentTimestamp += 100000
 		lastCheckUpdateTimestamp = 0
 		httpClientExternal = http.Client{Transport: coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-			return coverageResponse(response.code, response.body, nil), nil
+			return CoverageResponse(response.code, response.body, nil), nil
 		})}
 		CheckUpdate()
 	}
@@ -174,7 +174,7 @@ func TestClientDispatchAndForcedDetection(t *testing.T) {
 		testConfig.ClientURL = "http://client.invalid"
 		config = &testConfig
 		httpClient = http.Client{Transport: coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-			return coverageResponse(404, "", nil), nil
+			return CoverageResponse(404, "", nil), nil
 		})}
 		httpClientExternal = httpClient
 		if !DetectClient() {
@@ -246,16 +246,16 @@ func TestConfigInitialisationAndRemoteLists(t *testing.T) {
 	httpClientExternal = http.Client{Transport: coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/plain":
-			return coverageResponse(200, "PlainAgent\n", map[string]string{"Content-Type": "text/plain"}), nil
+			return CoverageResponse(200, "PlainAgent\n", map[string]string{"Content-Type": "text/plain"}), nil
 		case "/json":
 			if r.URL.Host == "ips" {
-				return coverageResponse(200, `["198.51.100.0/24"]`, map[string]string{"Content-Type": "application/json"}), nil
+				return CoverageResponse(200, `["198.51.100.0/24"]`, map[string]string{"Content-Type": "application/json"}), nil
 			}
-			return coverageResponse(200, `["JsonAgent"]`, map[string]string{"Content-Type": "application/json; charset=utf-8"}), nil
+			return CoverageResponse(200, `["JsonAgent"]`, map[string]string{"Content-Type": "application/json; charset=utf-8"}), nil
 		case "/invalid":
-			return coverageResponse(200, "{", map[string]string{"Content-Type": "application/json"}), nil
+			return CoverageResponse(200, "{", map[string]string{"Content-Type": "application/json"}), nil
 		case "/cached":
-			return coverageResponse(304, "", nil), nil
+			return CoverageResponse(304, "", nil), nil
 		default:
 			return nil, errors.New("unavailable")
 		}
@@ -281,7 +281,7 @@ func TestConfigInitialisationAndRemoteLists(t *testing.T) {
 }
 
 func TestBitCometLegacyHTMLWorkflow(t *testing.T) {
-	installClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	InstallClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api_v2/task_list/get":
 			http.NotFound(w, r)
@@ -350,7 +350,7 @@ func TestServerRoutesUtilitiesAndLanguage(t *testing.T) {
 		t.Fatalf("Transmission route=%d %q", recorder.Code, recorder.Body.String())
 	}
 
-	listener, err := createListener("127.0.0.1:0")
+	listener, err := CreateListener("127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("create IPv4 listener: %v", err)
 	}
@@ -495,7 +495,7 @@ func TestQBConfigDiscovery(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if len(qB_GetClientConfig()) != 0 {
+	if len(QB_GetClientConfig()) != 0 {
 		t.Fatal("missing qB config returned content")
 	}
 }
@@ -724,33 +724,33 @@ func TestQBFailureBranchesAndSuffixDetection(t *testing.T) {
 	mode := "suffix"
 	transport := coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if mode == "suffix" && r.URL.Path == "/api/v2/app/webapiVersion" {
-			return coverageResponse(403, "", nil), nil
+			return CoverageResponse(403, "", nil), nil
 		}
 		switch r.URL.Path {
 		case "/api/v2/auth/login":
 			switch mode {
 			case "login204":
-				return coverageResponse(204, "", nil), nil
+				return CoverageResponse(204, "", nil), nil
 			case "loginfail":
-				return coverageResponse(200, "Fails.", nil), nil
+				return CoverageResponse(200, "Fails.", nil), nil
 			default:
-				return coverageResponse(200, "Other", nil), nil
+				return CoverageResponse(200, "Other", nil), nil
 			}
 		case "/api/v2/app/preferences":
 			switch mode {
 			case "missing-pref":
-				return coverageResponse(200, `{}`, nil), nil
+				return CoverageResponse(200, `{}`, nil), nil
 			case "bad-pref":
-				return coverageResponse(200, `{"shadow_ban_enabled":"yes"}`, nil), nil
+				return CoverageResponse(200, `{"shadow_ban_enabled":"yes"}`, nil), nil
 			case "off-pref":
-				return coverageResponse(200, `{"shadow_ban_enabled":false}`, nil), nil
+				return CoverageResponse(200, `{"shadow_ban_enabled":false}`, nil), nil
 			case "invalid-pref":
-				return coverageResponse(200, `{`, nil), nil
+				return CoverageResponse(200, `{`, nil), nil
 			}
 		case "/api/v2/torrents/info", "/api/v2/sync/torrentPeers":
-			return coverageResponse(200, `{`, nil), nil
+			return CoverageResponse(200, `{`, nil), nil
 		}
-		return coverageResponse(404, "", nil), nil
+		return CoverageResponse(404, "", nil), nil
 	})
 	httpClient = http.Client{Transport: transport}
 	httpClientExternal = http.Client{Transport: transport}
@@ -770,7 +770,7 @@ func TestQBFailureBranchesAndSuffixDetection(t *testing.T) {
 	}
 	for _, preferenceMode := range []string{"missing-pref", "bad-pref", "off-pref", "invalid-pref"} {
 		mode = preferenceMode
-		if qB_TestShadowBanAPI() {
+		if QB_TestShadowBanAPI() {
 			t.Fatalf("%s unexpectedly enabled shadow ban", preferenceMode)
 		}
 	}
@@ -833,7 +833,7 @@ func TestRequestReadFailuresAndRetryStatuses(t *testing.T) {
 
 	for _, code := range []int{403, 409} {
 		httpClient = http.Client{Transport: coverageRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-			return coverageResponse(code, "", nil), nil
+			return CoverageResponse(code, "", nil), nil
 		})}
 		Fetch("http://request.invalid", true, true, false, nil)
 		Submit("http://request.invalid", "", true, true, nil)
@@ -981,7 +981,7 @@ func TestLanguageFilesAndQBConfigRejection(t *testing.T) {
 		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 			t.Fatal(err)
 		}
-		accepted := qB_SetURL()
+		accepted := QB_SetURL()
 		if strings.Contains(content, "Enabled=false") && accepted {
 			t.Fatal("disabled qB WebUI was accepted")
 		}

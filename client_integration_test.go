@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func installClientTestServer(t *testing.T, handler http.Handler) {
+func InstallClientTestServer(t *testing.T, handler http.Handler) {
 	t.Helper()
 	oldConfig := *config
 	oldHTTPClient := httpClient
@@ -31,7 +31,7 @@ func installClientTestServer(t *testing.T, handler http.Handler) {
 
 func TestQBClientHTTPWorkflow(t *testing.T) {
 	var shadowBanForm string
-	installClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	InstallClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/app/webapiVersion":
 			_, _ = w.Write([]byte("2.11"))
@@ -54,7 +54,7 @@ func TestQBClientHTTPWorkflow(t *testing.T) {
 	if client.GetClientType() != "qBittorrent" || !client.Detect() || !client.Login() {
 		t.Fatal("qBittorrent detection/login workflow failed")
 	}
-	if !qB_TestShadowBanAPI() {
+	if !QB_TestShadowBanAPI() {
 		t.Fatal("shadow-ban capability detection failed")
 	}
 	peers := map[string]BlockPeerInfoStruct{
@@ -79,7 +79,7 @@ func TestTransmissionClientHTTPWorkflow(t *testing.T) {
 		Tr_ipfilterStr = oldFilter
 	})
 	var methods []string
-	installClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	InstallClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request Tr_RequestStruct
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Errorf("decode Transmission request: %v", err)
@@ -124,7 +124,7 @@ func TestTransmissionClientHTTPWorkflow(t *testing.T) {
 
 func TestBitCometV2HTTPWorkflow(t *testing.T) {
 	var submitted BC_v2_BanParams
-	installClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	InstallClientTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api_v2/task_list/get":
 			_, _ = w.Write([]byte("{\"movie_list\":[{\"task_id\":\"task-a\",\"type\":\"BT\",\"total_size\":1000,\"leechers_count\":2},{\"task_id\":\"task-http\",\"type\":\"HTTP\",\"total_size\":2000}]}"))

@@ -34,7 +34,7 @@ func (c *TRClient) FetchTorrents() ([]*Torrent, error) {
 	}
 	var result []*Torrent
 	for _, t := range torrents.Torrents {
-		result = append(result, trTorrentToTorrent(t))
+		result = append(result, TrTorrentToTorrent(t))
 	}
 	return result, nil
 }
@@ -52,7 +52,7 @@ func (c *TRClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStru
 	return false // 不支持.
 }
 
-func trTorrentToTorrent(t Tr_TorrentStruct) *Torrent {
+func TrTorrentToTorrent(t Tr_TorrentStruct) *Torrent {
 	var peers []*Peer
 	var leecherCount int64
 	for _, p := range t.Peers {
@@ -145,17 +145,17 @@ func Tr_ProcessHTTP(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 func Tr_SetURL() bool {
-	if configSnapshot().ClientURL == "" {
+	if ConfigSnapshot().ClientURL == "" {
 		return false
 	}
 
-	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: configSnapshot().SyncServerURL + "/ipfilter.dat"}})
+	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: ConfigSnapshot().SyncServerURL + "/ipfilter.dat"}})
 	if err != nil {
 		Log("SetURL", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
-	Submit(configSnapshot().ClientURL, tr_SessionSetJSON, false, true, &Tr_jsonHeader)
+	Submit(ConfigSnapshot().ClientURL, tr_SessionSetJSON, false, true, &Tr_jsonHeader)
 
 	return true
 }
@@ -166,7 +166,7 @@ func (c *TRClient) Detect() bool {
 		return false
 	}
 
-	detectStatusCode, _, _ := Submit(configSnapshot().ClientURL, detectJSON, false, false, &Tr_jsonHeader)
+	detectStatusCode, _, _ := Submit(ConfigSnapshot().ClientURL, detectJSON, false, false, &Tr_jsonHeader)
 	return (detectStatusCode == 200 || detectStatusCode == 409)
 }
 func Tr_Login() bool {
@@ -176,7 +176,7 @@ func Tr_Login() bool {
 		return false
 	}
 
-	Submit(configSnapshot().ClientURL, loginJSON, false, true, nil)
+	Submit(ConfigSnapshot().ClientURL, loginJSON, false, true, nil)
 
 	Tr_csrfTokenMutex.RLock()
 	token := Tr_csrfToken
@@ -201,7 +201,7 @@ func Tr_FetchTorrents() *Tr_TorrentsStruct {
 		return nil
 	}
 
-	_, _, fetchResponseBody := Submit(configSnapshot().ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
+	_, _, fetchResponseBody := Submit(ConfigSnapshot().ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
 	if fetchResponseBody == nil {
 		Log("FetchTorrents", GetLangText("Error-FetchResponse"), true)
 		return nil
@@ -229,7 +229,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 		return false
 	}
 
-	Submit(configSnapshot().ClientURL, tr_BlockListUpdateJSON, true, true, &Tr_jsonHeader)
+	Submit(ConfigSnapshot().ClientURL, tr_BlockListUpdateJSON, true, true, &Tr_jsonHeader)
 
 	return true
 }

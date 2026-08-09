@@ -44,7 +44,7 @@ func TestSubmitBlockPeer_NilInput(t *testing.T) {
 }
 
 func TestTrTorrentToTorrent(t *testing.T) {
-	torrent := trTorrentToTorrent(Tr_TorrentStruct{
+	torrent := TrTorrentToTorrent(Tr_TorrentStruct{
 		InfoHash:  "hash-a",
 		TotalSize: 12345,
 		Private:   true,

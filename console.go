@@ -82,7 +82,7 @@ func ProcessVersion(version string) (int, int, int, int, string) {
 
 // CheckUpdate 检查软件更新.
 func CheckUpdate() {
-	if !configSnapshot().CheckUpdate || (lastCheckUpdateTimestamp+86400) > currentTimestamp {
+	if !ConfigSnapshot().CheckUpdate || (lastCheckUpdateTimestamp+86400) > currentTimestamp {
 		return
 	}
 
@@ -199,7 +199,7 @@ func CheckUpdate() {
 
 // Task 执行主要的循环任务.
 func Task() {
-	if configSnapshot().ClientURL == "" {
+	if ConfigSnapshot().ClientURL == "" {
 		Log("Task", GetLangText("Error-Task_EmptyURL"), true)
 		return
 	}
@@ -242,8 +242,8 @@ func Task() {
 	Log("Debug-Task_IgnoreEmptyPeersCount", "%d", false, emptyPeersCount)
 
 	if cleanCount != 0 || blockCount != 0 || ipBlockCount != 0 {
-		if configSnapshot().GenIPDat == 1 || configSnapshot().GenIPDat == 2 {
-			ipfilterCount, ipfilterStr := GenIPFilter(configSnapshot().GenIPDat, blockPeerMap)
+		if ConfigSnapshot().GenIPDat == 1 || ConfigSnapshot().GenIPDat == 2 {
+			ipfilterCount, ipfilterStr := GenIPFilter(ConfigSnapshot().GenIPDat, blockPeerMap)
 			err := SaveIPFilter(ipfilterStr)
 			if err != "" {
 				Log("Task", GetLangText("Error-IPFilter_Write"), true, err)
@@ -260,7 +260,7 @@ func Task() {
 			return true
 		})
 
-		if !configSnapshot().IPUploadedCheck && iblcLen <= 0 && len(syncServer_CompiledRules) <= 0 {
+		if !ConfigSnapshot().IPUploadedCheck && iblcLen <= 0 && len(syncServer_CompiledRules) <= 0 {
 			Log("Task", GetLangText("Task_BanInfo"), true, blockCount, len(blockPeerMap))
 		} else {
 			Log("Task", GetLangText("Task_BanInfoWithIP"), true, blockCount, ipBlockCount, len(blockPeerMap))
@@ -274,7 +274,7 @@ func Task() {
 // GC 执行垃圾回收任务以清理过期数据并释放内存.
 func GC() {
 	now := atomic.LoadInt64(&currentTimestamp)
-	gcInterval := int64(configSnapshot().GCInterval)
+	gcInterval := int64(ConfigSnapshot().GCInterval)
 	if gcInterval <= 0 {
 		return
 	}
@@ -373,7 +373,7 @@ func RunConsole() {
 
 	for !LoadInitConfig(true) {
 		time.Sleep(2 * time.Second)
-		if !configSnapshot().IgnoreFailureExit {
+		if !ConfigSnapshot().IgnoreFailureExit {
 			os.Exit(1)
 		}
 	}
@@ -381,8 +381,8 @@ func RunConsole() {
 	Log("RunConsole", GetLangText("RunConsole_ProgramHasStarted"), true)
 	StartServer()
 
-	if configSnapshot().ExecCommand_Run != "" {
-		status, out, err := ExecCommand(configSnapshot().ExecCommand_Run)
+	if ConfigSnapshot().ExecCommand_Run != "" {
+		status, out, err := ExecCommand(ConfigSnapshot().ExecCommand_Run)
 		if status {
 			Log("RunConsole", GetLangText("Success-ExecCommand"), true, out)
 		} else {
@@ -415,7 +415,7 @@ func RunConsole() {
 				return
 			case <-ticker.C:
 				now := time.Now().Unix()
-				if (atomic.LoadInt64(&currentTimestamp) + int64(configSnapshot().Interval)) <= now {
+				if (atomic.LoadInt64(&currentTimestamp) + int64(ConfigSnapshot().Interval)) <= now {
 					atomic.StoreInt64(&currentTimestamp, now)
 					GoWithCrashLog("CheckUpdate", CheckUpdate)
 

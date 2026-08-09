@@ -16,7 +16,7 @@ import (
 const screenshotPeerCount = 13327
 const screenshotTimestamp int64 = 1773000000
 
-func makeScreenshotScalePeers() (map[string]BlockPeerInfoStruct, []string) {
+func MakeScreenshotScalePeers() (map[string]BlockPeerInfoStruct, []string) {
 	random := rand.New(rand.NewSource(3809))
 	modules := []string{"CheckPeer", "BTN", "SyncServer"}
 	reasons := []string{"Bad-Client_Normal", "Bad-Port", "Reputation"}
@@ -48,7 +48,7 @@ func makeScreenshotScalePeers() (map[string]BlockPeerInfoStruct, []string) {
 	return peers, peerIPs
 }
 
-func installScreenshotScalePeers(tb testing.TB, peers map[string]BlockPeerInfoStruct) {
+func InstallScreenshotScalePeers(tb testing.TB, peers map[string]BlockPeerInfoStruct) {
 	tb.Helper()
 	oldConfig := *config
 	oldCurrentClientType := currentClientType
@@ -109,7 +109,7 @@ func installScreenshotScalePeers(tb testing.TB, peers map[string]BlockPeerInfoSt
 	})
 }
 
-func makeScreenshotScaleQBServer(tb testing.TB, peers map[string]BlockPeerInfoStruct, peerIPs []string, torrentCount int) (*httptest.Server, *int64) {
+func MakeScreenshotScaleQBServer(tb testing.TB, peers map[string]BlockPeerInfoStruct, peerIPs []string, torrentCount int) (*httptest.Server, *int64) {
 	tb.Helper()
 	torrents := make([]qB_TorrentStruct, torrentCount)
 	peersByTorrent := make([]map[string]qB_PeerStruct, torrentCount)
@@ -175,7 +175,7 @@ func makeScreenshotScaleQBServer(tb testing.TB, peers map[string]BlockPeerInfoSt
 	return server, &requestCount
 }
 
-func installScreenshotScaleQBClient(tb testing.TB, server *httptest.Server) {
+func InstallScreenshotScaleQBClient(tb testing.TB, server *httptest.Server) {
 	tb.Helper()
 	oldHTTPClient := httpClient
 	oldCurrentClient := currentClient
@@ -194,7 +194,7 @@ func installScreenshotScaleQBClient(tb testing.TB, server *httptest.Server) {
 	})
 }
 
-func newQBFormBenchmarkServer(tb testing.TB) *httptest.Server {
+func NewQBFormBenchmarkServer(tb testing.TB) *httptest.Server {
 	tb.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil || r.PostForm.Get("peers") == "" {
@@ -208,8 +208,8 @@ func newQBFormBenchmarkServer(tb testing.TB) *httptest.Server {
 }
 
 func TestScreenshotScalePeerOperations(t *testing.T) {
-	peers, peerIPs := makeScreenshotScalePeers()
-	installScreenshotScalePeers(t, peers)
+	peers, peerIPs := MakeScreenshotScalePeers()
+	InstallScreenshotScalePeers(t, peers)
 
 	totalIPs, totalPorts := GetWebUIBlockStats()
 	if totalIPs != screenshotPeerCount || totalPorts != screenshotPeerCount {
@@ -218,11 +218,11 @@ func TestScreenshotScalePeerOperations(t *testing.T) {
 	if snapshot := GetWebUIBlockPeers(); len(snapshot) != screenshotPeerCount {
 		t.Fatalf("snapshot peer count=%d, want %d", len(snapshot), screenshotPeerCount)
 	}
-	initial := getWebUIBlockPeerSync("")
+	initial := GetWebUIBlockPeerSync("")
 	if !initial.Reset || len(initial.Peers) != screenshotPeerCount {
 		t.Fatalf("initial sync reset=%t peers=%d", initial.Reset, len(initial.Peers))
 	}
-	emptyDelta := getWebUIBlockPeerSync("0")
+	emptyDelta := GetWebUIBlockPeerSync("0")
 	if emptyDelta.Reset || len(emptyDelta.Peers) != 0 || len(emptyDelta.RemovedIP) != 0 {
 		t.Fatalf("empty delta=%#v", emptyDelta)
 	}
@@ -241,10 +241,10 @@ func TestScreenshotScalePeerOperations(t *testing.T) {
 }
 
 func TestScreenshotScaleQBSteadyStateCycle(t *testing.T) {
-	peers, peerIPs := makeScreenshotScalePeers()
-	installScreenshotScalePeers(t, peers)
-	server, requestCount := makeScreenshotScaleQBServer(t, peers, peerIPs, 100)
-	installScreenshotScaleQBClient(t, server)
+	peers, peerIPs := MakeScreenshotScalePeers()
+	InstallScreenshotScalePeers(t, peers)
+	server, requestCount := MakeScreenshotScaleQBServer(t, peers, peerIPs, 100)
+	InstallScreenshotScaleQBClient(t, server)
 	config.WebUI = true
 
 	var taskWait sync.WaitGroup
@@ -276,8 +276,8 @@ func TestScreenshotScaleQBSteadyStateCycle(t *testing.T) {
 }
 
 func BenchmarkScreenshotScaleOperations(b *testing.B) {
-	peers, peerIPs := makeScreenshotScalePeers()
-	installScreenshotScalePeers(b, peers)
+	peers, peerIPs := MakeScreenshotScalePeers()
+	InstallScreenshotScalePeers(b, peers)
 	targetIP := peerIPs[len(peerIPs)/2]
 	targetPeer := peers[targetIP]
 	targetPort := 0
@@ -341,7 +341,7 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 	b.Run("WebUIEmptyDelta", func(b *testing.B) {
 		b.ReportAllocs()
 		for index := 0; index < b.N; index++ {
-			response := getWebUIBlockPeerSync("0")
+			response := GetWebUIBlockPeerSync("0")
 			if response.Reset || len(response.Peers) != 0 {
 				b.Fatal("unexpected non-empty delta")
 			}
@@ -369,7 +369,7 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 
 	b.Run("QBittorrentSubmit", func(b *testing.B) {
 		oldHTTPClient := httpClient
-		server := newQBFormBenchmarkServer(b)
+		server := NewQBFormBenchmarkServer(b)
 		httpClient = *server.Client()
 		config.ClientURL = server.URL
 		b.Cleanup(func() {
@@ -379,7 +379,7 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 		b.ReportMetric(screenshotPeerCount, "peers/op")
 		b.ResetTimer()
 		for index := 0; index < b.N; index++ {
-			if !qB_SubmitBlockPeer(peers) {
+			if !QB_SubmitBlockPeer(peers) {
 				b.Fatal("qBittorrent submission failed")
 			}
 		}
@@ -387,7 +387,7 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 
 	b.Run("QBittorrentBanAllPortSingleIPv4", func(b *testing.B) {
 		oldHTTPClient := httpClient
-		server := newQBFormBenchmarkServer(b)
+		server := NewQBFormBenchmarkServer(b)
 		httpClient = *server.Client()
 		config.ClientURL = server.URL
 		config.BanAllPort = true
@@ -402,7 +402,7 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 		b.ReportMetric(2*65536, "endpoints/op")
 		b.ResetTimer()
 		for index := 0; index < b.N; index++ {
-			if !qB_SubmitBlockPeer(allPortPeer) {
+			if !QB_SubmitBlockPeer(allPortPeer) {
 				b.Fatal("qBittorrent all-port submission failed")
 			}
 		}
@@ -410,10 +410,10 @@ func BenchmarkScreenshotScaleOperations(b *testing.B) {
 }
 
 func BenchmarkScreenshotScaleQBSteadyStateRuntimeCycle(b *testing.B) {
-	peers, peerIPs := makeScreenshotScalePeers()
-	installScreenshotScalePeers(b, peers)
-	server, requestCount := makeScreenshotScaleQBServer(b, peers, peerIPs, 100)
-	installScreenshotScaleQBClient(b, server)
+	peers, peerIPs := MakeScreenshotScalePeers()
+	InstallScreenshotScalePeers(b, peers)
+	server, requestCount := MakeScreenshotScaleQBServer(b, peers, peerIPs, 100)
+	InstallScreenshotScaleQBClient(b, server)
 	config.WebUI = true
 
 	logBufferMutex.Lock()

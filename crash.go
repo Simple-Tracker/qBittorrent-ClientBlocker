@@ -13,7 +13,7 @@ var crashLogMutex sync.Mutex
 var crashStopOnce sync.Once
 
 func CrashLogPath() string {
-	logPath := configSnapshot().LogPath
+	logPath := ConfigSnapshot().LogPath
 	if logPath == "" {
 		logPath = "logs"
 	}
@@ -25,7 +25,7 @@ func WriteCrashLog(location string, recoverErr any, recoverStack []byte) {
 	crashLogMutex.Lock()
 	defer crashLogMutex.Unlock()
 
-	logPath := configSnapshot().LogPath
+	logPath := ConfigSnapshot().LogPath
 	if logPath == "" {
 		logPath = "logs"
 	}

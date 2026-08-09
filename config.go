@@ -235,20 +235,20 @@ var config *ConfigStruct = &ConfigStruct{
 
 // configSnapshot 返回当前不可变配置快照。配置更新必须通过 replaceConfig
 // 或 updateConfig 发布新副本，确保运行中的读取不会与热重载发生竞争。
-func configSnapshot() *ConfigStruct {
+func ConfigSnapshot() *ConfigStruct {
 	configLock.RLock()
 	currentConfig := config
 	configLock.RUnlock()
 	return currentConfig
 }
 
-func replaceConfig(newConfig *ConfigStruct) {
+func ReplaceConfig(newConfig *ConfigStruct) {
 	configLock.Lock()
 	config = newConfig
 	configLock.Unlock()
 }
 
-func updateConfig(update func(*ConfigStruct)) *ConfigStruct {
+func UpdateConfig(update func(*ConfigStruct)) *ConfigStruct {
 	configLock.Lock()
 	newConfig := *config
 	update(&newConfig)
@@ -294,14 +294,14 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 	return setCount
 }
 func SetBlockListFromFile() bool {
-	if len(configSnapshot().BlockListFile) == 0 {
+	if len(ConfigSnapshot().BlockListFile) == 0 {
 		return true
 	}
 
 	setCount := 0
 	updated := false
 
-	for _, filePath := range configSnapshot().BlockListFile {
+	for _, filePath := range ConfigSnapshot().BlockListFile {
 		blockListFileStat, err := os.Stat(filePath)
 		if err != nil {
 			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
@@ -361,14 +361,14 @@ func SetBlockListFromFile() bool {
 	return true
 }
 func SetBlockListFromURL() bool {
-	if len(configSnapshot().BlockListURL) == 0 || (blockListURLLastFetch+int64(configSnapshot().UpdateInterval)) > currentTimestamp {
+	if len(ConfigSnapshot().BlockListURL) == 0 || (blockListURLLastFetch+int64(ConfigSnapshot().UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
 	blockListURLLastFetch = currentTimestamp
 	setCount := 0
 
-	for _, blockListURL := range configSnapshot().BlockListURL {
+	for _, blockListURL := range ConfigSnapshot().BlockListURL {
 		httpStatusCode, httpHeader, blockListContent := Fetch(blockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
@@ -431,14 +431,14 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 	return setCount
 }
 func SetIPBlockListFromFile() bool {
-	if len(configSnapshot().IPBlockListFile) == 0 {
+	if len(ConfigSnapshot().IPBlockListFile) == 0 {
 		return true
 	}
 
 	setCount := 0
 	updated := false
 
-	for _, filePath := range configSnapshot().IPBlockListFile {
+	for _, filePath := range ConfigSnapshot().IPBlockListFile {
 		ipBlockListFileStat, err := os.Stat(filePath)
 		if err != nil {
 			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
@@ -491,14 +491,14 @@ func SetIPBlockListFromFile() bool {
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if len(configSnapshot().IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(configSnapshot().UpdateInterval)) > currentTimestamp {
+	if len(ConfigSnapshot().IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(ConfigSnapshot().UpdateInterval)) > currentTimestamp {
 		return true
 	}
 
 	ipBlockListURLLastFetch = currentTimestamp
 	setCount := 0
 
-	for _, ipBlockListURL := range configSnapshot().IPBlockListURL {
+	for _, ipBlockListURL := range ConfigSnapshot().IPBlockListURL {
 		httpStatusCode, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
@@ -590,7 +590,7 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 	return 0
 }
 func InitConfig() {
-	currentConfig := updateConfig(func(newConfig *ConfigStruct) {
+	currentConfig := UpdateConfig(func(newConfig *ConfigStruct) {
 		if newConfig.Interval < 1 {
 			newConfig.Interval = 1
 		}
@@ -684,7 +684,7 @@ func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
 	return value
 }
 func LoadInitConfig(firstLoad bool) bool {
-	newConfig := *configSnapshot()
+	newConfig := *ConfigSnapshot()
 	loadConfigStatus := LoadConfig(configFilename, true, &newConfig)
 
 	if loadConfigStatus < -1 {
@@ -696,7 +696,7 @@ func LoadInitConfig(firstLoad bool) bool {
 		}
 
 		if loadConfigStatus == 0 || loadAdditionalConfigStatus == 0 {
-			replaceConfig(&newConfig)
+			ReplaceConfig(&newConfig)
 			InitConfig()
 		}
 	}
@@ -710,7 +710,7 @@ func LoadInitConfig(firstLoad bool) bool {
 		SetURLFromClient()
 	}
 
-	currentConfig := configSnapshot()
+	currentConfig := ConfigSnapshot()
 	if currentConfig.ClientURL != "" {
 		if lastURL != currentConfig.ClientURL {
 			if !DetectClient() {
@@ -723,17 +723,17 @@ func LoadInitConfig(firstLoad bool) bool {
 			}
 			InitClient()
 			SubmitBlockPeer(nil)
-			lastURL = configSnapshot().ClientURL
+			lastURL = ConfigSnapshot().ClientURL
 		}
 	} else {
 		// 重置为上次使用的 URL, 主要目的是防止热重载配置文件破坏首次启动后从 qBittorrent 配置文件读取的 URL.
-		currentConfig = updateConfig(func(newConfig *ConfigStruct) {
+		currentConfig = UpdateConfig(func(newConfig *ConfigStruct) {
 			newConfig.ClientURL = lastURL
 		})
 	}
 
 	if currentConfig.UseShadowBan && TestShadowBanAPI() <= 0 {
-		updateConfig(func(newConfig *ConfigStruct) {
+		UpdateConfig(func(newConfig *ConfigStruct) {
 			newConfig.UseShadowBan = false
 		})
 	}
@@ -753,7 +753,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	return true
 }
 func RegFlag() {
-	debug := configSnapshot().Debug
+	debug := ConfigSnapshot().Debug
 	flag.BoolVar(&shortFlag_ShowVersion, "v", false, GetLangText("ProgramVersion"))
 	flag.BoolVar(&longFlag_ShowVersion, "version", false, GetLangText("ProgramVersion"))
 	flag.StringVar(&shortFlag_configFilename, "c", "", GetLangText("ConfigPath"))
@@ -767,7 +767,7 @@ func RegFlag() {
 	flag.BoolVar(&needHideWindow, "hidewindow", false, GetLangText("HideWindow"))
 	flag.BoolVar(&needHideSystray, "hidesystray", false, GetLangText("HideSystray"))
 	flag.Parse()
-	updateConfig(func(newConfig *ConfigStruct) {
+	UpdateConfig(func(newConfig *ConfigStruct) {
 		newConfig.Debug = debug
 	})
 }

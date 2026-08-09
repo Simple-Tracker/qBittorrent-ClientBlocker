@@ -303,7 +303,7 @@ func TestWebUIPeerSyncEventBufferKeepsNewestEventsInOrder(t *testing.T) {
 	})
 
 	for index := 0; index < webUIMaxPeerEvents+2; index++ {
-		appendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: strconv.Itoa(index)})
+		AppendWebUIBlockPeerEvent(webUIBlockPeerEvent{RemovedIP: strconv.Itoa(index)})
 	}
 
 	webUIPeerSyncMutex.Lock()
@@ -311,10 +311,10 @@ func TestWebUIPeerSyncEventBufferKeepsNewestEventsInOrder(t *testing.T) {
 	if len(webUIPeerSyncEvents) != webUIMaxPeerEvents {
 		t.Fatalf("event count=%d, want %d", len(webUIPeerSyncEvents), webUIMaxPeerEvents)
 	}
-	if first := webUIBlockPeerEventAt(0); first.Cursor != 3 || first.RemovedIP != "2" {
+	if first := WebUIBlockPeerEventAt(0); first.Cursor != 3 || first.RemovedIP != "2" {
 		t.Fatalf("oldest event=%#v", first)
 	}
-	if last := webUIBlockPeerEventAt(len(webUIPeerSyncEvents) - 1); last.Cursor != webUIMaxPeerEvents+2 {
+	if last := WebUIBlockPeerEventAt(len(webUIPeerSyncEvents) - 1); last.Cursor != webUIMaxPeerEvents+2 {
 		t.Fatalf("newest event=%#v", last)
 	}
 }
@@ -364,7 +364,7 @@ func TestAddBlockPeerRecordsOnlyNewWebUIPeers(t *testing.T) {
 	currentTimestamp = 20
 	AddBlockPeer("CheckPeer", "updated", "203.0.113.20", 6882, "hash", "id", "client", 3, 4)
 
-	response := getWebUIBlockPeerSync("1")
+	response := GetWebUIBlockPeerSync("1")
 	if response.Cursor != 1 || len(response.Peers) != 0 || len(response.RemovedIP) != 0 {
 		t.Fatalf("existing peer produced an update delta: %#v", response)
 	}
@@ -434,14 +434,14 @@ func TestWebUIPeerSyncCoalescesLatestState(t *testing.T) {
 		webUIPeerSyncMutex.Unlock()
 	})
 
-	response := getWebUIBlockPeerSync("0")
+	response := GetWebUIBlockPeerSync("0")
 	if response.Reset || response.Cursor != 3 || len(response.Peers) != 1 || len(response.RemovedIP) != 0 {
 		t.Fatalf("coalesced response=%#v", response)
 	}
 	if response.Peers[0].Reason != "latest" || response.Peers[0].Timestamp != 40 {
 		t.Fatalf("coalesced peer=%#v", response.Peers[0])
 	}
-	invalid := getWebUIBlockPeerSync("not-a-cursor")
+	invalid := GetWebUIBlockPeerSync("not-a-cursor")
 	if !invalid.Reset || len(invalid.Peers) != 1 {
 		t.Fatalf("invalid cursor response=%#v", invalid)
 	}

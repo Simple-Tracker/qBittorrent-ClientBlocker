@@ -21,7 +21,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// WebUI 路由.
-	if configSnapshot().WebUI {
+	if ConfigSnapshot().WebUI {
 		if WebUI_IsPath(r.URL.Path) {
 			if !WebUI_CheckBasicAuth(w, r) {
 				return
@@ -55,7 +55,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("404: Not Found."))
 }
 
-func createListener(addrStr string) (net.Listener, error) {
+func CreateListener(addrStr string) (net.Listener, error) {
 	listenType := "tcp4"
 	if IsIPv6(addrStr) {
 		listenType = "tcp6"
@@ -75,19 +75,19 @@ func StartServer() {
 	// 收集需要监听的地址.
 	var addrs []string
 	if currentClientType == "Transmission" {
-		addrs = append(addrs, configSnapshot().Listen)
+		addrs = append(addrs, ConfigSnapshot().Listen)
 	}
-	if configSnapshot().WebUI {
+	if ConfigSnapshot().WebUI {
 		// 检查是否与 Transmission 监听地址冲突, 冲突则只监听一次.
 		conflict := false
 		for _, a := range addrs {
-			if a == configSnapshot().WebUIListen {
+			if a == ConfigSnapshot().WebUIListen {
 				conflict = true
 				break
 			}
 		}
 		if !conflict {
-			addrs = append(addrs, configSnapshot().WebUIListen)
+			addrs = append(addrs, ConfigSnapshot().WebUIListen)
 		}
 	}
 
@@ -96,7 +96,7 @@ func StartServer() {
 	}
 
 	for _, addr := range addrs {
-		l, err := createListener(addr)
+		l, err := CreateListener(addr)
 		if err != nil {
 			Log("StartServer", GetLangText("Error-StartServer_Listen"), true, addr, err.Error())
 			continue

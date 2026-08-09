@@ -106,12 +106,12 @@ func ParseIPCIDRByConfig(ip string) *net.IPNet {
 	cidr := ""
 
 	if IsIPv6(ip) {
-		if configSnapshot().BanIP6CIDR != "/128" {
-			cidr = configSnapshot().BanIP6CIDR
+		if ConfigSnapshot().BanIP6CIDR != "/128" {
+			cidr = ConfigSnapshot().BanIP6CIDR
 		}
 	} else {
-		if configSnapshot().BanIPCIDR != "/32" {
-			cidr = configSnapshot().BanIPCIDR
+		if ConfigSnapshot().BanIPCIDR != "/32" {
+			cidr = ConfigSnapshot().BanIPCIDR
 		}
 	}
 

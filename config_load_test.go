@@ -14,6 +14,41 @@ func TestDefaultConfigFilename(t *testing.T) {
 	}
 }
 
+func TestDefaultConfigFilenameLoadsFromWorkingDirectory(t *testing.T) {
+	oldWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "config.json"), []byte(`{
+		"interval": 7,
+		"unknownField": true,
+		"blockListFile": [
+			"blockList.json",
+			// "optional.json"
+		]
+	}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(directory); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWorkingDirectory)
+		lastModMutex.Lock()
+		delete(configLastMod, configFilename)
+		lastModMutex.Unlock()
+	})
+
+	target := ConfigStruct{}
+	if status := LoadConfig(configFilename, true, &target); status != 0 {
+		t.Fatalf("load default config status=%d, want 0", status)
+	}
+	if target.Interval != 7 || len(target.BlockListFile) != 1 || target.BlockListFile[0] != "blockList.json" {
+		t.Fatalf("unexpected default config: %#v", target)
+	}
+}
+
 func TestLoadConfigRetriesParseFailure(t *testing.T) {
 	filename := filepath.Join(t.TempDir(), "config.json")
 	if err := os.WriteFile(filename, []byte(`{"Interval":`), 0o600); err != nil {
@@ -94,12 +129,12 @@ func TestLoadConfigTOMLAndStatusCodes(t *testing.T) {
 }
 
 func TestConfigSnapshotConcurrentUpdates(t *testing.T) {
-	oldConfig := configSnapshot()
+	oldConfig := ConfigSnapshot()
 	initialConfig := *oldConfig
 	initialConfig.Interval = 0
 	initialConfig.ClientURL = "http://client/0"
-	replaceConfig(&initialConfig)
-	t.Cleanup(func() { replaceConfig(oldConfig) })
+	ReplaceConfig(&initialConfig)
+	t.Cleanup(func() { ReplaceConfig(oldConfig) })
 
 	const updates = 1000
 	var readers sync.WaitGroup
@@ -114,7 +149,7 @@ func TestConfigSnapshotConcurrentUpdates(t *testing.T) {
 				case <-stop:
 					return
 				default:
-					currentConfig := configSnapshot()
+					currentConfig := ConfigSnapshot()
 					expectedURL := "http://client/" + strconv.FormatUint(uint64(currentConfig.Interval), 10)
 					if currentConfig.ClientURL != expectedURL {
 						select {
@@ -129,7 +164,7 @@ func TestConfigSnapshotConcurrentUpdates(t *testing.T) {
 	}
 
 	for index := uint32(0); index < updates; index++ {
-		updateConfig(func(newConfig *ConfigStruct) {
+		UpdateConfig(func(newConfig *ConfigStruct) {
 			newConfig.Interval = index
 			newConfig.ClientURL = "http://client/" + strconv.FormatUint(uint64(index), 10)
 		})
@@ -140,5 +175,30 @@ func TestConfigSnapshotConcurrentUpdates(t *testing.T) {
 	case message := <-failed:
 		t.Fatal(message)
 	default:
+	}
+}
+
+func TestConfigSnapshotRemainsImmutableAfterUpdate(t *testing.T) {
+	originalConfig := ConfigSnapshot()
+	initialConfig := *originalConfig
+	initialConfig.Interval = 6
+	initialConfig.ClientURL = "http://client/old"
+	ReplaceConfig(&initialConfig)
+	t.Cleanup(func() { ReplaceConfig(originalConfig) })
+
+	oldSnapshot := ConfigSnapshot()
+	newSnapshot := UpdateConfig(func(newConfig *ConfigStruct) {
+		newConfig.Interval = 12
+		newConfig.ClientURL = "http://client/new"
+	})
+
+	if oldSnapshot.Interval != 6 || oldSnapshot.ClientURL != "http://client/old" {
+		t.Fatalf("old snapshot changed: %#v", oldSnapshot)
+	}
+	if newSnapshot == oldSnapshot {
+		t.Fatal("update reused the old config snapshot")
+	}
+	if currentConfig := ConfigSnapshot(); currentConfig != newSnapshot || currentConfig.Interval != 12 || currentConfig.ClientURL != "http://client/new" {
+		t.Fatalf("new snapshot was not published: %#v", currentConfig)
 	}
 }

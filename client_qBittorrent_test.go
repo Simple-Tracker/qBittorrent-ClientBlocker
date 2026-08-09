@@ -39,7 +39,7 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	}
 
 	qB_useNewBanPeersMethod = true
-	if !qB_SubmitBlockPeer(peers) {
+	if !QB_SubmitBlockPeer(peers) {
 		t.Fatal("new qBittorrent ban submission failed")
 	}
 	if got := requestForm.Get("peers"); got != "192.0.2.10:6881" {
@@ -49,7 +49,7 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	allPortsPeer := map[string]BlockPeerInfoStruct{
 		"192.0.2.20": {Port: map[int]bool{-1: true}},
 	}
-	if !qB_SubmitBlockPeer(allPortsPeer) {
+	if !QB_SubmitBlockPeer(allPortsPeer) {
 		t.Fatal("all-port qBittorrent ban submission failed")
 	}
 	allPorts := strings.Split(requestForm.Get("peers"), "|")
@@ -64,7 +64,7 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	ipv6Peer := map[string]BlockPeerInfoStruct{
 		"2001:db8::1": {Port: map[int]bool{6881: true}},
 	}
-	if !qB_SubmitBlockPeer(ipv6Peer) {
+	if !QB_SubmitBlockPeer(ipv6Peer) {
 		t.Fatal("IPv6 qBittorrent ban submission failed")
 	}
 	if got := requestForm.Get("peers"); got != "[2001:db8::1]:6881" {
@@ -72,7 +72,7 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	}
 
 	qB_useNewBanPeersMethod = false
-	if !qB_SubmitBlockPeer(peers) {
+	if !QB_SubmitBlockPeer(peers) {
 		t.Fatal("legacy qBittorrent ban submission failed")
 	}
 	preference := requestForm.Get("json")
