@@ -1,4 +1,7 @@
 .DS_Store
+.gocache/
+.gomodcache/
 logs/
 qBittorrent-ClientBlocker
 qBittorrent-ClientBlocker.exe
+Sparkle3/
