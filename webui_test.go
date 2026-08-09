@@ -370,6 +370,83 @@ func TestAddBlockPeerRecordsOnlyNewWebUIPeers(t *testing.T) {
 	}
 }
 
+func TestWebUIPeerEventsAreDisabledWithWebUI(t *testing.T) {
+	oldConfig := *config
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 7
+	webUIPeerSyncEvents = nil
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+	testConfig := oldConfig
+	testConfig.WebUI = false
+	config = &testConfig
+
+	WebUI_RecordBlockPeerAdded("203.0.113.1")
+	WebUI_RecordBlockPeerRemoved("203.0.113.1")
+	webUIPeerSyncMutex.Lock()
+	cursor := webUIPeerSyncCursor
+	eventCount := len(webUIPeerSyncEvents)
+	webUIPeerSyncMutex.Unlock()
+	if cursor != 7 || eventCount != 0 {
+		t.Fatalf("disabled WebUI recorded cursor=%d events=%d", cursor, eventCount)
+	}
+}
+
+func TestWebUIPeerSyncCoalescesLatestState(t *testing.T) {
+	blockPeerMapMutex.Lock()
+	oldBlockPeerMap := blockPeerMap
+	blockPeerMap = map[string]BlockPeerInfoStruct{
+		"203.0.113.40": {Timestamp: 40, Reason: "latest", Port: map[int]bool{6881: true}},
+	}
+	blockPeerMapMutex.Unlock()
+	webUIPeerSyncMutex.Lock()
+	oldCursor := webUIPeerSyncCursor
+	oldEvents := webUIPeerSyncEvents
+	oldEventStart := webUIPeerSyncEventStart
+	webUIPeerSyncCursor = 3
+	webUIPeerSyncEvents = []webUIBlockPeerEvent{
+		{Cursor: 1, Peer: &WebUIBlockPeer{IP: "203.0.113.40", Timestamp: 10, Reason: "old"}},
+		{Cursor: 2, RemovedIP: "203.0.113.40"},
+		{Cursor: 3, Peer: &WebUIBlockPeer{IP: "203.0.113.40", Timestamp: 40, Reason: "latest", Ports: []string{"6881"}}},
+	}
+	webUIPeerSyncEventStart = 0
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		blockPeerMapMutex.Lock()
+		blockPeerMap = oldBlockPeerMap
+		blockPeerMapMutex.Unlock()
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncCursor = oldCursor
+		webUIPeerSyncEvents = oldEvents
+		webUIPeerSyncEventStart = oldEventStart
+		webUIPeerSyncMutex.Unlock()
+	})
+
+	response := getWebUIBlockPeerSync("0")
+	if response.Reset || response.Cursor != 3 || len(response.Peers) != 1 || len(response.RemovedIP) != 0 {
+		t.Fatalf("coalesced response=%#v", response)
+	}
+	if response.Peers[0].Reason != "latest" || response.Peers[0].Timestamp != 40 {
+		t.Fatalf("coalesced peer=%#v", response.Peers[0])
+	}
+	invalid := getWebUIBlockPeerSync("not-a-cursor")
+	if !invalid.Reset || len(invalid.Peers) != 1 {
+		t.Fatalf("invalid cursor response=%#v", invalid)
+	}
+}
+
 func TestFormatConfigValueForLog(t *testing.T) {
 	if got := FormatConfigValueForLog("ClientPassword", "secret-a"); got != "[REDACTED]" {
 		t.Fatalf("ClientPassword=%v, want [REDACTED]", got)

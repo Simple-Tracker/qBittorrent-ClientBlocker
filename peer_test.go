@@ -139,3 +139,81 @@ func TestAddBlockCIDRStoresFirstPeerIP(t *testing.T) {
 		t.Fatalf("expected first peer IP to be recorded in CIDR membership: %#v", info.IPs)
 	}
 }
+
+func TestAddBlockPeerAccumulatesTorrentTraffic(t *testing.T) {
+	oldConfig := *config
+	oldBlockPeerMap := blockPeerMap
+	oldBlockCIDRMap := blockCIDRMap
+	oldCurrentTimestamp := currentTimestamp
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		blockPeerMap = oldBlockPeerMap
+		blockCIDRMap = oldBlockCIDRMap
+		currentTimestamp = oldCurrentTimestamp
+	})
+	testConfig := oldConfig
+	testConfig.BanIPCIDR = "/32"
+	testConfig.ExecCommand_Ban = ""
+	testConfig.WebUI = false
+	config = &testConfig
+	blockPeerMap = map[string]BlockPeerInfoStruct{}
+	blockCIDRMap = map[string]BlockCIDRInfoStruct{}
+	currentTimestamp = 100
+
+	AddBlockPeer("test", "traffic", "203.0.113.30", 6881, "torrent-a", "peer", "client", 100, 50)
+	AddBlockPeer("test", "traffic", "203.0.113.30", 6882, "torrent-a", "peer", "client", 150, 70)
+	AddBlockPeer("test", "traffic", "203.0.113.30", 6881, "torrent-a", "peer", "client", 20, 10)
+	AddBlockPeer("test", "traffic", "203.0.113.30", 6881, "torrent-b", "peer", "client", 30, 40)
+
+	peer := blockPeerMap["203.0.113.30"]
+	if peer.Downloaded != 200 || peer.Uploaded != 120 {
+		t.Fatalf("traffic downloaded=%d uploaded=%d, want 200/120", peer.Downloaded, peer.Uploaded)
+	}
+	if len(peer.Port) != 2 || peer.TorrentDownloadedRaw["torrent-a"] != 20 || peer.TorrentDownloadedRaw["torrent-b"] != 30 {
+		t.Fatalf("unexpected peer aggregation: %#v", peer)
+	}
+}
+
+func TestClearBlockPeerUsesNewerCIDRTimestamp(t *testing.T) {
+	oldConfig := *config
+	oldBlockPeerMap := blockPeerMap
+	oldBlockCIDRMap := blockCIDRMap
+	oldCurrentTimestamp := currentTimestamp
+	oldLastCleanTimestamp := lastCleanTimestamp
+	t.Cleanup(func() {
+		restored := oldConfig
+		config = &restored
+		blockPeerMap = oldBlockPeerMap
+		blockCIDRMap = oldBlockCIDRMap
+		currentTimestamp = oldCurrentTimestamp
+		lastCleanTimestamp = oldLastCleanTimestamp
+	})
+	testConfig := oldConfig
+	testConfig.BanIPCIDR = "/24"
+	testConfig.BanTime = 1
+	testConfig.CleanInterval = 0
+	testConfig.ExecCommand_Unban = ""
+	testConfig.WebUI = false
+	config = &testConfig
+	peerNet := ParseIPCIDR("203.0.113.0/24")
+	blockPeerMap = map[string]BlockPeerInfoStruct{
+		"203.0.113.30": {Timestamp: 1, Port: map[int]bool{6881: true}},
+	}
+	blockCIDRMap = map[string]BlockCIDRInfoStruct{
+		peerNet.String(): {Timestamp: 9, Net: peerNet, IPs: map[string]bool{"203.0.113.30": true}},
+	}
+	currentTimestamp = 10
+	lastCleanTimestamp = 0
+
+	if cleaned := ClearBlockPeer(); cleaned != 0 {
+		t.Fatalf("cleaned=%d, want 0 while CIDR timestamp is newer", cleaned)
+	}
+	if timestamp := blockPeerMap["203.0.113.30"].Timestamp; timestamp != 9 {
+		t.Fatalf("peer timestamp=%d, want 9", timestamp)
+	}
+	currentTimestamp = 11
+	if cleaned := ClearBlockPeer(); cleaned != 1 {
+		t.Fatalf("cleaned=%d, want 1 after renewed timestamp expires", cleaned)
+	}
+}

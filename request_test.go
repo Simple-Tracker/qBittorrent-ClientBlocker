@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -14,7 +15,7 @@ func TestNewRequest_ClientHeadersAndAuth(t *testing.T) {
 	oldTrToken := Tr_csrfToken
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 		currentClientType = oldClientType
 		Tr_csrfTokenMutex.Lock()
 		Tr_csrfToken = oldTrToken
@@ -197,5 +198,40 @@ func TestSubmit_InputTypes(t *testing.T) {
 	Submit(server.URL, []byte("byte-data"), false, false, nil)
 	if string(capturedBody) != "byte-data" {
 		t.Fatalf("unexpected body for byte slice input: %q", string(capturedBody))
+	}
+}
+
+func TestFetchAndSubmitStatusHandling(t *testing.T) {
+	oldClientExternal := httpClientExternal
+	t.Cleanup(func() { httpClientExternal = oldClientExternal })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/"))
+		if err != nil {
+			http.Error(w, "bad status", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte("body"))
+	}))
+	defer server.Close()
+	httpClientExternal = *server.Client()
+
+	for _, status := range []int{http.StatusNoContent, http.StatusUnauthorized, http.StatusNotFound, http.StatusTeapot} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			fetchStatus, _, fetchBody := Fetch(server.URL+"/"+strconv.Itoa(status), false, false, false, nil)
+			if fetchStatus != status || fetchBody != nil {
+				t.Fatalf("Fetch status=%d body=%q", fetchStatus, fetchBody)
+			}
+			submitStatus, _, submitBody := Submit(server.URL+"/"+strconv.Itoa(status), "", false, false, nil)
+			if submitStatus != status || submitBody != nil {
+				t.Fatalf("Submit status=%d body=%q", submitStatus, submitBody)
+			}
+		})
+	}
+}
+
+func TestNewRequestRejectsUnsupportedBody(t *testing.T) {
+	if request := NewRequest(true, "http://example.com", struct{}{}, false, false, nil); request != nil {
+		t.Fatalf("unsupported body produced request=%#v", request)
 	}
 }

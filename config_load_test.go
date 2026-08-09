@@ -43,6 +43,32 @@ func TestLoadConfigIgnoresUnknownFields(t *testing.T) {
 		t.Fatalf("load status=%d interval=%d", status, target.Interval)
 	}
 }
+
+func TestLoadConfigTOMLAndStatusCodes(t *testing.T) {
+	directory := t.TempDir()
+	missing := filepath.Join(directory, "missing.toml")
+	target := ConfigStruct{}
+	if status := LoadConfig(missing, false, &target); status != -5 {
+		t.Fatalf("missing status=%d, want -5", status)
+	}
+
+	filename := filepath.Join(directory, "config.toml")
+	if err := os.WriteFile(filename, []byte("Interval = 9\nUnusedFutureField = \"ignored\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		lastModMutex.Lock()
+		delete(configLastMod, filename)
+		lastModMutex.Unlock()
+	})
+	if status := LoadConfig(filename, true, &target); status != 0 || target.Interval != 9 {
+		t.Fatalf("TOML load status=%d interval=%d", status, target.Interval)
+	}
+	if status := LoadConfig(filename, true, &target); status != -1 {
+		t.Fatalf("unchanged status=%d, want -1", status)
+	}
+}
+
 func TestConfigSnapshotConcurrentUpdates(t *testing.T) {
 	oldConfig := configSnapshot()
 	initialConfig := *oldConfig
