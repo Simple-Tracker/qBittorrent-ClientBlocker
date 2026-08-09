@@ -30,7 +30,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 			case io.Reader:
 				bodyReader = v
 			default:
-				Log("NewRequest", GetLangText("Error-NewRequest"), true, url, "Unsupported postdata type")
+				Log("NewRequest", GetLangText("Error-NewRequest"), true, "Unsupported postdata type")
 				return nil
 			}
 		}
