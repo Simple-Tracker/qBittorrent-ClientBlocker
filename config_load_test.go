@@ -29,7 +29,22 @@ func TestLoadConfigRetriesParseFailure(t *testing.T) {
 
 func TestLoadConfigIgnoresUnknownFields(t *testing.T) {
 	filename := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(filename, []byte(`{"Interval":8,"UnusedFutureField":"ignored"}`), 0o600); err != nil {
+	content := `{
+		"interval": 8,
+		"logDebug_CheckPeer": false,
+		"unusedFutureField": "ignored",
+		"blockListFile": [
+			"blockList.json",
+			//"blockList-Optional.json"
+		],
+		"ipBlockListURL": [
+			"https://example.com/all.txt",
+			//"https://example.com/optional.txt",
+			"https://example.com/project.txt"
+		],
+		"webUI": true
+	}`
+	if err := os.WriteFile(filename, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -39,8 +54,11 @@ func TestLoadConfigIgnoresUnknownFields(t *testing.T) {
 	})
 
 	target := ConfigStruct{}
-	if status := LoadConfig(filename, true, &target); status != 0 || target.Interval != 8 {
-		t.Fatalf("load status=%d interval=%d", status, target.Interval)
+	if status := LoadConfig(filename, true, &target); status != 0 {
+		t.Fatalf("load status=%d, want 0", status)
+	}
+	if target.Interval != 8 || !target.WebUI || len(target.BlockListFile) != 1 || len(target.IPBlockListURL) != 2 {
+		t.Fatalf("unexpected config: %#v", target)
 	}
 }
 
