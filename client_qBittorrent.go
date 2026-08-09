@@ -231,7 +231,7 @@ func qB_Login() bool {
 		Log("Login", GetLangText("Success-Login"), true)
 		return true
 	}
-	
+
 	if loginResponseBody == nil {
 		Log("Login", GetLangText("Error-Login"), true)
 		return false
@@ -279,36 +279,53 @@ func qB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 	return &torrentPeersResult
 }
 func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	banIPPortsStr := ""
+	var banIPPortsBuilder strings.Builder
+	banIPPortsBuilder.Grow(len(blockPeerMap) * 32)
 
 	if blockPeerMap != nil {
 		if qB_useNewBanPeersMethod {
+			firstPeer := true
+			writePeer := func(peer string) {
+				if !firstPeer {
+					banIPPortsBuilder.WriteByte('|')
+				}
+				banIPPortsBuilder.WriteString(peer)
+				firstPeer = false
+			}
 			for peerIP, peerInfo := range blockPeerMap {
 				if _, exist := peerInfo.Port[-1]; config.BanAllPort || exist {
 					for port := 0; port <= 65535; port++ {
+						portString := strconv.Itoa(port)
 						if IsIPv6(peerIP) {
-							banIPPortsStr += "[" + peerIP + "]:" + strconv.Itoa(port) + "|"
+							writePeer("[" + peerIP + "]:" + portString)
 						} else {
-							banIPPortsStr += peerIP + ":" + strconv.Itoa(port) + "|"
-							banIPPortsStr += "[::ffff:" + peerIP + "]:" + strconv.Itoa(port) + "|"
+							writePeer(peerIP + ":" + portString)
+							writePeer("[::ffff:" + peerIP + "]:" + portString)
 						}
 					}
 					continue
 				}
-				for port, _ := range peerInfo.Port {
-					banIPPortsStr += peerIP + ":" + strconv.Itoa(port) + "|"
+				for port := range peerInfo.Port {
+					if IsIPv6(peerIP) {
+						writePeer("[" + peerIP + "]:" + strconv.Itoa(port))
+					} else {
+						writePeer(peerIP + ":" + strconv.Itoa(port))
+					}
 				}
 			}
-			banIPPortsStr = strings.TrimRight(banIPPortsStr, "|")
 		} else {
 			for peerIP := range blockPeerMap {
-				banIPPortsStr += peerIP + "\n"
+				banIPPortsBuilder.WriteString(peerIP)
+				banIPPortsBuilder.WriteByte('\n')
 				if !IsIPv6(peerIP) {
-					banIPPortsStr += "::ffff:" + peerIP + "\n"
+					banIPPortsBuilder.WriteString("::ffff:")
+					banIPPortsBuilder.WriteString(peerIP)
+					banIPPortsBuilder.WriteByte('\n')
 				}
 			}
 		}
 	}
+	banIPPortsStr := banIPPortsBuilder.String()
 
 	Log("Debug-SubmitBlockPeer", "%s", false, banIPPortsStr)
 
@@ -316,7 +333,7 @@ func qB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
 		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/banPeers", banIPPortsStr, true, true, nil)
+		_, _, banResponseBody = Submit(config.ClientURL+"/v2/transfer/banPeers", "peers="+banIPPortsStr, true, true, nil)
 	} else {
 		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
 		_, _, banResponseBody = Submit(config.ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
