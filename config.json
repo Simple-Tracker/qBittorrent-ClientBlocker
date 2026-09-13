@@ -4,6 +4,8 @@
 	"interval": 6,
 	"cleanInterval": 3600,
 	"gcInterval": 60,
+	"historyRetention": 3600,
+	"historyMaxEntries": 100000,
 	"banTime": 86400,
 	"timeout": 6,
 	"logToFile": true,

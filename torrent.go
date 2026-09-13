@@ -12,6 +12,7 @@ type TorrentInfoStruct struct {
 	Peers map[string]PeerInfoStruct
 }
 type PeerInfoStruct struct {
+	LastSeen   int64 `json:"-"`
 	Net        *net.IPNet
 	Port       map[int]bool
 	Progress   float64
@@ -29,7 +30,7 @@ var lastTorrentCleanTimestamp int64 = 0
 
 // AddTorrentInfo 添加种子信息, 以便后续进行上传进度比分析.
 func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IPNet, peerIP string, peerPort int, peerProgress float64, peerDownloaded int64, peerUploaded int64, peerID string, peerClient string) {
-	if !((ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0) || ConfigSnapshot().BanByRelativeProgressUploaded || ConfigSnapshot().SyncServerURL != "") {
+	if !((ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0) || ConfigSnapshot().BanByRelativeProgressUploaded || ConfigSnapshot().SyncServerURL != "" || ConfigSnapshot().BTNSubmitPeers || ConfigSnapshot().BTNSubmitHistories) {
 		return
 	}
 
@@ -49,7 +50,7 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 	}
 	peerPortMap[peerPort] = true
 
-	peers[peerIP] = PeerInfoStruct{Net: cidr, Port: peerPortMap, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, ID: peerID, Client: peerClient}
+	peers[peerIP] = PeerInfoStruct{LastSeen: currentTimestamp, Net: cidr, Port: peerPortMap, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, ID: peerID, Client: peerClient}
 	torrentMap[torrentInfoHash] = TorrentInfoStruct{Size: torrentTotalSize, Peers: peers}
 	torrentMapMutex.Unlock()
 }

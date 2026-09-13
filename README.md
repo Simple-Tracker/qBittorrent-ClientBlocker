@@ -137,6 +137,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | interval | uint32 | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从后端获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | uint32 | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
 | gcInterval | uint32 | 60 (秒) | 主动 GC 间隔. 设置为 0 可禁用主动 GC；较短间隔有助于控制内存, 但会增加 CPU 占用 |
+| historyRetention | uint32 | 3600 (秒) | IP、种子 Peer 及 IP 下种子计数的闲置保留时间，0 禁用过期淘汰。实际至少保留两个检测周期；每分钟清理，不依赖主动 GC |
+| historyMaxEntries | uint32 | 100000 | IP、IP-种子计数、种子-Peer 三类历史各自的容量上限，0 不限制。超限优先淘汰最久未观测记录及其基线；不影响封禁名单 |
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (blockListURL/ipBlockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | restartInterval | uint32 | 6 (秒) | 重启 Torrent 间隔. 用于部分客户端 (Transmission) 屏蔽列表无法立即生效的措施, 通过重启 Torrent 来实现. 过短间隔可能造成屏蔽不生效 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |

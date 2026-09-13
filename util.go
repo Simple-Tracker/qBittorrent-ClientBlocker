@@ -25,6 +25,7 @@ func DeepCopyIPMap(src map[string]IPInfoStruct, dest map[string]IPInfoStruct) {
 				newTorrentUploadedMap[tk] = tv
 			}
 			dest[k] = IPInfoStruct{
+				LastSeen:        v.LastSeen,
 				Net:             v.Net,
 				Port:            newPortMap,
 				TorrentUploaded: newTorrentUploadedMap,
@@ -45,6 +46,7 @@ func DeepCopyTorrentMap(src map[string]TorrentInfoStruct, dest map[string]Torren
 					newPortMap[ppk] = ppv
 				}
 				newPeers[pk] = PeerInfoStruct{
+					LastSeen:   pv.LastSeen,
 					Net:        pv.Net,
 					Port:       newPortMap,
 					Progress:   pv.Progress,

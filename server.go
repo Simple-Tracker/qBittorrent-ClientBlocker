@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 var Server_Status bool = false
@@ -109,6 +110,9 @@ func StartServer() {
 		return
 	}
 
+	// Server 的超时配置仅在启动监听时设置，避免与 Serve 并发修改。
+	timeout := time.Duration(ConfigSnapshot().Timeout) * time.Second
+	httpServer.ReadTimeout, httpServer.WriteTimeout = timeout, timeout
 	Server_Status = true
 	httpServer.SetKeepAlivesEnabled(false)
 

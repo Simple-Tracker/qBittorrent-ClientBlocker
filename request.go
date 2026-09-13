@@ -13,6 +13,15 @@ var urlETagCache = make(map[string]string)
 var urlLastModCache = make(map[string]string)
 var requestStateMutex sync.RWMutex
 
+func HttpClientSnapshot(clientReq bool) http.Client {
+	httpStateMutex.RLock()
+	defer httpStateMutex.RUnlock()
+	if clientReq {
+		return httpClient
+	}
+	return httpClientExternal
+}
+
 func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, allowCache bool, withHeader *map[string]string) *http.Request {
 	var request *http.Request
 	var err error
@@ -102,11 +111,8 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	var response *http.Response
 	var err error
 
-	if clientReq {
-		response, err = httpClient.Do(request)
-	} else {
-		response, err = httpClientExternal.Do(request)
-	}
+	client := HttpClientSnapshot(clientReq)
+	response, err = client.Do(request)
 
 	if err != nil {
 		if ConfigSnapshot().FetchFailedThreshold > 0 && ConfigSnapshot().ExecCommand_FetchFailed != "" {
@@ -216,11 +222,8 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 	var response *http.Response
 	var err error
 
-	if clientReq {
-		response, err = httpClient.Do(request)
-	} else {
-		response, err = httpClientExternal.Do(request)
-	}
+	client := HttpClientSnapshot(clientReq)
+	response, err = client.Do(request)
 
 	if err != nil {
 		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())

@@ -293,7 +293,7 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 	if ConfigSnapshot().SyncServerURL != "" {
 		loadedExtensions = append(loadedExtensions, "SyncServer")
 	}
-	if btnConfig != nil {
+	if currentBTN, _, _ := BtnSnapshot(); currentBTN != nil {
 		loadedExtensions = append(loadedExtensions, "BTN")
 	}
 

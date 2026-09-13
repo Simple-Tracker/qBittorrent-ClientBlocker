@@ -306,6 +306,7 @@ func Task() {
 
 // GC 执行垃圾回收任务以清理过期数据并释放内存.
 func GC() {
+	CleanHistory()
 	now := atomic.LoadInt64(&currentTimestamp)
 	gcInterval := int64(ConfigSnapshot().GCInterval)
 	if gcInterval <= 0 {
@@ -316,39 +317,6 @@ func GC() {
 		return
 	}
 
-	// 保持旧阈值, 避免频繁清理.
-	const ipMapThreshold = 23333333
-	const peerMapThreshold = 2333333
-
-	ipMapMutex.Lock()
-	ipMapGCCount := (len(ipMap) - ipMapThreshold)
-	if ipMapGCCount > 0 {
-		Log("GC", GetLangText("GC_IPMap"), true, ipMapGCCount)
-		for ip := range ipMap {
-			ipMapGCCount--
-			delete(ipMap, ip)
-			if ipMapGCCount <= 0 {
-				break
-			}
-		}
-	}
-	ipMapMutex.Unlock()
-
-	torrentMapMutex.Lock()
-	for torrentInfoHash, torrentInfo := range torrentMap {
-		torrentInfoGCCount := (len(torrentInfo.Peers) - peerMapThreshold)
-		if torrentInfoGCCount > 0 {
-			Log("GC", GetLangText("GC_TorrentMap"), true, torrentInfoHash, torrentInfoGCCount)
-			for peerIP := range torrentInfo.Peers {
-				torrentInfoGCCount--
-				delete(torrentMap[torrentInfoHash].Peers, peerIP)
-				if torrentInfoGCCount <= 0 {
-					break
-				}
-			}
-		}
-	}
-	torrentMapMutex.Unlock()
 	runRuntimeGC()
 }
 
@@ -387,8 +355,9 @@ func Stop(recoverErr any, recoverStack []byte) {
 
 	DeleteIPFilter()
 	SubmitBlockPeer(nil)
-	httpClient.CloseIdleConnections()
-	httpClientExternal.CloseIdleConnections()
+	client, external := HttpClientSnapshot(true), HttpClientSnapshot(false)
+	client.CloseIdleConnections()
+	external.CloseIdleConnections()
 	StopServer()
 	Platform_Stop()
 

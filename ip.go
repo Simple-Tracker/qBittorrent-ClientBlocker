@@ -6,6 +6,8 @@ import (
 )
 
 type IPInfoStruct struct {
+	LastSeen          int64            `json:"-"`
+	TorrentLastSeen   map[string]int64 `json:"-"`
 	Net               *net.IPNet
 	Port              map[int]bool
 	TorrentDownloaded map[string]int64
@@ -23,6 +25,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 		return
 	}
 
+	var torrentLastSeen map[string]int64
 	var clientPortMap map[int]bool
 	var clientTorrentDownloadedMap map[string]int64
 	var clientTorrentUploadedMap map[string]int64
@@ -32,6 +35,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 		clientTorrentDownloadedMap = make(map[string]int64)
 		clientTorrentUploadedMap = make(map[string]int64)
 	} else {
+		torrentLastSeen = info.TorrentLastSeen
 		clientPortMap = info.Port
 		clientTorrentDownloadedMap = info.TorrentDownloaded
 		clientTorrentUploadedMap = info.TorrentUploaded
@@ -39,11 +43,15 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 			clientTorrentDownloadedMap = make(map[string]int64)
 		}
 	}
+	if torrentLastSeen == nil {
+		torrentLastSeen = make(map[string]int64)
+	}
+	torrentLastSeen[torrentInfoHash] = currentTimestamp
 	clientPortMap[peerPort] = true
 	clientTorrentDownloadedMap[torrentInfoHash] = peerDownloaded
 	clientTorrentUploadedMap[torrentInfoHash] = peerUploaded
 
-	ipMap[peerIP] = IPInfoStruct{Net: cidr, Port: clientPortMap, TorrentDownloaded: clientTorrentDownloadedMap, TorrentUploaded: clientTorrentUploadedMap}
+	ipMap[peerIP] = IPInfoStruct{LastSeen: currentTimestamp, TorrentLastSeen: torrentLastSeen, Net: cidr, Port: clientPortMap, TorrentDownloaded: clientTorrentDownloadedMap, TorrentUploaded: clientTorrentUploadedMap}
 	ipMapMutex.Unlock()
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
@@ -52,7 +60,8 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
 		if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
 			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
-				totalUploaded += torrentUploaded
+				// 首次观测或历史已淘汰：先建立基线，不能把累计量视为增量。
+				continue
 			} else {
 				if torrentUploaded < lastTorrentUploaded {
 					totalUploaded += torrentUploaded

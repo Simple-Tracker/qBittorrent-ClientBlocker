@@ -29,6 +29,8 @@ type ConfigStruct struct {
 	Interval                      uint32
 	CleanInterval                 uint32
 	GCInterval                    uint32
+	HistoryRetention              uint32
+	HistoryMaxEntries             uint32
 	UpdateInterval                uint32
 	RestartInterval               uint32
 	TorrentMapCleanInterval       uint32
@@ -155,6 +157,8 @@ var httpTransport = &http.Transport{
 	Proxy:                 GetProxy,
 }
 
+var httpStateMutex sync.RWMutex
+
 var httpClient http.Client
 var httpClientExternal http.Client // 没有 Cookie.
 
@@ -166,6 +170,8 @@ var config *ConfigStruct = &ConfigStruct{
 	Debug_CheckPeer:               false,
 	Interval:                      6,
 	GCInterval:                    60,
+	HistoryRetention:              3600,
+	HistoryMaxEntries:             100000,
 	UpdateInterval:                86400,
 	RestartInterval:               6,
 	TorrentMapCleanInterval:       60,
@@ -602,51 +608,34 @@ func InitConfig() {
 		}
 	})
 
-	if currentConfig.SkipCertVerification {
-		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	} else {
-		httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
+	httpStateMutex.RLock()
+	newTransport := httpTransport.Clone()
+	httpStateMutex.RUnlock()
+	newTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: currentConfig.SkipCertVerification}
+	newTransport.DisableKeepAlives = !currentConfig.LongConnection
+	externalTransport := newTransport.Clone()
+	switch currentConfig.Proxy {
+	case "Auto":
+		newTransport.Proxy = nil
+		externalTransport.Proxy = GetProxy
+	case "All":
+		newTransport.Proxy = GetProxy
+		externalTransport.Proxy = GetProxy
+	default:
+		newTransport.Proxy = nil
+		externalTransport.Proxy = nil
 	}
-
-	httpTransportExternal := httpTransport.Clone()
-
-	if currentConfig.Proxy == "Auto" {
-		// 默认模式, 仅对外部资源使用代理.
-		httpTransport.Proxy = nil
-		httpTransportExternal.Proxy = GetProxy
-	} else if currentConfig.Proxy == "All" {
-		httpTransport.Proxy = GetProxy
-		httpTransportExternal.Proxy = GetProxy
-	} else {
-		httpTransport.Proxy = nil
-		httpTransportExternal.Proxy = nil
-	}
-
-	if currentConfig.LongConnection {
-		httpTransport.DisableKeepAlives = false
-	}
-
 	currentTimeout := time.Duration(currentConfig.Timeout) * time.Second
-
-	httpClient = http.Client{
-		Timeout:   currentTimeout,
-		Jar:       cookieJar,
-		Transport: httpTransport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	httpClientExternal = http.Client{
-		Timeout:   currentTimeout,
-		Transport: httpTransportExternal,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	httpServer.ReadTimeout = currentTimeout
-	httpServer.WriteTimeout = currentTimeout
+	noRedirect := func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
+	newClient := http.Client{Timeout: currentTimeout, Jar: cookieJar, Transport: newTransport, CheckRedirect: noRedirect}
+	newExternal := http.Client{Timeout: currentTimeout, Transport: externalTransport, CheckRedirect: noRedirect}
+	// 已发布的 Transport 不再修改；在途请求继续使用原对象。
+	httpStateMutex.Lock()
+	oldClient, oldExternal := httpClient, httpClientExternal
+	httpTransport, httpClient, httpClientExternal = newTransport, newClient, newExternal
+	httpStateMutex.Unlock()
+	oldClient.CloseIdleConnections()
+	oldExternal.CloseIdleConnections()
 
 	t := reflect.TypeOf(*currentConfig)
 	v := reflect.ValueOf(*currentConfig)

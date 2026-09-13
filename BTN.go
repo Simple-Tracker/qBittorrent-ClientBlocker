@@ -131,6 +131,14 @@ func GetBTNSubmitHeader() map[string]string {
 var btn_lastGetConfig int64 = 0
 var btn_configureInterval = 60
 
+var btnStateMutex sync.RWMutex
+
+func BtnSnapshot() (*BTN_ConfigStruct, *BTN_RulesStruct, *BTN_ExceptionStruct) {
+	btnStateMutex.RLock()
+	defer btnStateMutex.RUnlock()
+	return btnConfig, btnRules, btnExceptions
+}
+
 var btnConfig *BTN_ConfigStruct
 var btn_isGettingConfig atomic.Bool
 var btn_isTaskRunning atomic.Bool
@@ -175,14 +183,14 @@ func BTN_MatchEntry(value string, ruleRaw string) bool {
 }
 
 func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, string) {
-	if btnConfig == nil {
+	currConfig, currRules, currExceptions := BtnSnapshot()
+	if currConfig == nil {
 		return false, 0, ""
 	}
 
 	ipObj := net.ParseIP(peerIP)
 	peerPortStr := strconv.Itoa(peerPort)
 
-	currExceptions := btnExceptions
 	// 1. 检查例外规则 (WhiteList).
 	for _, rules := range currExceptions.IP {
 		for _, rule := range rules {
@@ -218,7 +226,6 @@ func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, 
 		}
 	}
 
-	currRules := btnRules
 	// 2. 检查封禁规则 (BlockList).
 	// 处理顺序: IP -> Port -> PeerID -> ClientName.
 	for reason, rules := range currRules.IP {
@@ -260,9 +267,11 @@ func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, 
 
 func BTN_GetConfig() {
 	if ConfigSnapshot().BTNConfigureURL == "" {
+		btnStateMutex.Lock()
 		btnConfig = nil
 		btnRules = &BTN_RulesStruct{}
 		btnExceptions = &BTN_ExceptionStruct{}
+		btnStateMutex.Unlock()
 		return
 	}
 
@@ -300,17 +309,21 @@ func BTN_GetConfig() {
 	// 协议版本校验 (目前我们的实现固定为 3).
 	if newBtnConfig.MinMainVersion > 3 || newBtnConfig.MaxMainVersion < 3 {
 		Log("BTN_GetConfig", GetLangText("Error-BTNVersionMismatch"), true, newBtnConfig.MinMainVersion, newBtnConfig.MaxMainVersion)
+		btnStateMutex.Lock()
 		btnConfig = nil
+		btnStateMutex.Unlock()
 		return
 	}
 
+	btnStateMutex.Lock()
 	btnConfig = &newBtnConfig
+	btnStateMutex.Unlock()
 
 	Log("BTN_GetConfig", GetLangText("Success-BTNConfigLoaded"), true)
 }
 
 func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp int64) {
-	currConfig := btnConfig
+	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -376,7 +389,7 @@ func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp i
 }
 
 func BTN_SubmitBans(blockPeerMap map[string]BlockPeerInfoStruct, currentTimestamp int64) {
-	currConfig := btnConfig
+	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -444,7 +457,7 @@ func BTN_SubmitBans(blockPeerMap map[string]BlockPeerInfoStruct, currentTimestam
 }
 
 func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map[string]TorrentInfoStruct, currentTimestamp int64) {
-	currConfig := btnConfig
+	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -537,7 +550,7 @@ func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap
 }
 
 func BTN_Reconfigure() {
-	currConfig := btnConfig
+	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -558,7 +571,7 @@ func BTN_Reconfigure() {
 }
 
 func BTN_Rules() {
-	currConfig := btnConfig
+	currConfig, currRules, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -566,7 +579,6 @@ func BTN_Rules() {
 	ability, _ := currConfig.Ability["rules"]
 	authHeader := GetBTNAuthHeader()
 	rulesEndpoint := ability.Endpoint
-	currRules := btnRules
 	if currRules.Version != "" {
 		if strings.Contains(rulesEndpoint, "?") {
 			rulesEndpoint += "&rev=" + currRules.Version
@@ -591,13 +603,15 @@ func BTN_Rules() {
 		Log("BTN_Rules", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
+	btnStateMutex.Lock()
 	btnRules = &newRules
+	btnStateMutex.Unlock()
 
 	Log("BTN_Rules", GetLangText("Success-BTNRegLoaded"), true, currRules.Version)
 }
 
 func BTN_Exception() {
-	currConfig := btnConfig
+	currConfig, _, currExceptions := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
 	}
@@ -605,7 +619,6 @@ func BTN_Exception() {
 	ability, _ := currConfig.Ability["exception"]
 	authHeader := GetBTNAuthHeader()
 	exceptionEndpoint := ability.Endpoint
-	currExceptions := btnExceptions
 	if currExceptions.Version != "" {
 		if strings.Contains(exceptionEndpoint, "?") {
 			exceptionEndpoint += "&rev=" + currExceptions.Version
@@ -630,13 +643,16 @@ func BTN_Exception() {
 		Log("BTN_Exception", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
+	btnStateMutex.Lock()
 	btnExceptions = &newExceptions
+	btnStateMutex.Unlock()
 
 	Log("BTN_Exception", GetLangText("Success-BTNExceptionLoaded"), true, currExceptions.Version)
 }
 
 func BTN_Task() {
-	if ConfigSnapshot().BTNConfigureURL == "" || btn_isGettingConfig.Load() || btn_isTaskRunning.Load() || btnConfig == nil {
+	currConfig, _, _ := BtnSnapshot()
+	if ConfigSnapshot().BTNConfigureURL == "" || btn_isGettingConfig.Load() || btn_isTaskRunning.Load() || currConfig == nil {
 		return
 	}
 
@@ -646,7 +662,7 @@ func BTN_Task() {
 		GoWithCrashLog("BTN_Task", func() {
 			defer btn_isTaskRunning.Store(false)
 
-			currConfig := btnConfig
+			currConfig, _, _ := BtnSnapshot()
 			if currConfig == nil {
 				return
 			}
