@@ -27,6 +27,7 @@ type BTN_Ability struct {
 }
 
 type BTN_ConfigStruct struct {
+	sourceURL      string
 	MinMainVersion uint32                 `json:"min_protocol_version"`
 	MaxMainVersion uint32                 `json:"max_protocol_version"`
 	Ability        map[string]BTN_Ability `json:"ability"`
@@ -109,14 +110,18 @@ var btn_lastTaskExecution = make(map[string]int64)
 var btn_taskInitialDelay = make(map[string]int64)
 var btn_taskMutex sync.Mutex
 
-func GetBTNAuthHeader() map[string]string {
+func GetBTNAuthHeader(configs ...*ConfigStruct) map[string]string {
+	cfg := ConfigSnapshot()
+	if len(configs) > 0 && configs[0] != nil {
+		cfg = configs[0]
+	}
 	h := map[string]string{
 		"User-Agent": btnUserAgent,
 	}
-	if ConfigSnapshot().BTNAppID != "" && ConfigSnapshot().BTNAppSecret != "" {
-		h["Authorization"] = "Bearer " + ConfigSnapshot().BTNAppID + "@" + ConfigSnapshot().BTNAppSecret
-		h["X-BTN-AppID"] = ConfigSnapshot().BTNAppID
-		h["X-BTN-AppSecret"] = ConfigSnapshot().BTNAppSecret
+	if cfg.BTNAppID != "" && cfg.BTNAppSecret != "" {
+		h["Authorization"] = "Bearer " + cfg.BTNAppID + "@" + cfg.BTNAppSecret
+		h["X-BTN-AppID"] = cfg.BTNAppID
+		h["X-BTN-AppSecret"] = cfg.BTNAppSecret
 	}
 	return h
 }
@@ -266,14 +271,18 @@ func BTN_CheckPeer(peerIP, peerID, peerClient string, peerPort int) (bool, int, 
 }
 
 func BTN_GetConfig() {
-	if ConfigSnapshot().BTNConfigureURL == "" {
+	ruleReloadMutex.Lock()
+	cfg, generation := ConfigSnapshot(), ruleGeneration
+	if cfg.BTNConfigureURL == "" {
 		btnStateMutex.Lock()
 		btnConfig = nil
 		btnRules = &BTN_RulesStruct{}
 		btnExceptions = &BTN_ExceptionStruct{}
 		btnStateMutex.Unlock()
+		ruleReloadMutex.Unlock()
 		return
 	}
+	ruleReloadMutex.Unlock()
 
 	if (atomic.LoadInt64(&btn_lastGetConfig) + int64(btn_configureInterval)) > atomic.LoadInt64(&currentTimestamp) {
 		return
@@ -287,8 +296,8 @@ func BTN_GetConfig() {
 
 	atomic.StoreInt64(&btn_lastGetConfig, atomic.LoadInt64(&currentTimestamp))
 
-	authHeader := GetBTNAuthHeader()
-	_, _, btnConfigContent := Fetch(ConfigSnapshot().BTNConfigureURL, false, false, false, &authHeader)
+	authHeader := GetBTNAuthHeader(cfg)
+	_, _, btnConfigContent := Fetch(cfg.BTNConfigureURL, false, false, false, &authHeader)
 	if btnConfigContent == nil {
 		Log("BTN_GetConfig", GetLangText("Error-FetchResponse"), true)
 		return
@@ -306,6 +315,12 @@ func BTN_GetConfig() {
 		return
 	}
 
+	ruleReloadMutex.Lock()
+	defer ruleReloadMutex.Unlock()
+	if generation != ruleGeneration || ConfigSnapshot().BTNConfigureURL != cfg.BTNConfigureURL {
+		return
+	}
+
 	// 协议版本校验 (目前我们的实现固定为 3).
 	if newBtnConfig.MinMainVersion > 3 || newBtnConfig.MaxMainVersion < 3 {
 		Log("BTN_GetConfig", GetLangText("Error-BTNVersionMismatch"), true, newBtnConfig.MinMainVersion, newBtnConfig.MaxMainVersion)
@@ -316,6 +331,7 @@ func BTN_GetConfig() {
 	}
 
 	btnStateMutex.Lock()
+	newBtnConfig.sourceURL = cfg.BTNConfigureURL
 	btnConfig = &newBtnConfig
 	btnStateMutex.Unlock()
 
@@ -604,6 +620,10 @@ func BTN_Rules() {
 		return
 	}
 	btnStateMutex.Lock()
+	if btnConfig != currConfig {
+		btnStateMutex.Unlock()
+		return
+	}
 	btnRules = &newRules
 	btnStateMutex.Unlock()
 
@@ -644,6 +664,10 @@ func BTN_Exception() {
 		return
 	}
 	btnStateMutex.Lock()
+	if btnConfig != currConfig {
+		btnStateMutex.Unlock()
+		return
+	}
 	btnExceptions = &newExceptions
 	btnStateMutex.Unlock()
 

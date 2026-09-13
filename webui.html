@@ -400,6 +400,8 @@
         const peerByIP = new Map();
         let allPeers = [];
         let peerCursor = null;
+        let peerEpoch = null;
+        let lastPeerSnapshotAt = 0;
         let fetchInProgress = false;
 
         function t(key) {
@@ -567,13 +569,17 @@
         async function fetchData() {
             if (fetchInProgress) return;
             fetchInProgress = true;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
             try {
                 const peerQuery = new URLSearchParams({ sync: '1' });
-                if (peerCursor !== null) peerQuery.set('cursor', String(peerCursor));
+                if (peerCursor !== null && Date.now() - lastPeerSnapshotAt < 60000) peerQuery.set('cursor', String(peerCursor));
+                if (peerEpoch !== null) peerQuery.set('epoch', peerEpoch);
+                const requestOptions = { signal: controller.signal, cache: 'no-store' };
                 const [statusRes, peersRes, logsRes] = await Promise.all([
-                    fetch('/api/status'),
-                    fetch('/api/peers?' + peerQuery.toString()),
-                    fetch('/api/logs')
+                    fetch('/api/status', requestOptions),
+                    fetch('/api/peers?' + peerQuery.toString(), requestOptions),
+                    fetch('/api/logs', requestOptions)
                 ]);
 
                 if (!statusRes.ok || !peersRes.ok || !logsRes.ok) {
@@ -585,6 +591,9 @@
                 const logs = await logsRes.json();
 
                 if (!peerSync || !Array.isArray(peerSync.peers)) throw new Error('Invalid peer response');
+                const nextCursor = Number(peerSync.cursor);
+                if (!Number.isSafeInteger(nextCursor) || nextCursor < 0) throw new Error('Invalid peer cursor');
+                const nextEpoch = typeof peerSync.epoch === 'string' ? peerSync.epoch : null;
                 const removedIPs = Array.isArray(peerSync.removed_ips) ? peerSync.removed_ips : [];
                 const peersChanged = Boolean(peerSync.reset) || peerSync.peers.length > 0 || removedIPs.length > 0;
                 if (peerSync.reset) peerByIP.clear();
@@ -594,9 +603,9 @@
                 for (const peer of peerSync.peers) {
                     if (peer && peer.ip) peerByIP.set(String(peer.ip), peer);
                 }
-                const nextCursor = Number(peerSync.cursor);
-                if (!Number.isSafeInteger(nextCursor) || nextCursor < 0) throw new Error('Invalid peer cursor');
                 peerCursor = nextCursor;
+                peerEpoch = nextEpoch;
+                if (peerSync.reset) lastPeerSnapshotAt = Date.now();
                 if (peersChanged) {
                     allPeers = Array.from(peerByIP.values()).sort((left, right) =>
                         Number(right.timestamp) - Number(left.timestamp) || String(left.ip).localeCompare(String(right.ip))
@@ -615,6 +624,7 @@
                 statusBadge.textContent = t('offline');
                 statusBadge.style.backgroundColor = 'var(--danger-color)';
             } finally {
+                clearTimeout(timeout);
                 fetchInProgress = false;
             }
         }

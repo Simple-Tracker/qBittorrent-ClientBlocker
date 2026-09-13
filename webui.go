@@ -52,6 +52,7 @@ type WebUIBlockPeer struct {
 }
 
 type WebUIBlockPeerSyncResponse struct {
+	Epoch     string           `json:"epoch"`
 	Reset     bool             `json:"reset"`
 	Cursor    uint64           `json:"cursor"`
 	Peers     []WebUIBlockPeer `json:"peers"`
@@ -67,9 +68,18 @@ type webUIBlockPeerEvent struct {
 const webUIMaxPeerEvents = 4096
 
 var webUIPeerSyncMutex sync.Mutex
+var webUIPeerSyncEpoch = strconv.FormatInt(time.Now().UnixNano(), 36)
 var webUIPeerSyncCursor uint64
 var webUIPeerSyncEvents []webUIBlockPeerEvent
 var webUIPeerSyncEventStart int
+
+func ResetWebUIPeerSync() {
+	webUIPeerSyncMutex.Lock()
+	defer webUIPeerSyncMutex.Unlock()
+	webUIPeerSyncEpoch = strconv.FormatInt(time.Now().UnixNano(), 36)
+	webUIPeerSyncCursor, webUIPeerSyncEventStart = 0, 0
+	webUIPeerSyncEvents = nil
+}
 
 func WebUI_IsPath(path string) bool {
 	return path == "/" || path == "/api/status" || path == "/api/peers" || path == "/api/logs"
@@ -221,18 +231,18 @@ func WebUIBlockPeerEventAt(index int) webUIBlockPeerEvent {
 
 func FullWebUIBlockPeerSyncLocked() WebUIBlockPeerSyncResponse {
 	return WebUIBlockPeerSyncResponse{
-		Reset:     true,
+		Epoch: webUIPeerSyncEpoch, Reset: true,
 		Cursor:    webUIPeerSyncCursor,
 		Peers:     GetWebUIBlockPeers(),
 		RemovedIP: []string{},
 	}
 }
 
-func GetWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
+func GetWebUIBlockPeerSync(cursorValue string, epochs ...string) WebUIBlockPeerSyncResponse {
 	webUIPeerSyncMutex.Lock()
 	defer webUIPeerSyncMutex.Unlock()
 
-	if cursorValue == "" {
+	if cursorValue == "" || (len(epochs) > 0 && epochs[0] != webUIPeerSyncEpoch) {
 		return FullWebUIBlockPeerSyncLocked()
 	}
 	cursor, err := strconv.ParseUint(cursorValue, 10, 64)
@@ -243,7 +253,7 @@ func GetWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
 		if cursor != webUIPeerSyncCursor {
 			return FullWebUIBlockPeerSyncLocked()
 		}
-		return WebUIBlockPeerSyncResponse{Cursor: webUIPeerSyncCursor, Peers: []WebUIBlockPeer{}, RemovedIP: []string{}}
+		return WebUIBlockPeerSyncResponse{Epoch: webUIPeerSyncEpoch, Cursor: webUIPeerSyncCursor, Peers: []WebUIBlockPeer{}, RemovedIP: []string{}}
 	}
 	if cursor+1 < WebUIBlockPeerEventAt(0).Cursor {
 		return FullWebUIBlockPeerSyncLocked()
@@ -282,7 +292,7 @@ func GetWebUIBlockPeerSync(cursorValue string) WebUIBlockPeerSyncResponse {
 	sort.Strings(removedIPs)
 
 	return WebUIBlockPeerSyncResponse{
-		Cursor:    webUIPeerSyncCursor,
+		Epoch: webUIPeerSyncEpoch, Cursor: webUIPeerSyncCursor,
 		Peers:     peers,
 		RemovedIP: removedIPs,
 	}
@@ -308,7 +318,7 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 		ProgramName:      programName,
 		ProgramVersion:   programVersion,
 		UptimeSeconds:    time.Now().Unix() - programStartTimestamp,
-		ClientType:       currentClientType,
+		ClientType:       CurrentClientTypeSnapshot(),
 		ClientURL:        ConfigSnapshot().ClientURL,
 		LoadedExtensions: loadedExtensions,
 		CurrentStats:     stats,
@@ -325,7 +335,8 @@ func WebUI_GetStatus(w http.ResponseWriter, r *http.Request) {
 func WebUI_GetPeers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if _, syncRequested := r.URL.Query()["sync"]; syncRequested {
-		json.NewEncoder(w).Encode(GetWebUIBlockPeerSync(r.URL.Query().Get("cursor")))
+		epochs := r.URL.Query()["epoch"]
+		json.NewEncoder(w).Encode(GetWebUIBlockPeerSync(r.URL.Query().Get("cursor"), epochs...))
 		return
 	}
 	json.NewEncoder(w).Encode(GetWebUIBlockPeers())

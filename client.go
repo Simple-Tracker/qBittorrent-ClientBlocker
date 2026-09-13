@@ -1,10 +1,25 @@
 package main
 
+import "sync"
+
 // currentClient 是当前正在使用的客户端实例.
 var currentClient Client
 
 // currentClientType 是当前客户端的类型名称, 如 "qBittorrent".
 var currentClientType = ""
+var clientTypeMutex sync.RWMutex
+
+func CurrentClientTypeSnapshot() string {
+	clientTypeMutex.RLock()
+	defer clientTypeMutex.RUnlock()
+	return currentClientType
+}
+
+func SetCurrentClientType(name string) {
+	clientTypeMutex.Lock()
+	currentClientType = name
+	clientTypeMutex.Unlock()
+}
 
 // IsBanPort 返回当前客户端是否支持按端口封禁.
 func IsBanPort() bool {
@@ -45,7 +60,7 @@ func DetectClient() bool {
 	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == qb.GetClientType() {
 		if qb.Detect() {
 			currentClient = qb
-			currentClientType = qb.GetClientType()
+			SetCurrentClientType(qb.GetClientType())
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
 			return true
 		}
@@ -56,7 +71,7 @@ func DetectClient() bool {
 	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == tr.GetClientType() {
 		if tr.Detect() {
 			currentClient = tr
-			currentClientType = tr.GetClientType()
+			SetCurrentClientType(tr.GetClientType())
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
 			return true
 		}
@@ -67,7 +82,7 @@ func DetectClient() bool {
 	if ConfigSnapshot().ClientType == "" || ConfigSnapshot().ClientType == bc.GetClientType() {
 		if bc.Detect() {
 			currentClient = bc
-			currentClientType = bc.GetClientType()
+			SetCurrentClientType(bc.GetClientType())
 			Log("DetectClient", GetLangText("Success-DetectClient"), true, currentClientType)
 			return true
 		}
@@ -75,7 +90,7 @@ func DetectClient() bool {
 
 	// 如果指定了 ClientType 但探测失败, 则强制创建对应实例.
 	if ConfigSnapshot().ClientType != "" {
-		currentClientType = ConfigSnapshot().ClientType
+		SetCurrentClientType(ConfigSnapshot().ClientType)
 		switch currentClientType {
 		case "qBittorrent":
 			currentClient = &QBClient{}
@@ -88,7 +103,7 @@ func DetectClient() bool {
 	}
 
 	currentClient = nil
-	currentClientType = ""
+	SetCurrentClientType("")
 	return false
 }
 

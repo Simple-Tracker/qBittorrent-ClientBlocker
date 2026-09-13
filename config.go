@@ -638,6 +638,7 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 	return 0
 }
 func InitConfig() {
+	ResetWebUIPeerSync()
 	currentConfig := UpdateConfig(func(newConfig *ConfigStruct) {
 		if newConfig.Interval < 1 {
 			newConfig.Interval = 1
@@ -688,6 +689,13 @@ func InitConfig() {
 	ruleReloadMutex.Lock()
 	defer ruleReloadMutex.Unlock()
 	ruleGeneration++
+	atomic.StoreInt64(&btn_lastGetConfig, 0)
+	btnStateMutex.Lock()
+	if currentConfig.BTNConfigureURL == "" || (btnConfig != nil && btnConfig.sourceURL != currentConfig.BTNConfigureURL) {
+		btnConfig = nil
+		btnRules, btnExceptions = &BTN_RulesStruct{}, &BTN_ExceptionStruct{}
+	}
+	btnStateMutex.Unlock()
 	// 已清空编译规则，必须重新读取本地文件和远端内容，不能沿用 304 校验器。
 	blockListFileLastMod = make(map[string]int64)
 	ipBlockListFileLastMod = make(map[string]int64)

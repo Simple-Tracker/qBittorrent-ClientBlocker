@@ -385,6 +385,26 @@ func TestAddBlockPeerRecordsUpdatedWebUIPeers(t *testing.T) {
 	}
 }
 
+func TestWebUIPeerSyncResetsAfterRestart(t *testing.T) {
+	webUIPeerSyncMutex.Lock()
+	oldEpoch, oldCursor, oldEvents, oldStart := webUIPeerSyncEpoch, webUIPeerSyncCursor, webUIPeerSyncEvents, webUIPeerSyncEventStart
+	webUIPeerSyncEpoch, webUIPeerSyncCursor, webUIPeerSyncEvents = "new-instance", 0, nil
+	webUIPeerSyncMutex.Unlock()
+	t.Cleanup(func() {
+		webUIPeerSyncMutex.Lock()
+		webUIPeerSyncEpoch, webUIPeerSyncCursor, webUIPeerSyncEvents, webUIPeerSyncEventStart = oldEpoch, oldCursor, oldEvents, oldStart
+		webUIPeerSyncMutex.Unlock()
+	})
+	response := GetWebUIBlockPeerSync("0", "old-instance")
+	if !response.Reset || response.Epoch != "new-instance" {
+		t.Fatalf("old instance cursor accepted: %#v", response)
+	}
+	response = GetWebUIBlockPeerSync("0", "new-instance")
+	if response.Reset || len(response.Peers) != 0 {
+		t.Fatal("unchanged current instance did not return empty delta")
+	}
+}
+
 func TestWebUIPeerEventsAreDisabledWithWebUI(t *testing.T) {
 	oldConfig := *config
 	webUIPeerSyncMutex.Lock()

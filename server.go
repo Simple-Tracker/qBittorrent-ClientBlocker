@@ -48,7 +48,7 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Transmission 兼容路由.
-	if currentClientType == "Transmission" && Tr_ProcessHTTP(w, r) {
+	if CurrentClientTypeSnapshot() == "Transmission" && Tr_ProcessHTTP(w, r) {
 		return
 	}
 
@@ -75,7 +75,7 @@ func StartServer() {
 
 	// 收集需要监听的地址.
 	var addrs []string
-	if currentClientType == "Transmission" {
+	if CurrentClientTypeSnapshot() == "Transmission" {
 		addrs = append(addrs, ConfigSnapshot().Listen)
 	}
 	if ConfigSnapshot().WebUI {

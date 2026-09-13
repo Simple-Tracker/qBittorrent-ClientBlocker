@@ -98,7 +98,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 	}
 
 	if clientReq {
-		if currentClientType == "Transmission" {
+		if CurrentClientTypeSnapshot() == "Transmission" {
 			Tr_csrfTokenMutex.RLock()
 			token := Tr_csrfToken
 			Tr_csrfTokenMutex.RUnlock()
@@ -186,7 +186,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 
 	if response.StatusCode == 409 {
 		// 尝试从响应头获取并设置 CSRF Token.
-		if currentClientType == "Transmission" {
+		if CurrentClientTypeSnapshot() == "Transmission" {
 			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if trCSRFToken != "" {
 				Tr_SetCSRFToken(trCSRFToken)
@@ -280,7 +280,7 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 
 	if response.StatusCode == 409 {
 		// 尝试从响应头获取并设置 CSRF Token.
-		if currentClientType == "Transmission" {
+		if CurrentClientTypeSnapshot() == "Transmission" {
 			trCSRFToken := response.Header.Get("X-Transmission-Session-Id")
 			if trCSRFToken != "" {
 				Tr_SetCSRFToken(trCSRFToken)
