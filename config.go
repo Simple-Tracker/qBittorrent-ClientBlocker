@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dlclark/regexp2"
@@ -115,6 +116,11 @@ var needHideSystray bool
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
 var blockListCompiled sync.Map
 var ipBlockListCompiled sync.Map
+var ruleReloadMutex sync.Mutex
+var ruleGeneration uint64
+var blockListURLFetching atomic.Bool
+var ipBlockListURLFetching atomic.Bool
+
 var blockListURLLastFetch int64 = 0
 var ipBlockListURLLastFetch int64 = 0
 
@@ -367,14 +373,22 @@ func SetBlockListFromFile() bool {
 	return true
 }
 func SetBlockListFromURL() bool {
-	if len(ConfigSnapshot().BlockListURL) == 0 || (blockListURLLastFetch+int64(ConfigSnapshot().UpdateInterval)) > currentTimestamp {
+	if !blockListURLFetching.CompareAndSwap(false, true) {
 		return true
 	}
-
-	blockListURLLastFetch = currentTimestamp
+	defer blockListURLFetching.Store(false)
+	ruleReloadMutex.Lock()
+	cfg, generation := ConfigSnapshot(), ruleGeneration
+	now := atomic.LoadInt64(&currentTimestamp)
+	if len(cfg.BlockListURL) == 0 || (blockListURLLastFetch+int64(cfg.UpdateInterval)) > now {
+		ruleReloadMutex.Unlock()
+		return true
+	}
+	blockListURLLastFetch = now
+	ruleReloadMutex.Unlock()
 	setCount := 0
 
-	for _, blockListURL := range ConfigSnapshot().BlockListURL {
+	for _, blockListURL := range cfg.BlockListURL {
 		httpStatusCode, httpHeader, blockListContent := Fetch(blockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
@@ -403,7 +417,17 @@ func SetBlockListFromURL() bool {
 			content = strings.Split(string(blockListContent), "\n")
 		}
 
+		ruleReloadMutex.Lock()
+		if generation != ruleGeneration {
+			requestStateMutex.Lock()
+			delete(urlETagCache, blockListURL)
+			delete(urlLastModCache, blockListURL)
+			requestStateMutex.Unlock()
+			ruleReloadMutex.Unlock()
+			return false
+		}
 		setCount += SetBlockListFromContent(content, blockListURL)
+		ruleReloadMutex.Unlock()
 	}
 
 	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, setCount)
@@ -497,14 +521,22 @@ func SetIPBlockListFromFile() bool {
 	return true
 }
 func SetIPBlockListFromURL() bool {
-	if len(ConfigSnapshot().IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(ConfigSnapshot().UpdateInterval)) > currentTimestamp {
+	if !ipBlockListURLFetching.CompareAndSwap(false, true) {
 		return true
 	}
-
-	ipBlockListURLLastFetch = currentTimestamp
+	defer ipBlockListURLFetching.Store(false)
+	ruleReloadMutex.Lock()
+	cfg, generation := ConfigSnapshot(), ruleGeneration
+	now := atomic.LoadInt64(&currentTimestamp)
+	if len(cfg.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(cfg.UpdateInterval)) > now {
+		ruleReloadMutex.Unlock()
+		return true
+	}
+	ipBlockListURLLastFetch = now
+	ruleReloadMutex.Unlock()
 	setCount := 0
 
-	for _, ipBlockListURL := range ConfigSnapshot().IPBlockListURL {
+	for _, ipBlockListURL := range cfg.IPBlockListURL {
 		httpStatusCode, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, true, nil)
 		if httpStatusCode == 304 {
 			continue
@@ -532,7 +564,17 @@ func SetIPBlockListFromURL() bool {
 			content = strings.Split(string(ipBlockListContent), "\n")
 		}
 
+		ruleReloadMutex.Lock()
+		if generation != ruleGeneration {
+			requestStateMutex.Lock()
+			delete(urlETagCache, ipBlockListURL)
+			delete(urlLastModCache, ipBlockListURL)
+			requestStateMutex.Unlock()
+			ruleReloadMutex.Unlock()
+			return false
+		}
 		setCount += SetIPBlockListFromContent(content, ipBlockListURL)
+		ruleReloadMutex.Unlock()
 	}
 
 	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, setCount)
@@ -643,6 +685,15 @@ func InitConfig() {
 		Log("LoadConfig_Current", "%v: %v", false, t.Field(k).Name, FormatConfigValueForLog(t.Field(k).Name, v.Field(k).Interface()))
 	}
 
+	ruleReloadMutex.Lock()
+	defer ruleReloadMutex.Unlock()
+	ruleGeneration++
+	// 已清空编译规则，必须重新读取本地文件和远端内容，不能沿用 304 校验器。
+	blockListFileLastMod = make(map[string]int64)
+	ipBlockListFileLastMod = make(map[string]int64)
+	requestStateMutex.Lock()
+	urlETagCache, urlLastModCache = make(map[string]string), make(map[string]string)
+	requestStateMutex.Unlock()
 	EraseSyncMap(&blockListCompiled)
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(currentConfig.BlockList, "BlockList")

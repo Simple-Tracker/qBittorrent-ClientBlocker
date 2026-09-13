@@ -2,16 +2,38 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 var fetchFailedCount = 0
 var urlETagCache = make(map[string]string)
 var urlLastModCache = make(map[string]string)
 var requestStateMutex sync.RWMutex
+
+var requestContext = context.Background()
+var cancelRequests context.CancelFunc
+
+func RequestContextSnapshot() context.Context {
+	httpStateMutex.RLock()
+	defer httpStateMutex.RUnlock()
+	return requestContext
+}
+
+func WaitRequestDelay(delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-RequestContextSnapshot().Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
 
 func HttpClientSnapshot(clientReq bool) http.Client {
 	httpStateMutex.RLock()
@@ -27,7 +49,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 	var err error
 
 	if !isPost {
-		request, err = http.NewRequest("GET", url, nil)
+		request, err = http.NewRequestWithContext(RequestContextSnapshot(), "GET", url, nil)
 	} else {
 		var bodyReader io.Reader
 		if postdata != nil {
@@ -43,7 +65,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 				return nil
 			}
 		}
-		request, err = http.NewRequest("POST", url, bodyReader)
+		request, err = http.NewRequestWithContext(RequestContextSnapshot(), "POST", url, bodyReader)
 	}
 
 	if err != nil {

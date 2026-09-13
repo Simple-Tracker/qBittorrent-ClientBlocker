@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,11 +21,15 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	})
 
 	var requestForm url.Values
+	var peerForms []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			t.Errorf("parse request form: %v", err)
 		}
 		requestForm = r.PostForm
+		if r.PostForm.Has("peers") {
+			peerForms = append(peerForms, r.PostForm.Get("peers"))
+		}
 		_, _ = w.Write([]byte("Ok."))
 	}))
 	defer server.Close()
@@ -49,10 +54,11 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	allPortsPeer := map[string]BlockPeerInfoStruct{
 		"192.0.2.20": {Port: map[int]bool{-1: true}},
 	}
+	peerForms = nil
 	if !QB_SubmitBlockPeer(allPortsPeer) {
 		t.Fatal("all-port qBittorrent ban submission failed")
 	}
-	allPorts := strings.Split(requestForm.Get("peers"), "|")
+	allPorts := strings.Split(strings.Join(peerForms, "|"), "|")
 	if len(allPorts) != 2*65536 {
 		t.Fatalf("all-port API peer count=%d, want %d", len(allPorts), 2*65536)
 	}
@@ -75,7 +81,11 @@ func TestQBSubmitBlockPeerPreservesPayloads(t *testing.T) {
 	if !QB_SubmitBlockPeer(peers) {
 		t.Fatal("legacy qBittorrent ban submission failed")
 	}
-	preference := requestForm.Get("json")
+	var preferences map[string]string
+	if err := json.Unmarshal([]byte(requestForm.Get("json")), &preferences); err != nil {
+		t.Fatal(err)
+	}
+	preference := preferences["banned_IPs"]
 	for _, entry := range []string{"192.0.2.10\n", "::ffff:192.0.2.10\n"} {
 		if !strings.Contains(preference, entry) {
 			t.Fatalf("legacy preference %q does not contain %q", preference, entry)

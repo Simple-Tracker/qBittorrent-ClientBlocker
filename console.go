@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/signal"
@@ -259,6 +260,9 @@ func Task() {
 	emptyPeersCount := 0
 
 	for _, torrentInfo := range torrents {
+		if RequestContextSnapshot().Err() != nil {
+			return
+		}
 		ProcessTorrent(torrentInfo, &emptyHashCount, &noLeechersCount, &badTorrentInfoCount, &ptTorrentCount, &blockCount, &ipBlockCount, &badPeersCount, &emptyPeersCount)
 	}
 
@@ -333,6 +337,12 @@ func WaitStop() {
 
 // ReqStop 请求停止程序, 用于系统托盘等非信号退出路径.
 func ReqStop() {
+	httpStateMutex.RLock()
+	cancel := cancelRequests
+	httpStateMutex.RUnlock()
+	if cancel != nil {
+		cancel()
+	}
 	reqStopOnce.Do(func() {
 		reqStopLogged.Store(true)
 		Log("ReqStop", GetLangText("ReqStop_Stoping"), true)
@@ -368,13 +378,22 @@ func Stop(recoverErr any, recoverStack []byte) {
 
 // RunConsole 启动控制台主循环.
 func RunConsole() {
+	ctx, cancel := context.WithCancel(context.Background())
+	httpStateMutex.Lock()
+	requestContext, cancelRequests = ctx, cancel
+	httpStateMutex.Unlock()
+	defer cancel()
 	if startDelay > 0 {
 		Log("RunConsole", GetLangText("RunConsole_StartDelay"), false, startDelay)
-		time.Sleep(time.Duration(startDelay) * time.Second)
+		if !WaitRequestDelay(time.Duration(startDelay) * time.Second) {
+			return
+		}
 	}
 
 	for !LoadInitConfig(true) {
-		time.Sleep(2 * time.Second)
+		if !WaitRequestDelay(2 * time.Second) {
+			return
+		}
 		if !ConfigSnapshot().IgnoreFailureExit {
 			os.Exit(1)
 		}

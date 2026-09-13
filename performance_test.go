@@ -473,3 +473,48 @@ func BenchmarkScreenshotScaleQBSteadyStateRuntimeCycle(b *testing.B) {
 	b.Run("SequentialWebUI", func(b *testing.B) { runCycles(b, false) })
 	b.Run("ConcurrentWebUI", func(b *testing.B) { runCycles(b, true) })
 }
+
+func BenchmarkQBPeerSynchronization(b *testing.B) {
+	peers, ips := MakeScreenshotScalePeers()
+	InstallScreenshotScalePeers(b, peers)
+	values := make(map[string]qB_PeerStruct, len(ips))
+	for _, ip := range ips {
+		values[ip] = qB_PeerStruct{IP: ip, Port: 6881, Client: "client", Uploaded: 100}
+	}
+	full, err := json.Marshal(qB_TorrentPeersStruct{RID: 1, FullUpdate: true, Peers: values})
+	if err != nil {
+		b.Fatal(err)
+	}
+	var responseBytes atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		payload := []byte(`{"rid":2,"peers":{}}`)
+		if r.URL.Query().Get("rid") == "0" {
+			payload = full
+		}
+		responseBytes.Add(int64(len(payload)))
+		w.Write(payload)
+	}))
+	b.Cleanup(server.Close)
+	InstallScreenshotScaleQBClient(b, server)
+	for _, mode := range []string{"Full", "EmptyDelta"} {
+		b.Run(mode, func(b *testing.B) {
+			client := &QBClient{}
+			if peers, _ := client.FetchTorrentPeers(&Torrent{Hash: "hash"}); len(peers) != screenshotPeerCount {
+				b.Fatal("initial snapshot failed")
+			}
+			startBytes := responseBytes.Load()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if mode == "Full" {
+					client.peerRID = 0
+				}
+				if peers, _ := client.FetchTorrentPeers(&Torrent{Hash: "hash"}); len(peers) != screenshotPeerCount {
+					b.Fatal("snapshot lost peers")
+				}
+			}
+			b.StopTimer()
+			b.ReportMetric(float64(responseBytes.Load()-startBytes)/float64(b.N), "response-B/op")
+		})
+	}
+}

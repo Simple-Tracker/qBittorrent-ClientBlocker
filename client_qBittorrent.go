@@ -1,15 +1,29 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 // QBClient 实现了 qBittorrent 的客户端接口.
-type QBClient struct{}
+type QBClient struct {
+	// qBittorrent 会话的 torrentPeers 游标跨种子共享，不能按 hash 独立缓存。
+	peerRID        int
+	peerCache      map[string]qB_PeerStruct
+	peerURL        string
+	peerFullSyncAt int64
+	// 由主扫描循环使用；仅保留已成功提交的端口集合。
+	banCache   map[string]map[int]bool
+	banBatches map[[32]byte]bool
+	banURL     string
+	banAllPort bool
+	banMethod  bool
+}
 
 func (c *QBClient) GetClientType() string {
 	return "qBittorrent"
@@ -24,6 +38,9 @@ func (c *QBClient) SetURL() bool {
 }
 
 func (c *QBClient) Login() bool {
+	c.peerRID, c.peerCache = 0, nil
+	c.banCache = nil
+	c.banBatches = nil
 	return QB_Login()
 }
 
@@ -31,9 +48,15 @@ func (c *QBClient) Login() bool {
 func (c *QBClient) FetchTorrents() ([]*Torrent, error) {
 	torrents := QB_FetchTorrents()
 	if torrents == nil {
+		c.peerRID, c.peerCache = 0, nil
+		c.banCache = nil
+		c.banBatches = nil
 		return nil, nil
 	}
-	var result []*Torrent
+	result := make([]*Torrent, 0, len(*torrents))
+	if len(*torrents) == 0 {
+		c.peerRID, c.peerCache = 0, nil
+	}
 	for _, t := range *torrents {
 		result = append(result, &Torrent{
 			Hash:       t.InfoHash,
@@ -47,11 +70,11 @@ func (c *QBClient) FetchTorrents() ([]*Torrent, error) {
 
 // FetchTorrentPeers 获取特定种子的 Peer 列表.
 func (c *QBClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
-	peersStruct := QB_FetchTorrentPeers(torrent.Hash)
+	peersStruct := c.FetchTorrentPeersResponse(torrent.Hash)
 	if peersStruct == nil {
 		return nil, nil
 	}
-	var result []*Peer
+	result := make([]*Peer, 0, len(peersStruct.Peers))
 	for _, p := range peersStruct.Peers {
 		result = append(result, &Peer{
 			IP:         p.IP,
@@ -68,8 +91,146 @@ func (c *QBClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
 	return result, nil
 }
 
+// 字段级合并：增量 JSON 中缺失的字段必须保留，显式零值必须覆盖。
+func (c *QBClient) FetchTorrentPeersResponse(hash string) *qB_TorrentPeersStruct {
+	url := ConfigSnapshot().ClientURL
+	if c.peerURL != url || currentTimestamp-c.peerFullSyncAt >= 300 || currentTimestamp < c.peerFullSyncAt {
+		c.peerRID, c.peerCache = 0, nil
+	}
+	rid := c.peerRID
+	if rid == 0 {
+		full := QB_FetchTorrentPeers(hash)
+		if full == nil {
+			c.peerRID, c.peerCache = 0, nil
+			return nil
+		}
+		c.peerRID, c.peerCache = full.RID, full.Peers
+		if c.peerCache == nil {
+			c.peerCache = make(map[string]qB_PeerStruct)
+		}
+		c.peerURL, c.peerFullSyncAt = url, currentTimestamp
+		return full
+	}
+	_, _, body := Fetch(url+"/v2/sync/torrentPeers?rid="+strconv.Itoa(rid)+"&hash="+hash, true, true, false, nil)
+	if body == nil {
+		c.peerRID, c.peerCache = 0, nil
+		return nil
+	}
+	var response struct {
+		RID        int                        `json:"rid"`
+		FullUpdate bool                       `json:"full_update"`
+		Peers      map[string]json.RawMessage `json:"peers"`
+		Removed    []string                   `json:"peers_removed"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		c.peerRID, c.peerCache = 0, nil
+		Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+		return nil
+	}
+	reset := rid == 0 || response.FullUpdate
+	updates := make(map[string]qB_PeerStruct, len(response.Peers))
+	for key, raw := range response.Peers {
+		peer := qB_PeerStruct{}
+		if !reset {
+			peer = c.peerCache[key]
+		}
+		if err := json.Unmarshal(raw, &peer); err != nil {
+			c.peerRID, c.peerCache = 0, nil
+			Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+			return nil
+		}
+		updates[key] = peer
+	}
+	if reset {
+		c.peerCache = make(map[string]qB_PeerStruct)
+		c.peerFullSyncAt = currentTimestamp
+	}
+	for _, key := range response.Removed {
+		delete(c.peerCache, key)
+	}
+	for key, peer := range updates {
+		c.peerCache[key] = peer
+	}
+	c.peerRID, c.peerURL = response.RID, url
+	return &qB_TorrentPeersStruct{FullUpdate: true, Peers: c.peerCache}
+}
+
 func (c *QBClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	return QB_SubmitBlockPeer(blockPeerMap)
+	cfg := ConfigSnapshot()
+	if !qB_useNewBanPeersMethod {
+		unchanged := !c.banMethod && c.banCache != nil && c.banURL == cfg.ClientURL && len(c.banCache) == len(blockPeerMap)
+		for ip := range blockPeerMap {
+			if _, exists := c.banCache[ip]; !exists {
+				unchanged = false
+				break
+			}
+		}
+		if unchanged {
+			return true
+		}
+		if !QB_SubmitBlockPeer(blockPeerMap) {
+			return false
+		}
+		c.banCache = make(map[string]map[int]bool, len(blockPeerMap))
+		for ip := range blockPeerMap {
+			c.banCache[ip] = nil
+		}
+		c.banURL, c.banBatches, c.banMethod = cfg.ClientURL, nil, false
+		return true
+	}
+	if len(blockPeerMap) == 0 {
+		c.banCache, c.banBatches = nil, nil
+		return QB_SubmitBlockPeer(blockPeerMap)
+	}
+	if !c.banMethod || c.banCache == nil || c.banURL != cfg.ClientURL || c.banAllPort != cfg.BanAllPort {
+		c.banCache = make(map[string]map[int]bool)
+		c.banBatches = nil
+		c.banURL, c.banAllPort, c.banMethod = cfg.ClientURL, cfg.BanAllPort, true
+	}
+	for ip := range c.banCache {
+		if _, exists := blockPeerMap[ip]; !exists {
+			delete(c.banCache, ip)
+		}
+	}
+	delta := make(map[string]BlockPeerInfoStruct)
+	for ip, peer := range blockPeerMap {
+		previous, exists := c.banCache[ip]
+		ports := make(map[int]bool)
+		for port := range peer.Port {
+			if !previous[port] {
+				ports[port] = true
+			}
+		}
+		if !exists || len(ports) > 0 {
+			if cfg.BanAllPort || peer.Port[-1] {
+				ports = map[int]bool{-1: true}
+			}
+			peer.Port = ports
+			delta[ip] = peer
+		}
+	}
+	if len(delta) == 0 {
+		return true
+	}
+	if c.banBatches == nil {
+		c.banBatches = make(map[[32]byte]bool)
+	}
+	if !QB_submitBlockPeerBatches(delta, c.banBatches) {
+		return false
+	}
+	c.banBatches = nil
+	// 登录失败恢复可能在 Submit 内清空缓存。
+	if c.banCache == nil {
+		c.banCache = make(map[string]map[int]bool)
+	}
+	for ip := range delta {
+		ports := make(map[int]bool)
+		for port := range blockPeerMap[ip].Port {
+			ports[port] = true
+		}
+		c.banCache[ip] = ports
+	}
+	return true
 }
 
 func (c *QBClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
@@ -94,6 +255,7 @@ type qB_PeerStruct struct {
 	UpSpeed    int64   `json:"up_speed"`
 }
 type qB_TorrentPeersStruct struct {
+	RID        int                      `json:"rid"`
 	FullUpdate bool                     `json:"full_update"`
 	Peers      map[string]qB_PeerStruct `json:"peers"`
 }
@@ -286,73 +448,98 @@ func QB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 
 	return &torrentPeersResult
 }
-func QB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	var banIPPortsBuilder strings.Builder
-	banIPPortsBuilder.Grow(len(blockPeerMap) * 32)
 
-	if blockPeerMap != nil {
-		if qB_useNewBanPeersMethod {
-			firstPeer := true
-			writePeer := func(peer string) {
-				if !firstPeer {
-					banIPPortsBuilder.WriteByte('|')
-				}
-				banIPPortsBuilder.WriteString(peer)
-				firstPeer = false
+// 每个表单限制为 256 KiB，避免全端口展开产生单个巨型请求。
+const qBMaxBanFormBytes = 256 * 1024
+
+func QB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	return QB_submitBlockPeerBatches(blockPeerMap, nil)
+}
+
+func QB_submitBlockPeerBatches(blockPeerMap map[string]BlockPeerInfoStruct, completed map[[32]byte]bool) bool {
+	cfg := ConfigSnapshot()
+	if qB_useNewBanPeersMethod && len(blockPeerMap) > 0 {
+		var form strings.Builder
+		form.WriteString("peers=")
+		flush := func() bool {
+			if form.Len() == len("peers=") {
+				return true
 			}
-			for peerIP, peerInfo := range blockPeerMap {
-				if _, exist := peerInfo.Port[-1]; ConfigSnapshot().BanAllPort || exist {
-					for port := 0; port <= 65535; port++ {
-						portString := strconv.Itoa(port)
-						if IsIPv6(peerIP) {
-							writePeer("[" + peerIP + "]:" + portString)
-						} else {
-							writePeer(peerIP + ":" + portString)
-							writePeer("[::ffff:" + peerIP + "]:" + portString)
-						}
-					}
-					continue
+			batchKey := sha256.Sum256([]byte(form.String()))
+			if !completed[batchKey] {
+				_, _, body := Submit(cfg.ClientURL+"/v2/transfer/banPeers", form.String(), true, true, nil)
+				if body == nil {
+					return false
 				}
-				for port := range peerInfo.Port {
-					if IsIPv6(peerIP) {
-						writePeer("[" + peerIP + "]:" + strconv.Itoa(port))
-					} else {
-						writePeer(peerIP + ":" + strconv.Itoa(port))
-					}
+				if completed != nil {
+					completed[batchKey] = true
 				}
 			}
-		} else {
-			for peerIP := range blockPeerMap {
-				banIPPortsBuilder.WriteString(peerIP)
-				banIPPortsBuilder.WriteByte('\n')
-				if !IsIPv6(peerIP) {
-					banIPPortsBuilder.WriteString("::ffff:")
-					banIPPortsBuilder.WriteString(peerIP)
-					banIPPortsBuilder.WriteByte('\n')
+			form.Reset()
+			form.WriteString("peers=")
+			return true
+		}
+		writePeer := func(peer string) bool {
+			encoded := url.QueryEscape(peer)
+			if form.Len()+len(encoded)+3 > qBMaxBanFormBytes && !flush() {
+				return false
+			}
+			if form.Len() > len("peers=") {
+				form.WriteString("%7C")
+			}
+			form.WriteString(encoded)
+			return true
+		}
+		ips := make([]string, 0, len(blockPeerMap))
+		for ip := range blockPeerMap {
+			ips = append(ips, ip)
+		}
+		sort.Strings(ips)
+		for _, ip := range ips {
+			peer := blockPeerMap[ip]
+			address := ip
+			if IsIPv6(ip) {
+				address = "[" + ip + "]"
+			}
+			if cfg.BanAllPort || peer.Port[-1] {
+				for port := 0; port <= 65535; port++ {
+					suffix := ":" + strconv.Itoa(port)
+					if !writePeer(address + suffix) {
+						return false
+					}
+					if !IsIPv6(ip) && !writePeer("[::ffff:"+ip+"]"+suffix) {
+						return false
+					}
+				}
+			} else {
+				ports := make([]int, 0, len(peer.Port))
+				for port := range peer.Port {
+					ports = append(ports, port)
+				}
+				sort.Ints(ports)
+				for _, port := range ports {
+					if !writePeer(address + ":" + strconv.Itoa(port)) {
+						return false
+					}
 				}
 			}
 		}
+		return flush()
 	}
-	banIPPortsStr := banIPPortsBuilder.String()
-
-	Log("Debug-SubmitBlockPeer", "%s", false, banIPPortsStr)
-
-	var banResponseBody []byte
-
-	if qB_useNewBanPeersMethod && banIPPortsStr != "" {
-		banIPPortsStr = url.QueryEscape(banIPPortsStr)
-		_, _, banResponseBody = Submit(ConfigSnapshot().ClientURL+"/v2/transfer/banPeers", "peers="+banIPPortsStr, true, true, nil)
-	} else {
-		banIPPortsStr = url.QueryEscape("{\"banned_IPs\": \"" + banIPPortsStr + "\"}")
-		_, _, banResponseBody = Submit(ConfigSnapshot().ClientURL+"/v2/app/setPreferences", "json="+banIPPortsStr, true, true, nil)
+	// setPreferences 是覆盖语义，必须保留完整 IP 名单并正确转义 JSON 换行。
+	var ips strings.Builder
+	for ip := range blockPeerMap {
+		ips.WriteString(ip + "\n")
+		if !IsIPv6(ip) {
+			ips.WriteString("::ffff:" + ip + "\n")
+		}
 	}
-
-	if banResponseBody == nil {
-		Log("SubmitBlockPeer", GetLangText("Error"), true)
+	data, err := json.Marshal(map[string]string{"banned_IPs": ips.String()})
+	if err != nil {
 		return false
 	}
-
-	return true
+	_, _, body := Submit(cfg.ClientURL+"/v2/app/setPreferences", "json="+url.QueryEscape(string(data)), true, true, nil)
+	return body != nil
 }
 
 func QB_GetPreferences() map[string]interface{} {

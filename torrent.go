@@ -235,6 +235,6 @@ func ProcessTorrent(torrent *Torrent, emptyHashCount *int, noLeechersCount *int,
 	}
 
 	if !skipSleep && ConfigSnapshot().SleepTime != 0 {
-		time.Sleep(time.Duration(ConfigSnapshot().SleepTime) * time.Millisecond)
+		WaitRequestDelay(time.Duration(ConfigSnapshot().SleepTime) * time.Millisecond)
 	}
 }
