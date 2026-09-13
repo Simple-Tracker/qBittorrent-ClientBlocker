@@ -46,11 +46,9 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	var torrentUploaded map[string]int64
 	var torrentDownloadedRaw map[string]int64
 	var torrentUploadedRaw map[string]int64
-	isNewPeer := false
 
 	blockPeerMapMutex.Lock()
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
-		isNewPeer = true
 		blockPeerPortMap = make(map[int]bool)
 		torrentDownloaded = make(map[string]int64)
 		torrentUploaded = make(map[string]int64)
@@ -137,9 +135,8 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	blockPeerMapMutex.Unlock()
 
 	AddBlockCIDR(peerIP, ParseIPCIDRByConfig(peerIP))
-	if isNewPeer {
-		WebUI_RecordBlockPeerAdded(peerIP)
-	}
+	// 已有 IP 也可能新增端口或更新统计；同步接口会按 IP 合并为最终状态。
+	WebUI_RecordBlockPeerAdded(peerIP)
 
 	if ConfigSnapshot().ExecCommand_Ban != "" {
 		execCommand_Ban := ConfigSnapshot().ExecCommand_Ban

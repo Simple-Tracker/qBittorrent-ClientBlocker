@@ -85,7 +85,8 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
-	if (ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) && len(lastIPMap) > 0 && currentTimestamp > (lastIPCleanTimestamp+int64(ConfigSnapshot().IPUpCheckInterval)) {
+	// 首轮同样检查端口数量并建立快照；上传增量只比较已有历史的 IP。
+	if (ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) && currentTimestamp > (lastIPCleanTimestamp+int64(ConfigSnapshot().IPUpCheckInterval)) {
 		ipBlockCount := 0
 
 		ipMapMutex.Lock()

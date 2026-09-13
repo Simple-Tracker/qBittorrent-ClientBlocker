@@ -451,6 +451,9 @@ func TestSyncSchedulingAndCrashWrapper(t *testing.T) {
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		if _, err := os.Stat(CrashLogPath()); err == nil {
+			// 文件创建不等于写入结束；与日志写入锁同步后才能恢复全局配置。
+			crashLogMutex.Lock()
+			crashLogMutex.Unlock()
 			break
 		}
 		if time.Now().After(deadline) {

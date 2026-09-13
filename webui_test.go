@@ -319,7 +319,7 @@ func TestWebUIPeerSyncEventBufferKeepsNewestEventsInOrder(t *testing.T) {
 	}
 }
 
-func TestAddBlockPeerRecordsOnlyNewWebUIPeers(t *testing.T) {
+func TestAddBlockPeerRecordsUpdatedWebUIPeers(t *testing.T) {
 	oldConfig := *config
 	oldCurrentTimestamp := currentTimestamp
 	blockPeerMapMutex.Lock()
@@ -361,12 +361,27 @@ func TestAddBlockPeerRecordsOnlyNewWebUIPeers(t *testing.T) {
 	config = &testConfig
 	currentTimestamp = 10
 	AddBlockPeer("CheckPeer", "first", "203.0.113.20", 6881, "hash", "id", "client", 1, 2)
+	initial := GetWebUIBlockPeerSync("")
 	currentTimestamp = 20
 	AddBlockPeer("CheckPeer", "updated", "203.0.113.20", 6882, "hash", "id", "client", 3, 4)
+	AddBlockPeer("BTN", "latest", "203.0.113.20", 6882, "hash", "new-id", "new-client", 5, 6)
 
 	response := GetWebUIBlockPeerSync("1")
-	if response.Cursor != 1 || len(response.Peers) != 0 || len(response.RemovedIP) != 0 {
-		t.Fatalf("existing peer produced an update delta: %#v", response)
+	if response.Reset || response.Cursor != 3 || len(response.Peers) != 1 || len(response.RemovedIP) != 0 {
+		t.Fatalf("existing peer updates were not merged: %#v", response)
+	}
+	peer := response.Peers[0]
+	if peer.Module != "BTN" || peer.Reason != "latest" || peer.ID != "new-id" || peer.Client != "new-client" || peer.Timestamp != 20 || peer.Downloaded != 5 || peer.Uploaded != 6 {
+		t.Fatalf("delta contains stale peer data: %#v", peer)
+	}
+	if len(peer.Ports) != 2 || peer.Ports[0] != "6881" || peer.Ports[1] != "6882" {
+		t.Fatalf("delta ports=%v", peer.Ports)
+	}
+	if initial.Cursor != 1 || len(initial.Peers[0].Ports) != 1 || initial.Peers[0].Uploaded != 2 {
+		t.Fatal("updates mutated the previous snapshot")
+	}
+	if next := GetWebUIBlockPeerSync("3"); len(next.Peers) != 0 || next.Reset {
+		t.Fatalf("acknowledged updates were repeated: %#v", next)
 	}
 }
 

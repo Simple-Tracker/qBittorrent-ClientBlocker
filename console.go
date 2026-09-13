@@ -24,6 +24,34 @@ var reqStopLogged atomic.Bool
 var lastGCTimestamp int64
 var runRuntimeGC = runtime.GC
 
+// 仅由主扫描循环访问。提交失败时保留期望名单，成功后才清除待同步状态。
+var blockPeerSubmission struct {
+	Pending bool
+	Next    int64
+	Delay   int64
+}
+
+func RetryBlockPeerSubmission() {
+	if !blockPeerSubmission.Pending || currentTimestamp < blockPeerSubmission.Next {
+		return
+	}
+	if SubmitBlockPeer(blockPeerMap) {
+		blockPeerSubmission.Pending = false
+		blockPeerSubmission.Next = 0
+		blockPeerSubmission.Delay = 0
+		return
+	}
+	if blockPeerSubmission.Delay == 0 {
+		blockPeerSubmission.Delay = 1
+	} else if blockPeerSubmission.Delay < 60 {
+		blockPeerSubmission.Delay *= 2
+		if blockPeerSubmission.Delay > 60 {
+			blockPeerSubmission.Delay = 60
+		}
+	}
+	blockPeerSubmission.Next = currentTimestamp + blockPeerSubmission.Delay
+}
+
 type ReleaseStruct struct {
 	URL        string `json:"html_url"`
 	TagName    string `json:"tag_name"`
@@ -207,9 +235,14 @@ func Task() {
 		Log("Task", GetLangText("Error-Task_NotSupportClient"), true, currentClientType)
 		return
 	}
+	defer RetryBlockPeerSubmission()
 
 	torrents, err := FetchTorrents()
 	if err != nil || torrents == nil {
+		// 客户端断连或重启后也需要重新同步现有名单。
+		if len(blockPeerMap) > 0 {
+			blockPeerSubmission.Pending = true
+		}
 		return
 	}
 
@@ -252,7 +285,7 @@ func Task() {
 			}
 		}
 
-		SubmitBlockPeer(blockPeerMap)
+		blockPeerSubmission.Pending = true
 
 		iblcLen := 0
 		ipBlockListCompiled.Range(func(key, value any) bool {

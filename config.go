@@ -723,6 +723,11 @@ func LoadInitConfig(firstLoad bool) bool {
 			}
 			InitClient()
 			SubmitBlockPeer(nil)
+			if len(blockPeerMap) > 0 {
+				blockPeerSubmission.Pending = true
+				blockPeerSubmission.Next = 0
+				blockPeerSubmission.Delay = 0
+			}
 			lastURL = ConfigSnapshot().ClientURL
 		}
 	} else {
