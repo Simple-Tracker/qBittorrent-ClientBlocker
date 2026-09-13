@@ -299,19 +299,19 @@ func BTN_GetConfig() {
 	authHeader := GetBTNAuthHeader(cfg)
 	_, _, btnConfigContent := Fetch(cfg.BTNConfigureURL, false, false, false, &authHeader)
 	if btnConfigContent == nil {
-		Log("BTN_GetConfig", GetLangText("Error-FetchResponse"), true)
+		LogError("BTN_GetConfig", GetLangText("Error-FetchResponse"), true)
 		return
 	}
 
 	// 最大 8MB.
 	if len(btnConfigContent) > 8388608 {
-		Log("BTN_GetConfig", GetLangText("Error-LargeFile"), true)
+		LogError("BTN_GetConfig", GetLangText("Error-LargeFile"), true)
 		return
 	}
 
 	var newBtnConfig BTN_ConfigStruct
 	if err := json.Unmarshal(jsonc.ToJSON(btnConfigContent), &newBtnConfig); err != nil {
-		Log("BTN_GetConfig", GetLangText("Error-ParseConfig"), true, err.Error())
+		LogError("BTN_GetConfig", GetLangText("Error-ParseConfig"), true, err.Error())
 		return
 	}
 
@@ -323,7 +323,7 @@ func BTN_GetConfig() {
 
 	// 协议版本校验 (目前我们的实现固定为 3).
 	if newBtnConfig.MinMainVersion > 3 || newBtnConfig.MaxMainVersion < 3 {
-		Log("BTN_GetConfig", GetLangText("Error-BTNVersionMismatch"), true, newBtnConfig.MinMainVersion, newBtnConfig.MaxMainVersion)
+		LogError("BTN_GetConfig", GetLangText("Error-BTNVersionMismatch"), true, newBtnConfig.MinMainVersion, newBtnConfig.MaxMainVersion)
 		btnStateMutex.Lock()
 		btnConfig = nil
 		btnStateMutex.Unlock()
@@ -382,25 +382,25 @@ func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp i
 
 	submitData, err := json.Marshal(data)
 	if err != nil {
-		Log("BTN_SubmitPeers", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("BTN_SubmitPeers", GetLangText("Error-GenJSON"), true, err.Error())
 		return
 	}
 
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write(submitData); err != nil {
-		Log("BTN_SubmitPeers", GetLangText("Error-Gzip"), true, err.Error())
+		LogError("BTN_SubmitPeers", GetLangText("Error-Gzip"), true, err.Error())
 		return
 	}
 	if err := gz.Close(); err != nil {
-		Log("BTN_SubmitPeers", GetLangText("Error-GzipClose"), true, err.Error())
+		LogError("BTN_SubmitPeers", GetLangText("Error-GzipClose"), true, err.Error())
 		return
 	}
 
 	authHeader := GetBTNSubmitHeader()
 	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
-		Log("BTN_SubmitPeers", GetLangText("Error-FetchResponse"), true)
+		LogError("BTN_SubmitPeers", GetLangText("Error-FetchResponse"), true)
 	}
 }
 
@@ -450,25 +450,25 @@ func BTN_SubmitBans(blockPeerMap map[string]BlockPeerInfoStruct, currentTimestam
 
 	submitData, err := json.Marshal(data)
 	if err != nil {
-		Log("BTN_SubmitBans", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("BTN_SubmitBans", GetLangText("Error-GenJSON"), true, err.Error())
 		return
 	}
 
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write(submitData); err != nil {
-		Log("BTN_SubmitBans", GetLangText("Error-Gzip"), true, err.Error())
+		LogError("BTN_SubmitBans", GetLangText("Error-Gzip"), true, err.Error())
 		return
 	}
 	if err := gz.Close(); err != nil {
-		Log("BTN_SubmitBans", GetLangText("Error-GzipClose"), true, err.Error())
+		LogError("BTN_SubmitBans", GetLangText("Error-GzipClose"), true, err.Error())
 		return
 	}
 
 	authHeader := GetBTNSubmitHeader()
 	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
-		Log("BTN_SubmitBans", GetLangText("Error-FetchResponse"), true)
+		LogError("BTN_SubmitBans", GetLangText("Error-FetchResponse"), true)
 	}
 }
 
@@ -543,25 +543,25 @@ func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap
 
 	submitData, err := json.Marshal(data)
 	if err != nil {
-		Log("BTN_SubmitHistories", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("BTN_SubmitHistories", GetLangText("Error-GenJSON"), true, err.Error())
 		return
 	}
 
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write(submitData); err != nil {
-		Log("BTN_SubmitHistories", GetLangText("Error-Gzip"), true, err.Error())
+		LogError("BTN_SubmitHistories", GetLangText("Error-Gzip"), true, err.Error())
 		return
 	}
 	if err := gz.Close(); err != nil {
-		Log("BTN_SubmitHistories", GetLangText("Error-GzipClose"), true, err.Error())
+		LogError("BTN_SubmitHistories", GetLangText("Error-GzipClose"), true, err.Error())
 		return
 	}
 
 	authHeader := GetBTNSubmitHeader()
 	_, _, response := Submit(ability.Endpoint, buf.Bytes(), false, false, &authHeader)
 	if response == nil {
-		Log("BTN_SubmitHistories", GetLangText("Error-FetchResponse"), true)
+		LogError("BTN_SubmitHistories", GetLangText("Error-FetchResponse"), true)
 	}
 }
 
@@ -578,7 +578,7 @@ func BTN_Reconfigure() {
 		if statusCode == 204 {
 			Log("BTN_Reconfigure", GetLangText("Debug-BTNConfigNoChange"), false)
 		} else {
-			Log("BTN_Reconfigure", GetLangText("Error-FetchResponse"), true)
+			LogError("BTN_Reconfigure", GetLangText("Error-FetchResponse"), true)
 		}
 		return
 	}
@@ -608,7 +608,7 @@ func BTN_Rules() {
 		if statusCode == 204 {
 			Log("BTN_Rules", GetLangText("Debug-BTNNoChange"), false)
 		} else {
-			Log("BTN_Rules", GetLangText("Error-FetchResponse"), true)
+			LogError("BTN_Rules", GetLangText("Error-FetchResponse"), true)
 		}
 		return
 	}
@@ -616,7 +616,7 @@ func BTN_Rules() {
 	// 处理规则数据.
 	var newRules BTN_RulesStruct
 	if err := json.Unmarshal(response, &newRules); err != nil {
-		Log("BTN_Rules", GetLangText("Error-Parse"), true, err.Error())
+		LogError("BTN_Rules", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
 	btnStateMutex.Lock()
@@ -652,7 +652,7 @@ func BTN_Exception() {
 		if statusCode == 204 {
 			Log("BTN_Exception", GetLangText("Debug-BTNNoChange"), false)
 		} else {
-			Log("BTN_Exception", GetLangText("Error-FetchResponse"), true)
+			LogError("BTN_Exception", GetLangText("Error-FetchResponse"), true)
 		}
 		return
 	}
@@ -660,7 +660,7 @@ func BTN_Exception() {
 	// 处理例外规则数据.
 	var newExceptions BTN_ExceptionStruct
 	if err := json.Unmarshal(response, &newExceptions); err != nil {
-		Log("BTN_Exception", GetLangText("Error-Parse"), true, err.Error())
+		LogError("BTN_Exception", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
 	btnStateMutex.Lock()

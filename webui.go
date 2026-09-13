@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -82,24 +83,29 @@ func ResetWebUIPeerSync() {
 }
 
 func WebUI_IsPath(path string) bool {
-	return path == "/" || path == "/api/status" || path == "/api/peers" || path == "/api/logs"
+	return path == "/api/v1/logs" || path == "/api/v1/bans" || strings.HasPrefix(path, "/api/v1/bans/") || path == "/api/v1/status" || path == "/" || path == "/api/status" || path == "/api/peers" || path == "/api/logs"
 }
 
 func WebUI_CheckBasicAuth(w http.ResponseWriter, r *http.Request) bool {
-	if ConfigSnapshot().WebUIUsername == "" {
+	cfg := ConfigSnapshot()
+	if cfg.WebUIUsername == "" {
 		return true
 	}
 
 	username, password, ok := r.BasicAuth()
 	if ok &&
-		subtle.ConstantTimeCompare([]byte(username), []byte(ConfigSnapshot().WebUIUsername)) == 1 &&
-		subtle.ConstantTimeCompare([]byte(password), []byte(ConfigSnapshot().WebUIPassword)) == 1 {
+		subtle.ConstantTimeCompare([]byte(username), []byte(cfg.WebUIUsername)) == 1 &&
+		subtle.ConstantTimeCompare([]byte(password), []byte(cfg.WebUIPassword)) == 1 {
 		return true
 	}
 
 	w.Header().Set("WWW-Authenticate", `Basic realm="qBittorrent-ClientBlocker WebUI", charset="UTF-8"`)
-	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte("401: Unauthorized."))
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		WriteWebUIAPIError(w, http.StatusUnauthorized, "unauthorized")
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401: Unauthorized."))
+	}
 	return false
 }
 
@@ -344,10 +350,11 @@ func WebUI_GetPeers(w http.ResponseWriter, r *http.Request) {
 
 func WebUI_GetLogs(w http.ResponseWriter, r *http.Request) {
 	logBufferMutex.Lock()
-	defer logBufferMutex.Unlock()
+	logs := append([]string{}, logBuffer...)
+	logBufferMutex.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(logBuffer)
+	json.NewEncoder(w).Encode(logs)
 }
 
 func WebUI_Index(w http.ResponseWriter, r *http.Request) {
@@ -363,4 +370,10 @@ func WebUI_Index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(WebUI_Index_HTML)
+}
+
+func WriteWebUIAPIError(w http.ResponseWriter, status int, code string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{"error": map[string]string{"code": code, "message": http.StatusText(status)}})
 }

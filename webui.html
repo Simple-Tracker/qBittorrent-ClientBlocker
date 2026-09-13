@@ -245,6 +245,8 @@
         </div>
     </div>
 
+    <div class="card"><h2 id="health-title">Runtime health</h2><div id="health-info" style="white-space:pre-wrap"></div></div>
+
     <div class="card">
         <h2 id="blocked-list-title">Blocked peers</h2>
         <div class="controls">
@@ -260,9 +262,13 @@
                 <label class="control-label" id="reason-filter-label" for="reason-filter">Reason filter</label>
                 <select id="reason-filter" class="control-select"></select>
             </div>
+            <div class="control-group"><label class="control-label" for="peer-sort" id="sort-label">Sort</label><select id="peer-sort" class="control-select"><option value="-timestamp">Newest</option><option value="timestamp">Oldest</option><option value="ip">IP ↑</option><option value="-ip">IP ↓</option><option value="-uploaded">Upload ↓</option><option value="uploaded">Upload ↑</option></select></div>
+            <div class="control-group"><label for="peer-from" id="from-label">From</label><input id="peer-from" class="control-input" type="datetime-local"></div>
+            <div class="control-group"><label for="peer-to" id="to-label">To</label><input id="peer-to" class="control-input" type="datetime-local"></div>
             <div id="filter-count" class="filter-count">Showing 0 / 0</div>
         </div>
 
+        <p id="snapshot-info" class="refresh-notice"></p>
         <div class="table-wrapper">
             <table class="peers-table">
                 <thead>
@@ -293,17 +299,23 @@
 
     <div class="card">
         <h2 id="logs-title">Live logs</h2>
+        <div class="controls">
+            <div class="control-group"><label for="log-level" id="log-level-label">Level</label><select id="log-level" class="control-select"><option value="">All levels</option><option value="info">Info</option><option value="error">Error</option><option value="debug">Debug</option></select></div>
+            <div class="control-group"><label for="log-module" id="log-module-label">Exact module</label><input id="log-module" class="control-input" maxlength="256"></div>
+            <label><input id="log-pause" type="checkbox"><span id="log-pause-label">Pause auto-scroll</span></label>
+        </div><p id="log-buffer-notice" class="refresh-notice"></p>
         <div id="logs" class="logs-container">Initializing...</div>
         <div id="refresh-notice" class="refresh-notice">Auto-sync: 2 s interval</div>
     </div>
 
+    <dialog id="peer-detail"><h2 id="detail-title">Peer details</h2><pre id="detail-content" style="white-space:pre-wrap;max-width:80vw"></pre><button id="detail-close" class="btn-page">Close</button></dialog>
     <script>
         const i18n = {
             zh: {
                 pageTitle: 'qBittorrent-ClientBlocker Monitor',
                 checking: '检查中...',
                 connecting: '连接中',
-                online: '在线',
+                online: 'API 在线',
                 offline: '离线',
                 statusAndInfo: '状态与信息',
                 uptime: '运行时长',
@@ -349,7 +361,7 @@
                 pageTitle: 'qBittorrent-ClientBlocker Monitor',
                 checking: 'Checking...',
                 connecting: 'Connecting',
-                online: 'Online',
+                online: 'API online',
                 offline: 'Offline',
                 statusAndInfo: 'Status and Info',
                 uptime: 'Uptime',
@@ -397,12 +409,13 @@
         const pageSize = 50;
         let currentPage = 1;
         const text = i18n[locale];
-        const peerByIP = new Map();
         let allPeers = [];
-        let peerCursor = null;
-        let peerEpoch = null;
-        let lastPeerSnapshotAt = 0;
+        let banPage = {items:[], total:0, filtered_total:0, offset:0, next_cursor:'', snapshot_at:0};
+        let pageCursors = [''];
+        let filterRevision = 0;
         let fetchInProgress = false;
+        let logCursor = null;
+        let logLines = [];
 
         function t(key) {
             return text[key] || i18n.en[key] || key;
@@ -485,55 +498,24 @@
             }
         }
 
-        function updateFilters(peers) {
-            const modules = [...new Set(peers.map((peer) => peer.module).filter(Boolean))].sort();
-            const reasons = [...new Set(peers.map((peer) => peer.reason).filter(Boolean))].sort();
-            populateSelect('module-filter', modules, t('allModules'));
-            populateSelect('reason-filter', reasons, t('allReasons'));
+        function updateFilters(page) {
+            populateSelect('module-filter', page.modules || [], t('allModules'));
+            populateSelect('reason-filter', page.reasons || [], t('allReasons'));
         }
 
         function renderPeers() {
-            const searchValue = document.getElementById('peer-search').value.trim().toLowerCase();
-            const moduleFilter = document.getElementById('module-filter').value;
-            const reasonFilter = document.getElementById('reason-filter').value;
-
-            const filteredPeers = allPeers.filter((peer) => {
-                const ports = (peer.ports || []).join(', ');
-                const matchesSearch = !searchValue || 
-                    peer.ip.toLowerCase().includes(searchValue) ||
-                    ports.toLowerCase().includes(searchValue) ||
-                    (peer.client || '').toLowerCase().includes(searchValue) ||
-                    (peer.id || '').toLowerCase().includes(searchValue) ||
-                    (peer.reason || '').toLowerCase().includes(searchValue);
-                const matchesModule = !moduleFilter || peer.module === moduleFilter;
-                const matchesReason = !reasonFilter || peer.reason === reasonFilter;
-                return matchesSearch && matchesModule && matchesReason;
-            });
-
-            document.getElementById('filter-count').textContent = t('showingCount')
-                .replace('{shown}', filteredPeers.length)
-                .replace('{total}', allPeers.length);
-
+            const total = banPage.filtered_total;
+            const start = banPage.offset;
+            const end = start + allPeers.length;
+            const paginatedPeers = allPeers;
+            document.getElementById('filter-count').textContent = t('showingCount').replace('{shown}', total).replace('{total}', banPage.total);
+            document.getElementById('snapshot-info').textContent = (locale === 'zh' ? '列表快照（最多延迟 30 秒）：' : 'List snapshot (up to 30 seconds old): ') + new Date(banPage.snapshot_at * 1000).toLocaleString();
             const peersList = document.getElementById('peers-list');
-            if (allPeers.length === 0) {
-                peersList.innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t('noBlockedPeers'))}</td></tr>`;
+            if (!allPeers.length) {
+                peersList.innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t(banPage.total ? 'noMatchedPeers' : 'noBlockedPeers'))}</td></tr>`;
                 document.getElementById('pagination').style.display = 'none';
                 return;
             }
-            if (filteredPeers.length === 0) {
-                peersList.innerHTML = `<tr><td colspan="8" class="empty-state">${escapeHtml(t('noMatchedPeers'))}</td></tr>`;
-                document.getElementById('pagination').style.display = 'none';
-                return;
-            }
-
-            // Pagination Logic
-            const total = filteredPeers.length;
-            const maxPage = Math.ceil(total / pageSize);
-            if (currentPage > maxPage) currentPage = maxPage || 1;
-
-            const start = (currentPage - 1) * pageSize;
-            const end = Math.min(start + pageSize, total);
-            const paginatedPeers = filteredPeers.slice(start, end);
 
             peersList.innerHTML = paginatedPeers.map((peer) => {
                 const ports = (peer.ports || []).map((port) => port === 'ALL' ? t('allPorts') : port).join(', ');
@@ -542,7 +524,7 @@
                     <tr>
                         <td style="font-size: 0.85rem;">${escapeHtml(peer.module || '-')}</td>
                         <td style="font-size: 0.85rem;">${escapeHtml(peer.reason || '-')}</td>
-                        <td style="font-weight: 500;">${escapeHtml(peer.ip)}</td>
+                        <td style="font-weight: 500;"><button class="btn-page peer-detail-button" data-ip="${escapeHtml(peer.ip)}">${escapeHtml(peer.ip)}</button></td>
                         <td>${escapeHtml(ports)}</td>
                         <td style="font-size: 0.8rem; font-family: monospace; max-width: 150px; word-break: break-all;">${escapeHtml(peer.id || '-')}</td>
                         <td style="font-size: 0.85rem; max-width: 150px; word-break: break-all;">${escapeHtml(peer.client || '-')}</td>
@@ -562,7 +544,7 @@
                     .replace('{end}', end)
                     .replace('{total}', total);
                 document.getElementById('btn-prev').disabled = currentPage === 1;
-                document.getElementById('btn-next').disabled = currentPage === maxPage;
+                document.getElementById('btn-next').disabled = !banPage.next_cursor;
             }
         }
 
@@ -572,48 +554,50 @@
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000);
             try {
-                const peerQuery = new URLSearchParams({ sync: '1' });
-                if (peerCursor !== null && Date.now() - lastPeerSnapshotAt < 60000) peerQuery.set('cursor', String(peerCursor));
-                if (peerEpoch !== null) peerQuery.set('epoch', peerEpoch);
+                const revision = filterRevision;
+                const peerQuery = new URLSearchParams({limit:String(pageSize), query:document.getElementById('peer-search').value.trim(), module:document.getElementById('module-filter').value, reason:document.getElementById('reason-filter').value, sort:document.getElementById('peer-sort').value});
+                if (pageCursors[currentPage-1]) peerQuery.set('cursor',pageCursors[currentPage-1]);
+                for (const name of ['from','to']) {
+                    const value = document.getElementById('peer-'+name).value;
+                    if (value) peerQuery.set(name,String(Math.floor(new Date(value).getTime()/1000)));
+                }
+                const logQuery = new URLSearchParams({limit:'200',level:document.getElementById('log-level').value,module:document.getElementById('log-module').value});
+                if (logCursor) logQuery.set('after',logCursor);
                 const requestOptions = { signal: controller.signal, cache: 'no-store' };
-                const [statusRes, peersRes, logsRes] = await Promise.all([
+                const [statusRes, peersRes, logsRes, healthRes] = await Promise.all([
                     fetch('/api/status', requestOptions),
-                    fetch('/api/peers?' + peerQuery.toString(), requestOptions),
-                    fetch('/api/logs', requestOptions)
+                    fetch('/api/v1/bans?' + peerQuery.toString(), requestOptions),
+                    fetch('/api/v1/logs?'+logQuery.toString(), requestOptions),
+                    fetch('/api/v1/status', requestOptions)
                 ]);
 
-                if (!statusRes.ok || !peersRes.ok || !logsRes.ok) {
+                if (revision !== filterRevision) return;
+                if (peersRes.status === 409) { resetPeerQuery(); return; }
+                if (peersRes.status === 400) {
+                    document.getElementById('snapshot-info').textContent = locale === 'zh' ? '查询条件无效，请检查时间范围。' : 'Invalid query; check the time range.';
+                    return;
+                }
+                if (!statusRes.ok || !peersRes.ok || !logsRes.ok || !healthRes.ok) {
                     throw new Error('Request failed');
                 }
 
                 const status = await statusRes.json();
-                const peerSync = await peersRes.json();
+                const page = await peersRes.json();
                 const logs = await logsRes.json();
-
-                if (!peerSync || !Array.isArray(peerSync.peers)) throw new Error('Invalid peer response');
-                const nextCursor = Number(peerSync.cursor);
-                if (!Number.isSafeInteger(nextCursor) || nextCursor < 0) throw new Error('Invalid peer cursor');
-                const nextEpoch = typeof peerSync.epoch === 'string' ? peerSync.epoch : null;
-                const removedIPs = Array.isArray(peerSync.removed_ips) ? peerSync.removed_ips : [];
-                const peersChanged = Boolean(peerSync.reset) || peerSync.peers.length > 0 || removedIPs.length > 0;
-                if (peerSync.reset) peerByIP.clear();
-                for (const peerIP of removedIPs) {
-                    peerByIP.delete(String(peerIP));
-                }
-                for (const peer of peerSync.peers) {
-                    if (peer && peer.ip) peerByIP.set(String(peer.ip), peer);
-                }
-                peerCursor = nextCursor;
-                peerEpoch = nextEpoch;
-                if (peerSync.reset) lastPeerSnapshotAt = Date.now();
-                if (peersChanged) {
-                    allPeers = Array.from(peerByIP.values()).sort((left, right) =>
-                        Number(right.timestamp) - Number(left.timestamp) || String(left.ip).localeCompare(String(right.ip))
-                    );
-                    updateFilters(allPeers);
-                    renderPeers();
-                }
-                updateUI(status, logs);
+                if (!page || !Array.isArray(page.items)) throw new Error('Invalid ban response');
+                if (revision !== filterRevision) return;
+                banPage = page;
+                allPeers = page.items;
+                updateFilters(page);
+                renderPeers();
+                if (!logs || !Array.isArray(logs.items) || typeof logs.next_cursor !== 'string') throw new Error('Invalid log response');
+                if (logs.reset) logLines=[];
+                logLines.push(...logs.items.map(entry=>`[${new Date(entry.timestamp*1000).toLocaleString()}][${entry.level}][${entry.module}] ${entry.message}${entry.truncated ? '…' : ''}\n`));
+                logLines=logLines.slice(-1000);
+                logCursor=logs.next_cursor;
+                document.getElementById('log-buffer-notice').textContent=locale==='zh' ? (logs.has_more?'正在读取更多日志。':'已读至当前游标。')+' 仅保留最近 1,000 条，每条最多 4 KiB；更早日志可能已过期。' : (logs.has_more?'Reading more logs.':'Caught up to current cursor.')+' Retains 1,000 entries, up to 4 KiB each; older logs may have expired.';
+                updateUI(status, logLines);
+                renderHealth(await healthRes.json());
 
                 const statusBadge = document.getElementById('connection-status');
                 statusBadge.textContent = t('online');
@@ -627,6 +611,21 @@
                 clearTimeout(timeout);
                 fetchInProgress = false;
             }
+        }
+
+        function renderHealth(health) {
+            const zh = locale === 'zh';
+            const date = value => value ? new Date(value * 1000).toLocaleString() : t('never');
+            const states = zh ? {unknown:'未知', reachable:'最近请求成功', failed:'失败', idle:'尚未执行', running:'进行中', succeeded:'成功', retrying:'等待重试'} : {};
+            const state = value => states[value] || value;
+            document.getElementById('health-title').textContent = zh ? '运行健康与提交状态' : 'Runtime health and submission';
+            document.getElementById('health-info').textContent = [
+                `${zh ? '客户端' : 'Client'}: ${state(health.client_state)} · ${zh ? '最近成功' : 'Last success'}: ${date(health.last_client_success)}`,
+                `${zh ? '扫描' : 'Scan'}: ${state(health.scan_state)} · ${zh ? '最近完整成功' : 'Last complete success'}: ${date(health.last_scan_success)}`,
+                `${zh ? '名单提交' : 'List submission'}: ${state(health.submission_state)} · ${zh ? '最近成功' : 'Last success'}: ${date(health.last_submission_success)}`,
+                `${zh ? '待同步名单 IP' : 'IPs in pending list'}: ${health.pending_ips} · ${zh ? '待同步' : 'Pending'}: ${health.pending} · ${zh ? '重试最早时间' : 'Retry not before'}: ${date(health.next_retry)}`,
+                zh ? '提交成功表示客户端适配器报告成功，不代表已逐个回读验证封禁。' : 'Submission success is reported by the client adapter; individual bans are not read back.'
+            ].join('\n');
         }
 
         function updateUI(status, logs) {
@@ -645,22 +644,67 @@
             const logsContainer = document.getElementById('logs');
             const newLogs = Array.isArray(logs) ? logs.join('') : '';
             if (logsContainer.textContent !== newLogs) {
+                const previousScrollTop = logsContainer.scrollTop;
                 const wasAtBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 20;
-                logsContainer.textContent = newLogs || t('initializing');
-                if (wasAtBottom) {
+                logsContainer.textContent = newLogs || (locale === 'zh' ? '当前缓冲区没有匹配日志。' : 'No matching logs in the current buffer.');
+                if (document.getElementById('log-pause').checked) {
+                    logsContainer.scrollTop = previousScrollTop;
+                } else if (wasAtBottom) {
                     logsContainer.scrollTop = logsContainer.scrollHeight;
                 }
             }
         }
 
-        document.getElementById('peer-search').addEventListener('input', () => { currentPage = 1; renderPeers(); });
-        document.getElementById('module-filter').addEventListener('change', () => { currentPage = 1; renderPeers(); });
-        document.getElementById('reason-filter').addEventListener('change', () => { currentPage = 1; renderPeers(); });
+        function resetPeerQuery() {
+            filterRevision++;
+            currentPage = 1;
+            pageCursors = [''];
+        }
+        let searchTimer;
+        document.getElementById('peer-search').addEventListener('input', () => { resetPeerQuery(); clearTimeout(searchTimer); searchTimer=setTimeout(fetchData,300); });
+        for (const id of ['module-filter','reason-filter','peer-sort','peer-from','peer-to']) {
+            document.getElementById(id).addEventListener('change', () => {resetPeerQuery();fetchData();});
+        }
+        document.getElementById('btn-prev').addEventListener('click', () => { if (fetchInProgress) return; if (currentPage > 1) {currentPage--;filterRevision++;fetchData();} });
+        document.getElementById('btn-next').addEventListener('click', () => { if (fetchInProgress) return; if (banPage.next_cursor) {pageCursors[currentPage]=banPage.next_cursor;currentPage++;filterRevision++;fetchData();} });
+        let detailController;
+        document.getElementById('detail-close').addEventListener('click',()=>document.getElementById('peer-detail').close());
+        document.getElementById('peers-list').addEventListener('click',async event=>{
+            const button=event.target.closest('.peer-detail-button');
+            if (!button) return;
+            if (detailController) detailController.abort();
+            detailController=new AbortController();
+            const activeController=detailController;
+            const signal=activeController.signal;
+            const timer=setTimeout(()=>activeController.abort(),10000);
+            const dialog=document.getElementById('peer-detail');
+            const content=document.getElementById('detail-content');
+            content.textContent=t('loading'); dialog.showModal();
+            try {
+                const response=await fetch('/api/v1/bans/'+encodeURIComponent(button.dataset.ip),{signal,cache:'no-store'});
+                if (!response.ok) throw new Error(response.status===404 ? (locale==='zh'?'记录已移除':'Record removed') : 'Request failed');
+                const peer=await response.json();
+                content.textContent=[`${peer.ip} (${(peer.ports||[]).join(', ')})`,`${t('module')}: ${peer.module}`,`${t('reason')}: ${peer.reason}`,`${t('client')}: ${peer.client}`,`Peer ID: ${peer.id}`,`↑ ${formatTraffic(peer.uploaded)} / ↓ ${formatTraffic(peer.downloaded)}`,new Date(peer.timestamp*1000).toLocaleString(),locale==='zh'?'当前内存记录；不代表远端执行回执。':'Current internal record; not a remote execution receipt.'].join('\n');
+            } catch(error) {if (!signal.aborted) content.textContent=error.message;else content.textContent=t('offline');} finally {clearTimeout(timer);}
+        });
 
-        document.getElementById('btn-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPeers(); } });
-        document.getElementById('btn-next').addEventListener('click', () => { currentPage++; renderPeers(); });
-
+        function resetLogQuery() {logCursor=null;logLines=[];filterRevision++;fetchData();}
+        document.getElementById('log-level').addEventListener('change',resetLogQuery);
+        document.getElementById('log-module').addEventListener('change',resetLogQuery);
+        document.getElementById('log-pause').addEventListener('change',()=>{if(!document.getElementById('log-pause').checked){const box=document.getElementById('logs');box.scrollTop=box.scrollHeight;}});
         setStaticText();
+        if (locale==='zh') {
+            document.getElementById('log-level-label').textContent='级别';
+            document.getElementById('log-module-label').textContent='模块（精确匹配，回车应用）';
+            document.getElementById('log-pause-label').textContent='暂停自动滚动';
+            ['全部级别','信息','错误','调试'].forEach((label,index)=>document.getElementById('log-level').options[index].textContent=label);
+            document.getElementById('sort-label').textContent='排序';
+            document.getElementById('from-label').textContent='开始时间';
+            document.getElementById('to-label').textContent='结束时间';
+            document.getElementById('detail-title').textContent='Peer 详情';
+            document.getElementById('detail-close').textContent='关闭';
+            ['最新','最早','IP 升序','IP 降序','上传降序','上传升序'].forEach((label,index)=>document.getElementById('peer-sort').options[index].textContent=label);
+        }
         setInterval(fetchData, 2000);
         fetchData();
     </script>

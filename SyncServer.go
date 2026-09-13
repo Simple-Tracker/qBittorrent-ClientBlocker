@@ -41,7 +41,7 @@ func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, 
 	syncJSON, err := json.Marshal(SyncServer_SubmitStruct{Version: 1, Timestamp: atomic.LoadInt64(&currentTimestamp), Token: ConfigSnapshot().SyncServerToken, TorrentMap: torrentMap})
 	torrentMapMutex.RUnlock()
 	if err != nil {
-		Log("SyncWithServer_PrepareJSON", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("SyncWithServer_PrepareJSON", GetLangText("Error-GenJSON"), true, err.Error())
 		return false, ""
 	}
 
@@ -50,24 +50,24 @@ func SyncWithServer_PrepareJSON(torrentMap map[string]TorrentInfoStruct) (bool, 
 func SyncWithServer_Submit(syncJSON string) bool {
 	_, _, syncServerContent := Submit(ConfigSnapshot().SyncServerURL, syncJSON, false, false, nil)
 	if syncServerContent == nil {
-		Log("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
+		LogError("SyncWithServer", GetLangText("Error-FetchResponse2"), true)
 		return false
 	}
 
 	// 最大 8MB.
 	if len(syncServerContent) > 8388608 {
-		Log("SyncWithServer", GetLangText("Error-LargeFile"), true)
+		LogError("SyncWithServer", GetLangText("Error-LargeFile"), true)
 		return false
 	}
 
 	var newConfig SyncServer_ConfigStruct
 	if err := json.Unmarshal(jsonc.ToJSON(syncServerContent), &newConfig); err != nil {
-		Log("SyncWithServer", GetLangText("Error-ParseConfig"), true, err.Error())
+		LogError("SyncWithServer", GetLangText("Error-ParseConfig"), true, err.Error())
 		return false
 	}
 
 	if newConfig.Status != "" {
-		Log("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, newConfig.Status)
+		LogError("SyncWithServer", GetLangText("Error-SyncWithServer_ServerError"), true, newConfig.Status)
 		return false
 	}
 
@@ -79,14 +79,14 @@ func SyncWithServer_Submit(syncJSON string) bool {
 		for ipBlockListLineNum, ipBlockListLine := range ipArr {
 			ipBlockListLine = ProcessRemark(ipBlockListLine)
 			if ipBlockListLine == "" {
-				Log("Debug-SyncWithServer_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
+				LogError("Debug-SyncWithServer_Compile", GetLangText("Error-Debug-EmptyLine"), false, ipBlockListLineNum)
 				continue
 			}
 
 			Log("Debug-SyncWithServer_Compile", ":%d %s", false, ipBlockListLineNum, ipBlockListLine)
 			cidr := ParseIPCIDR(ipBlockListLine)
 			if cidr == nil {
-				Log("SyncWithServer_Compile", GetLangText("Error-SyncWithServer_Compile"), true, ipBlockListLineNum, ipBlockListLine)
+				LogError("SyncWithServer_Compile", GetLangText("Error-SyncWithServer_Compile"), true, ipBlockListLineNum, ipBlockListLine)
 				continue
 			}
 

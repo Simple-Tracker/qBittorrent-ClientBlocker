@@ -33,13 +33,16 @@ var blockPeerSubmission struct {
 }
 
 func RetryBlockPeerSubmission() {
+	defer PublishSubmission("")
 	if !blockPeerSubmission.Pending || currentTimestamp < blockPeerSubmission.Next {
 		return
 	}
+	PublishSubmission("running")
 	if SubmitBlockPeer(blockPeerMap) {
 		blockPeerSubmission.Pending = false
 		blockPeerSubmission.Next = 0
 		blockPeerSubmission.Delay = 0
+		PublishSubmission("succeeded")
 		return
 	}
 	if blockPeerSubmission.Delay == 0 {
@@ -51,6 +54,7 @@ func RetryBlockPeerSubmission() {
 		}
 	}
 	blockPeerSubmission.Next = currentTimestamp + blockPeerSubmission.Delay
+	PublishSubmission("retrying")
 }
 
 type ReleaseStruct struct {
@@ -140,13 +144,13 @@ func CheckUpdate() {
 	}
 
 	if listReleaseContent == nil {
-		Log("CheckUpdate", GetLangText("Error-FetchUpdate"), true)
+		LogError("CheckUpdate", GetLangText("Error-FetchUpdate"), true)
 		return
 	}
 
 	var releasesStruct []ReleaseStruct
 	if err := json.Unmarshal(listReleaseContent, &releasesStruct); err != nil {
-		Log("CheckUpdate", GetLangText("Error-Parse"), true, err.Error())
+		LogError("CheckUpdate", GetLangText("Error-Parse"), true, err.Error())
 		return
 	}
 
@@ -228,12 +232,15 @@ func CheckUpdate() {
 
 // Task 执行主要的循环任务.
 func Task() {
+	StartWebUIScan()
+	completed := false
+	defer func() { FinishWebUIScan(completed) }()
 	if ConfigSnapshot().ClientURL == "" {
-		Log("Task", GetLangText("Error-Task_EmptyURL"), true)
+		LogError("Task", GetLangText("Error-Task_EmptyURL"), true)
 		return
 	}
 	if !IsSupportClient() {
-		Log("Task", GetLangText("Error-Task_NotSupportClient"), true, currentClientType)
+		LogError("Task", GetLangText("Error-Task_NotSupportClient"), true, currentClientType)
 		return
 	}
 	defer RetryBlockPeerSubmission()
@@ -283,7 +290,7 @@ func Task() {
 			ipfilterCount, ipfilterStr := GenIPFilter(ConfigSnapshot().GenIPDat, blockPeerMap)
 			err := SaveIPFilter(ipfilterStr)
 			if err != "" {
-				Log("Task", GetLangText("Error-IPFilter_Write"), true, err)
+				LogError("Task", GetLangText("Error-IPFilter_Write"), true, err)
 			} else {
 				Log("Task", GetLangText("Success-GenIPFilter"), true, ipfilterCount)
 			}
@@ -304,6 +311,7 @@ func Task() {
 		}
 	}
 
+	completed = RequestContextSnapshot().Err() == nil
 	SyncWithServer()
 	BTN_Task()
 }
@@ -407,7 +415,7 @@ func RunConsole() {
 		if status {
 			Log("RunConsole", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("RunConsole", GetLangText("Failed-ExecCommand"), true, out, err)
+			LogError("RunConsole", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
 	}
 
@@ -444,7 +452,7 @@ func RunConsole() {
 						Task()
 						GC()
 					} else {
-						Log("RunConsole", GetLangText("Error-Task_AuthFailed"), true)
+						LogError("RunConsole", GetLangText("Error-Task_AuthFailed"), true)
 					}
 				}
 			}

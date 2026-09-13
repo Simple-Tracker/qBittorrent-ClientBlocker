@@ -184,7 +184,7 @@ func CheckTorrent(torrent *Torrent) (int, []*Peer) {
 
 		randomStrMatched, err := randomStrRegexp.MatchString(lowerTorrentTracker)
 		if err != nil {
-			Log("CheckTorrent_MatchTracker", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+			LogError("CheckTorrent_MatchTracker", GetLangText("Error-MatchRegexpErr"), true, err.Error())
 		} else if randomStrMatched {
 			return -4, nil
 		}

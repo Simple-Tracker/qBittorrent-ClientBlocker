@@ -61,7 +61,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 			case io.Reader:
 				bodyReader = v
 			default:
-				Log("NewRequest", GetLangText("Error-NewRequest"), true, "Unsupported postdata type")
+				LogError("NewRequest", GetLangText("Error-NewRequest"), true, "Unsupported postdata type")
 				return nil
 			}
 		}
@@ -69,7 +69,7 @@ func NewRequest(isPost bool, url string, postdata interface{}, clientReq bool, a
 	}
 
 	if err != nil {
-		Log("NewRequest", GetLangText("Error-NewRequest"), true, err.Error())
+		LogError("NewRequest", GetLangText("Error-NewRequest"), true, err.Error())
 		return nil
 	}
 
@@ -148,13 +148,13 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 				if status {
 					Log("Fetch", GetLangText("Success-ExecCommand"), true, out)
 				} else {
-					Log("Fetch", GetLangText("Failed-ExecCommand"), true, out, err)
+					LogError("Fetch", GetLangText("Failed-ExecCommand"), true, out, err)
 				}
 			} else {
 				requestStateMutex.Unlock()
 			}
 		}
-		Log("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
+		LogError("Fetch", GetLangText("Error-FetchResponse"), true, err.Error())
 		return -2, nil, nil
 	}
 
@@ -162,7 +162,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	responseBody, err := io.ReadAll(response.Body)
 
 	if err != nil {
-		Log("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
+		LogError("Fetch", GetLangText("Error-ReadResponse"), true, err.Error())
 		return -3, nil, nil
 	}
 
@@ -172,7 +172,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if response.StatusCode == 401 {
-		Log("Fetch", GetLangText("Error-NoAuth"), true)
+		LogError("Fetch", GetLangText("Error-NoAuth"), true)
 		return 401, response.Header, nil
 	}
 
@@ -180,7 +180,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 		if tryLogin {
 			Login()
 		}
-		Log("Fetch", GetLangText("Error-Forbidden"), true)
+		LogError("Fetch", GetLangText("Error-Forbidden"), true)
 		return 403, response.Header, nil
 	}
 
@@ -198,12 +198,12 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 			Login()
 		}
 
-		Log("Fetch", GetLangText("Error-Forbidden"), true)
+		LogError("Fetch", GetLangText("Error-Forbidden"), true)
 		return 409, response.Header, nil
 	}
 
 	if response.StatusCode == 404 {
-		Log("Fetch", GetLangText("Error-NotFound"), true)
+		LogError("Fetch", GetLangText("Error-NotFound"), true)
 		return 404, response.Header, nil
 	}
 
@@ -213,7 +213,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	}
 
 	if response.StatusCode != 200 {
-		Log("Fetch", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
+		LogError("Fetch", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
 		return response.StatusCode, response.Header, nil
 	}
 
@@ -248,7 +248,7 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 	response, err = client.Do(request)
 
 	if err != nil {
-		Log("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
+		LogError("Submit", GetLangText("Error-FetchResponse"), true, err.Error())
 		return -2, nil, nil
 	}
 
@@ -256,7 +256,7 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 	responseBody, err := io.ReadAll(response.Body)
 
 	if err != nil {
-		Log("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
+		LogError("Submit", GetLangText("Error-ReadResponse"), true, err.Error())
 		return -3, nil, nil
 	}
 
@@ -266,7 +266,7 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 	}
 
 	if response.StatusCode == 401 {
-		Log("Submit", GetLangText("Error-NoAuth"), true)
+		LogError("Submit", GetLangText("Error-NoAuth"), true)
 		return 401, response.Header, nil
 	}
 
@@ -274,7 +274,7 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 		if tryLogin {
 			Login()
 		}
-		Log("Submit", GetLangText("Error-Forbidden"), true)
+		LogError("Submit", GetLangText("Error-Forbidden"), true)
 		return 403, response.Header, nil
 	}
 
@@ -292,17 +292,17 @@ func Submit(url string, postdata interface{}, tryLogin bool, clientReq bool, wit
 			Login()
 		}
 
-		Log("Fetch", GetLangText("Error-Forbidden"), true)
+		LogError("Fetch", GetLangText("Error-Forbidden"), true)
 		return 409, response.Header, nil
 	}
 
 	if response.StatusCode == 404 {
-		Log("Submit", GetLangText("Error-NotFound"), true)
+		LogError("Submit", GetLangText("Error-NotFound"), true)
 		return 404, response.Header, nil
 	}
 
 	if response.StatusCode != 200 {
-		Log("Submit", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
+		LogError("Submit", GetLangText("Error-UnknownStatusCode"), true, response.StatusCode)
 		return response.StatusCode, response.Header, nil
 	}
 

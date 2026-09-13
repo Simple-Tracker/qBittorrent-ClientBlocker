@@ -32,7 +32,7 @@ func (c *TRClient) FetchTorrents() ([]*Torrent, error) {
 	if torrents == nil {
 		return nil, nil
 	}
-	var result []*Torrent
+	result := []*Torrent{}
 	for _, t := range torrents.Torrents {
 		result = append(result, TrTorrentToTorrent(t))
 	}
@@ -41,6 +41,9 @@ func (c *TRClient) FetchTorrents() ([]*Torrent, error) {
 
 // FetchTorrentPeers 返回 Transmission 已内嵌在种子信息中的 Peer 列表.
 func (c *TRClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
+	if torrent.Peers == nil {
+		return []*Peer{}, nil
+	}
 	return torrent.Peers, nil
 }
 
@@ -53,7 +56,7 @@ func (c *TRClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStru
 }
 
 func TrTorrentToTorrent(t Tr_TorrentStruct) *Torrent {
-	var peers []*Peer
+	peers := []*Peer{}
 	var leecherCount int64
 	for _, p := range t.Peers {
 		if p.IsUploading {
@@ -151,7 +154,7 @@ func Tr_SetURL() bool {
 
 	tr_SessionSetJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-set", Args: Tr_SessionSetStruct{BlocklistEnabled: true, BlocklistURL: ConfigSnapshot().SyncServerURL + "/ipfilter.dat"}})
 	if err != nil {
-		Log("SetURL", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("SetURL", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
@@ -162,7 +165,7 @@ func Tr_SetURL() bool {
 func (c *TRClient) Detect() bool {
 	detectJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get", Args: Tr_ArgsStruct{Field: []string{"version"}}})
 	if err != nil {
-		Log("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("DetectVersion", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
@@ -172,7 +175,7 @@ func (c *TRClient) Detect() bool {
 func Tr_Login() bool {
 	loginJSON, err := json.Marshal(Tr_RequestStruct{Method: "session-get"})
 	if err != nil {
-		Log("Login", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("Login", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 
@@ -182,7 +185,7 @@ func Tr_Login() bool {
 	token := Tr_csrfToken
 	Tr_csrfTokenMutex.RUnlock()
 	if token == "" {
-		Log("Login", GetLangText("Error-Login"), true)
+		LogError("Login", GetLangText("Error-Login"), true)
 		return false
 	}
 
@@ -197,19 +200,19 @@ func Tr_SetCSRFToken(csrfToken string) {
 func Tr_FetchTorrents() *Tr_TorrentsStruct {
 	fetchJSON, err := json.Marshal(Tr_RequestStruct{Method: "torrent-get", Args: Tr_ArgsStruct{Field: []string{"hashString", "totalSize", "private", "peers"}}})
 	if err != nil {
-		Log("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("FetchTorrents", GetLangText("Error-GenJSON"), true, err.Error())
 		return nil
 	}
 
 	_, _, fetchResponseBody := Submit(ConfigSnapshot().ClientURL, fetchJSON, true, true, &Tr_jsonHeader)
 	if fetchResponseBody == nil {
-		Log("FetchTorrents", GetLangText("Error-FetchResponse"), true)
+		LogError("FetchTorrents", GetLangText("Error-FetchResponse"), true)
 		return nil
 	}
 
 	var fetchResponse Tr_TorrentsResponseStruct
 	if err := json.Unmarshal(fetchResponseBody, &fetchResponse); err != nil {
-		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -225,7 +228,7 @@ func Tr_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 
 	tr_BlockListUpdateJSON, err := json.Marshal(Tr_RequestStruct{Method: "blocklist-update"})
 	if err != nil {
-		Log("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
+		LogError("SubmitBlockPeer", GetLangText("Error-GenJSON"), true, err.Error())
 		return false
 	}
 

@@ -15,7 +15,16 @@ type httpServerHandler struct {
 }
 
 func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	apiPath := strings.HasPrefix(r.URL.Path, "/api/")
+	if apiPath {
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	if r.Method != "GET" {
+		if apiPath {
+			w.Header().Set("Allow", "GET")
+			WriteWebUIAPIError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+			return
+		}
 		w.WriteHeader(405)
 		w.Write([]byte("405: Method Not Allowed."))
 		return
@@ -29,6 +38,22 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			if r.URL.Path == "/" {
 				WebUI_Index(w, r)
+				return
+			}
+			if r.URL.Path == "/api/v1/logs" {
+				WebUI_GetStructuredLogs(w, r)
+				return
+			}
+			if r.URL.Path == "/api/v1/bans" {
+				WebUI_GetBans(w, r)
+				return
+			}
+			if strings.HasPrefix(r.URL.Path, "/api/v1/bans/") {
+				WebUI_GetBan(w, r)
+				return
+			}
+			if r.URL.Path == "/api/v1/status" {
+				WebUI_GetHealth(w, r)
 				return
 			}
 			if r.URL.Path == "/api/status" {
@@ -45,6 +70,11 @@ func (h *httpServerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+	}
+
+	if apiPath {
+		WriteWebUIAPIError(w, http.StatusNotFound, "not_found")
+		return
 	}
 
 	// Transmission 兼容路由.
@@ -99,7 +129,7 @@ func StartServer() {
 	for _, addr := range addrs {
 		l, err := CreateListener(addr)
 		if err != nil {
-			Log("StartServer", GetLangText("Error-StartServer_Listen"), true, addr, err.Error())
+			LogError("StartServer", GetLangText("Error-StartServer_Listen"), true, addr, err.Error())
 			continue
 		}
 		Server_Listeners = append(Server_Listeners, l)
@@ -120,7 +150,7 @@ func StartServer() {
 		ln := l
 		GoWithCrashLog("httpServer.Serve", func() {
 			if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
-				Log("StartServer", GetLangText("Error-StartServer_Serve"), true, ln.Addr().String(), err.Error())
+				LogError("StartServer", GetLangText("Error-StartServer_Serve"), true, ln.Addr().String(), err.Error())
 			}
 		})
 	}
@@ -132,7 +162,7 @@ func StopServer() {
 	}
 
 	if err := httpServer.Shutdown(context.Background()); err != nil {
-		Log("StopServer", GetLangText("Error-StopServer"), true, err.Error())
+		LogError("StopServer", GetLangText("Error-StopServer"), true, err.Error())
 	}
 
 	for _, l := range Server_Listeners {

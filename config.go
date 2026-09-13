@@ -281,7 +281,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 	for index, content := range blockListContent {
 		content = StrTrim(ProcessRemark(content))
 		if content == "" {
-			Log("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, blockListSource)
+			LogError("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, blockListSource)
 			continue
 		}
 
@@ -293,7 +293,7 @@ func SetBlockListFromContent(blockListContent []string, blockListSource string) 
 
 		reg, err := regexp2.Compile("(?i)"+content, 0)
 		if err != nil {
-			Log("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, index, content, blockListSource)
+			LogError("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, index, content, blockListSource)
 			continue
 		}
 
@@ -316,13 +316,13 @@ func SetBlockListFromFile() bool {
 	for _, filePath := range ConfigSnapshot().BlockListFile {
 		blockListFileStat, err := os.Stat(filePath)
 		if err != nil {
-			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
+			LogError("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
 			return false
 		}
 
 		// 最大 8MB.
 		if blockListFileStat.Size() > 8388608 {
-			Log("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
+			LogError("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
 			continue
 		}
 
@@ -343,7 +343,7 @@ func SetBlockListFromFile() bool {
 
 		blockListContent, err := os.ReadFile(filePath)
 		if err != nil {
-			Log("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
+			LogError("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
 			return false
 		}
 
@@ -356,7 +356,7 @@ func SetBlockListFromFile() bool {
 		if filepath.Ext(filePath) == ".json" {
 			err = json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
 			if err != nil {
-				Log("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
+				LogError("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
 				continue
 			}
 		} else {
@@ -396,13 +396,13 @@ func SetBlockListFromURL() bool {
 
 		if blockListContent == nil {
 			//blockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
-			Log("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+			LogError("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
 
 		// 最大 8MB.
 		if len(blockListContent) > 8388608 {
-			Log("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
+			LogError("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
 			continue
 		}
 
@@ -410,7 +410,7 @@ func SetBlockListFromURL() bool {
 		if strings.HasSuffix(strings.ToLower(strings.Split(httpHeader.Get("Content-Type"), ";")[0]), "json") {
 			err := json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
 			if err != nil {
-				Log("SetBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
+				LogError("SetBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
 				continue
 			}
 		} else {
@@ -439,7 +439,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 	for index, content := range ipBlockListContent {
 		content = StrTrim(ProcessRemark(content))
 		if content == "" {
-			Log("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, ipBlockListSource)
+			LogError("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, ipBlockListSource)
 			continue
 		}
 
@@ -450,7 +450,7 @@ func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource st
 		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s (Source: %s)", false, index, content, ipBlockListSource)
 		cidr := ParseIPCIDR(content)
 		if cidr == nil {
-			Log("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, index, content, ipBlockListSource)
+			LogError("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, index, content, ipBlockListSource)
 			continue
 		}
 
@@ -471,7 +471,7 @@ func SetIPBlockListFromFile() bool {
 	for _, filePath := range ConfigSnapshot().IPBlockListFile {
 		ipBlockListFileStat, err := os.Stat(filePath)
 		if err != nil {
-			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
+			LogError("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
 			return false
 		}
 
@@ -492,7 +492,7 @@ func SetIPBlockListFromFile() bool {
 
 		ipBlockListFile, err := os.ReadFile(filePath)
 		if err != nil {
-			Log("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
+			LogError("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
 			return false
 		}
 
@@ -505,7 +505,7 @@ func SetIPBlockListFromFile() bool {
 		if filepath.Ext(filePath) == ".json" {
 			err := json.Unmarshal(jsonc.ToJSON(ipBlockListFile), &content)
 			if err != nil {
-				Log("SetIPBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
+				LogError("SetIPBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
 			}
 		} else {
 			content = strings.Split(string(ipBlockListFile), "\n")
@@ -544,12 +544,12 @@ func SetIPBlockListFromURL() bool {
 
 		if ipBlockListContent == nil {
 			//ipBlockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
-			Log("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
+			LogError("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
 			continue
 		}
 
 		if len(ipBlockListContent) > 8388608 {
-			Log("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
+			LogError("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
 			continue
 		}
 
@@ -557,7 +557,7 @@ func SetIPBlockListFromURL() bool {
 		if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
 			err := json.Unmarshal(jsonc.ToJSON(ipBlockListContent), &content)
 			if err != nil {
-				Log("SetIPBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, ipBlockListURL, err.Error())
+				LogError("SetIPBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, ipBlockListURL, err.Error())
 				continue
 			}
 		} else {
@@ -586,7 +586,7 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 	if err != nil {
 		notExist := os.IsNotExist(err)
 		if notExistErr || !notExist {
-			Log("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, filename, err.Error())
+			LogError("Debug-LoadConfig", GetLangText("Error-LoadConfigMeta"), false, filename, err.Error())
 		}
 		if notExist {
 			return -5
@@ -611,19 +611,19 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 
 	configFile, err := os.ReadFile(filename)
 	if err != nil {
-		Log("LoadConfig", GetLangText("Error-LoadConfig"), true, filename, err.Error())
+		LogError("LoadConfig", GetLangText("Error-LoadConfig"), true, filename, err.Error())
 		return -3
 	}
 
 	switch filepath.Ext(strings.ToLower(filename)) {
 	case ".json":
 		if err := json.Unmarshal(jsonc.ToJSON(configFile), targetConfig); err != nil {
-			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
+			LogError("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 			return -4
 		}
 	case ".toml":
 		if err := toml.Unmarshal(configFile, targetConfig); err != nil {
-			Log("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
+			LogError("LoadConfig", GetLangText("Error-ParseConfig"), true, filename, err.Error())
 			return -4
 		}
 	}
@@ -638,6 +638,7 @@ func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) i
 	return 0
 }
 func InitConfig() {
+	ResetWebUIHealth()
 	ResetWebUIPeerSync()
 	currentConfig := UpdateConfig(func(newConfig *ConfigStruct) {
 		if newConfig.Interval < 1 {
@@ -736,7 +737,7 @@ func LoadInitConfig(firstLoad bool) bool {
 	loadConfigStatus := LoadConfig(configFilename, true, &newConfig)
 
 	if loadConfigStatus < -1 {
-		Log("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
+		LogError("LoadInitConfig", GetLangText("Failed-LoadInitConfig"), true)
 	} else {
 		loadAdditionalConfigStatus := LoadConfig(additionConfigFilename, false, &newConfig)
 		if loadAdditionalConfigStatus == -5 && additionConfigFilename == "config_additional.json" {
@@ -852,7 +853,7 @@ func PrepareEnv() bool {
 
 	path, err := os.Executable()
 	if err != nil {
-		Log("PrepareEnv", GetLangText("Error-DetectProgramPath"), false, err.Error())
+		LogError("PrepareEnv", GetLangText("Error-DetectProgramPath"), false, err.Error())
 		return false
 	}
 
@@ -862,7 +863,7 @@ func PrepareEnv() bool {
 			Log("PrepareEnv", GetLangText("Success-ChangeWorkingDir"), false, programDir)
 			LoadLang(GetLangCode())
 		} else {
-			Log("PrepareEnv", GetLangText("Failed-ChangeWorkingDir"), false, programDir)
+			LogError("PrepareEnv", GetLangText("Failed-ChangeWorkingDir"), false, programDir)
 		}
 	}
 

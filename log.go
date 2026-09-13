@@ -31,7 +31,7 @@ func CloseLogFile() bool {
 	}
 
 	if err := logFile.Close(); err != nil {
-		Log("LoadLog", GetLangText("Error-LoadLog_Close"), false, err.Error())
+		LogError("LoadLog", GetLangText("Error-LoadLog_Close"), false, err.Error())
 		return false
 	}
 
@@ -40,6 +40,14 @@ func CloseLogFile() bool {
 }
 
 func Log(module string, str string, logToFile bool, args ...interface{}) {
+	LogAtLevel(LogMessageLevel(module), module, str, logToFile, args...)
+}
+
+func LogError(module string, str string, logToFile bool, args ...interface{}) {
+	LogAtLevel("error", module, str, logToFile, args...)
+}
+
+func LogAtLevel(level, module, str string, logToFile bool, args ...interface{}) {
 	if !strings.HasPrefix(module, "Debug") {
 		if module == "LogWriter" {
 			str = StrTrim(str)
@@ -58,7 +66,7 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 	logStr := fmt.Sprintf("["+GetDateTime(true)+"]["+module+"] "+str+".\n", args...)
 	if ConfigSnapshot().LogToFile && logToFile && logFile != nil {
 		if _, err := logFile.Write([]byte(logStr)); err != nil {
-			Log("Log", GetLangText("Error-Log_Write"), false, err.Error())
+			LogError("Log", GetLangText("Error-Log_Write"), false, err.Error())
 		}
 	}
 
@@ -70,6 +78,7 @@ func Log(module string, str string, logToFile bool, args ...interface{}) {
 			logBuffer = logBuffer[1:]
 		}
 		logBufferMutex.Unlock()
+		AppendWebUILog(level, module, fmt.Sprintf(str, args...))
 	}
 }
 func LoadLog() bool {
@@ -78,7 +87,7 @@ func LoadLog() bool {
 	}
 
 	if err := os.Mkdir(ConfigSnapshot().LogPath, os.ModePerm); err != nil && !os.IsExist(err) {
-		Log("LoadLog", GetLangText("Error-LoadLog_Mkdir"), false, err.Error())
+		LogError("LoadLog", GetLangText("Error-LoadLog_Mkdir"), false, err.Error())
 		return false
 	}
 
@@ -103,7 +112,7 @@ func LoadLog() bool {
 
 	tLogFile, err := os.OpenFile(ConfigSnapshot().LogPath+"/"+todayStr+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		Log("LoadLog", GetLangText("Error-LoadLog_Open"), false, err.Error())
+		LogError("LoadLog", GetLangText("Error-LoadLog_Open"), false, err.Error())
 		return false
 	}
 

@@ -1,5 +1,7 @@
 # qBittorrent-ClientBlocker
 
+[WebUI documentation (Chinese)](doc/WebUI.md)
+
 [中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
 [中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 

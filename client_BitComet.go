@@ -39,7 +39,7 @@ func (c *BCClient) FetchTorrents() ([]*Torrent, error) {
 	if torrents == nil {
 		return nil, nil
 	}
-	var result []*Torrent
+	result := []*Torrent{}
 	for id, t := range *torrents {
 		result = append(result, &Torrent{
 			Hash:       strconv.Itoa(id),
@@ -61,7 +61,7 @@ func (c *BCClient) FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
 	if peers == nil {
 		return nil, nil
 	}
-	var result []*Peer
+	result := []*Peer{}
 	for _, p := range *peers {
 		result = append(result, &Peer{
 			IP:         p.IP,
@@ -94,11 +94,11 @@ func (c *BCClient) FetchTorrents_v2() ([]*Torrent, error) {
 
 	var resp BC_v2_TaskListResponse
 	if err := json.Unmarshal(responseBody, &resp); err != nil {
-		Log("FetchTorrents_v2", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrents_v2", GetLangText("Error-Parse"), true, err.Error())
 		return nil, err
 	}
 
-	var result []*Torrent
+	result := []*Torrent{}
 	for _, t := range resp.TaskList {
 		if strings.ToUpper(t.Type) != "BT" {
 			continue
@@ -121,11 +121,11 @@ func (c *BCClient) FetchTorrentPeers_v2(torrent *Torrent) ([]*Peer, error) {
 
 	var resp BC_v2_PeerListResponse
 	if err := json.Unmarshal(responseBody, &resp); err != nil {
-		Log("FetchTorrentPeers_v2", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrentPeers_v2", GetLangText("Error-Parse"), true, err.Error())
 		return nil, err
 	}
 
-	var result []*Peer
+	result := []*Peer{}
 	for _, p := range resp.PeerList {
 		result = append(result, &Peer{
 			IP:         p.IP,
@@ -363,13 +363,13 @@ func BC_Login() bool {
 func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 	_, _, torrentsResponseBody := Fetch(ConfigSnapshot().ClientURL+"/panel/task_list?group=active", true, true, false, nil)
 	if torrentsResponseBody == nil {
-		Log("FetchTorrents", GetLangText("Error"), true)
+		LogError("FetchTorrents", GetLangText("Error"), true)
 		return nil
 	}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewReader(torrentsResponseBody))
 	if err != nil {
-		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -419,13 +419,13 @@ func BC_FetchTorrents() *map[int]BC_TorrentStruct {
 func BC_FetchTorrentPeers(infoHash string) *[]BC_PeerStruct {
 	_, _, torrentPeersResponseBody := Fetch(ConfigSnapshot().ClientURL+"/panel/task_detail?id="+infoHash+"&show=peers", true, true, false, nil)
 	if torrentPeersResponseBody == nil {
-		Log("FetchTorrentPeers", GetLangText("Error"), true)
+		LogError("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
 	}
 
 	document, err := goquery.NewDocumentFromReader(bytes.NewReader(torrentPeersResponseBody))
 	if err != nil {
-		Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 

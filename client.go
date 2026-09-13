@@ -110,7 +110,9 @@ func DetectClient() bool {
 // Login 执行登录操作.
 func Login() bool {
 	if currentClient != nil {
-		return currentClient.Login()
+		ok := currentClient.Login()
+		RecordClientResult(ok)
+		return ok
 	}
 	return false
 }
@@ -118,7 +120,9 @@ func Login() bool {
 // FetchTorrents 获取种子列表.
 func FetchTorrents() ([]*Torrent, error) {
 	if currentClient != nil {
-		return currentClient.FetchTorrents()
+		items, err := currentClient.FetchTorrents()
+		RecordClientResult(err == nil && items != nil)
+		return items, err
 	}
 	return nil, nil
 }
@@ -126,7 +130,9 @@ func FetchTorrents() ([]*Torrent, error) {
 // FetchTorrentPeers 获取种子的 Peer 列表.
 func FetchTorrentPeers(torrent *Torrent) ([]*Peer, error) {
 	if currentClient != nil {
-		return currentClient.FetchTorrentPeers(torrent)
+		items, err := currentClient.FetchTorrentPeers(torrent)
+		RecordClientResult(err == nil && items != nil)
+		return items, err
 	}
 	return nil, nil
 }

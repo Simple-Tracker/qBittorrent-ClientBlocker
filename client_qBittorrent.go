@@ -124,7 +124,7 @@ func (c *QBClient) FetchTorrentPeersResponse(hash string) *qB_TorrentPeersStruct
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
 		c.peerRID, c.peerCache = 0, nil
-		Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 	reset := rid == 0 || response.FullUpdate
@@ -136,7 +136,7 @@ func (c *QBClient) FetchTorrentPeersResponse(hash string) *qB_TorrentPeersStruct
 		}
 		if err := json.Unmarshal(raw, &peer); err != nil {
 			c.peerRID, c.peerCache = 0, nil
-			Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+			LogError("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
 			return nil
 		}
 		updates[key] = peer
@@ -266,7 +266,7 @@ func QB_GetClientConfigPath() string {
 	var qBConfigFilename string
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		Log("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserHomeDir"), true, err.Error())
+		LogError("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserHomeDir"), true, err.Error())
 		return ""
 	}
 	if IsUnix(userHomeDir) {
@@ -274,7 +274,7 @@ func QB_GetClientConfigPath() string {
 	} else {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			Log("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserConfigDir"), true, err.Error())
+			LogError("Debug-GetClientConfigPath", GetLangText("Error-Debug-GetClientConfigPath_GetUserConfigDir"), true, err.Error())
 			return ""
 		}
 		qBConfigFilename = userConfigDir + "\\qBittorrent\\qBittorrent.ini"
@@ -290,7 +290,7 @@ func QB_GetClientConfig() []byte {
 	_, err := os.Stat(qBConfigFilename)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfigMeta"), true, err.Error())
+			LogError("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfigMeta"), true, err.Error())
 		}
 		return []byte{}
 	}
@@ -299,7 +299,7 @@ func QB_GetClientConfig() []byte {
 
 	qBConfigFile, err := os.ReadFile(qBConfigFilename)
 	if err != nil {
-		Log("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfig"), true, err.Error())
+		LogError("GetClientConfig", GetLangText("Error-GetClientConfig_LoadConfig"), true, err.Error())
 		return []byte{}
 	}
 
@@ -403,7 +403,7 @@ func QB_Login() bool {
 	}
 
 	if loginResponseBody == nil {
-		Log("Login", GetLangText("Error-Login"), true)
+		LogError("Login", GetLangText("Error-Login"), true)
 		return false
 	}
 
@@ -412,22 +412,22 @@ func QB_Login() bool {
 		Log("Login", GetLangText("Success-Login"), true)
 		return true
 	} else if loginResponseBodyStr == "Fails." {
-		Log("Login", GetLangText("Failed-Login_BadUsernameOrPassword"), true)
+		LogError("Login", GetLangText("Failed-Login_BadUsernameOrPassword"), true)
 	} else {
-		Log("Login", GetLangText("Failed-Login_Other"), true, loginResponseBodyStr)
+		LogError("Login", GetLangText("Failed-Login_Other"), true, loginResponseBodyStr)
 	}
 	return false
 }
 func QB_FetchTorrents() *[]qB_TorrentStruct {
 	_, _, torrentsResponseBody := Fetch(ConfigSnapshot().ClientURL+"/v2/torrents/info?filter=active", true, true, false, nil)
 	if torrentsResponseBody == nil {
-		Log("FetchTorrents", GetLangText("Error"), true)
+		LogError("FetchTorrents", GetLangText("Error"), true)
 		return nil
 	}
 
 	var torrentsResult []qB_TorrentStruct
 	if err := json.Unmarshal(torrentsResponseBody, &torrentsResult); err != nil {
-		Log("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrents", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -436,13 +436,13 @@ func QB_FetchTorrents() *[]qB_TorrentStruct {
 func QB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 	_, _, torrentPeersResponseBody := Fetch(ConfigSnapshot().ClientURL+"/v2/sync/torrentPeers?rid=0&hash="+infoHash, true, true, false, nil)
 	if torrentPeersResponseBody == nil {
-		Log("FetchTorrentPeers", GetLangText("Error"), true)
+		LogError("FetchTorrentPeers", GetLangText("Error"), true)
 		return nil
 	}
 
 	var torrentPeersResult qB_TorrentPeersStruct
 	if err := json.Unmarshal(torrentPeersResponseBody, &torrentPeersResult); err != nil {
-		Log("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
+		LogError("FetchTorrentPeers", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -545,13 +545,13 @@ func QB_submitBlockPeerBatches(blockPeerMap map[string]BlockPeerInfoStruct, comp
 func QB_GetPreferences() map[string]interface{} {
 	_, _, responseBody := Fetch(ConfigSnapshot().ClientURL+"/v2/app/preferences", true, true, false, nil)
 	if responseBody == nil {
-		Log("GetPreferences", GetLangText("Failed-GetQBPreferences"), true)
+		LogError("GetPreferences", GetLangText("Failed-GetQBPreferences"), true)
 		return nil
 	}
 
 	var preferences map[string]interface{}
 	if err := json.Unmarshal(responseBody, &preferences); err != nil {
-		Log("GetPreferences", GetLangText("Error-Parse"), true, err.Error())
+		LogError("GetPreferences", GetLangText("Error-Parse"), true, err.Error())
 		return nil
 	}
 
@@ -574,7 +574,7 @@ func QB_TestShadowBanAPI() bool {
 			return false
 		}
 	} else {
-		Log("TestShadowBanAPI", GetLangText("Failed-UnknownShadowBanAPI"), true)
+		LogError("TestShadowBanAPI", GetLangText("Failed-UnknownShadowBanAPI"), true)
 		return false
 	}
 
@@ -615,7 +615,7 @@ func QB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	}
 
 	if banResponseBody == nil {
-		Log("SubmitShadowBanPeer", GetLangText("Error"), true)
+		LogError("SubmitShadowBanPeer", GetLangText("Error"), true)
 		return false
 	}
 

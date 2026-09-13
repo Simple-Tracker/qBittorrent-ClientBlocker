@@ -120,7 +120,7 @@ var defaultLangContent = map[string]string{
 	"Success-SyncWithServer":                           "成功与同步服务器同步",
 	"StartServer_ListeningOn":                          "监听于: %s",
 
-	"Failed-GetQBPreferences":                          "获取 qBittorrent 偏好设置失败",
+	"Failed-GetQBPreferences": "获取 qBittorrent 偏好设置失败",
 
 	// ShadowBan 部分.
 	"Warning-ShadowBanAPINotExist": "未检测到 ShadowBan API, 将使用常规方法",
@@ -128,12 +128,12 @@ var defaultLangContent = map[string]string{
 	"Failed-UnknownShadowBanAPI":   "检测到未知 Shadow Ban API, 将使用常规方法",
 
 	// BTN 部分.
-	"Success-BTNRegLoaded":                             "BTN 规则加载成功, 版本: %s",
-	"Success-BTNExceptionLoaded":                       "BTN 例外规则加载成功, 版本: %s",
-	"Success-BTNConfigLoaded":                          "BTN 配置加载成功",
-	"Debug-BTNNoChange":                                "BTN 规则/例外无变化",
-	"Debug-BTNConfigNoChange":                          "BTN 配置无变化",
-	"Error-BTNVersionMismatch":                         "BTN 协议版本不匹配: 服务器要求 [%d, %d], 但我们支持 3。BTN 模块已禁用。",
+	"Success-BTNRegLoaded":       "BTN 规则加载成功, 版本: %s",
+	"Success-BTNExceptionLoaded": "BTN 例外规则加载成功, 版本: %s",
+	"Success-BTNConfigLoaded":    "BTN 配置加载成功",
+	"Debug-BTNNoChange":          "BTN 规则/例外无变化",
+	"Debug-BTNConfigNoChange":    "BTN 配置无变化",
+	"Error-BTNVersionMismatch":   "BTN 协议版本不匹配: 服务器要求 [%d, %d], 但我们支持 3。BTN 模块已禁用。",
 }
 
 func LoadLang(langCode string) bool {
@@ -142,19 +142,19 @@ func LoadLang(langCode string) bool {
 	_, err := os.Stat(langPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			Log("LoadLang", GetLangText("Error-LoadLang"), false, langPath)
+			LogError("LoadLang", GetLangText("Error-LoadLang"), false, langPath)
 		}
 		return false
 	}
 
 	langFile, err := os.ReadFile(langPath)
 	if err != nil {
-		Log("LoadLang", GetLangText("Error-ReadLang"), false, langPath, err.Error())
+		LogError("LoadLang", GetLangText("Error-ReadLang"), false, langPath, err.Error())
 		return false
 	}
 
 	if err := json.Unmarshal(jsonc.ToJSON(langFile), &langContent); err != nil {
-		Log("LoadLang", GetLangText("Error-ParseLang"), false, langPath, err.Error())
+		LogError("LoadLang", GetLangText("Error-ParseLang"), false, langPath, err.Error())
 		return false
 	}
 

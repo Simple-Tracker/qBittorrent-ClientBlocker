@@ -34,7 +34,7 @@ func RegHotKey() {
 
 	err := programHotkey.Register()
 	if err != nil {
-		Log("RegHotKey", GetLangText("Error-RegHotkey"), false, err.Error())
+		LogError("RegHotKey", GetLangText("Error-RegHotkey"), false, err.Error())
 		return
 	}
 	Log("RegHotKey", GetLangText("Success-RegHotkey"), false)

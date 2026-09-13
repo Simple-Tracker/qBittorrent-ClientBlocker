@@ -148,7 +148,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		if status {
 			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
+			LogError("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
 	}
 }
@@ -237,7 +237,7 @@ func ClearBlockPeer() int {
 		if status {
 			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 		} else {
-			Log("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
+			LogError("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
 	}
 
@@ -281,7 +281,7 @@ func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, pee
 			isMatchPeerClient, err := blockRegex.MatchString(peerClient)
 
 			if err != nil {
-				Log("MatchBlockList_PeerClient", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+				LogError("MatchBlockList_PeerClient", GetLangText("Error-MatchRegexpErr"), true, err.Error())
 			} else if isMatchPeerClient {
 				return true
 			}
@@ -291,7 +291,7 @@ func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, pee
 			isMatchPeerID, err := blockRegex.MatchString(peerID)
 
 			if err != nil {
-				Log("MatchBlockList_PeerID", GetLangText("Error-MatchRegexpErr"), true, err.Error())
+				LogError("MatchBlockList_PeerID", GetLangText("Error-MatchRegexpErr"), true, err.Error())
 			} else if isMatchPeerID {
 				return true
 			}
