@@ -146,8 +146,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
-| banIPCIDR | string | /32 | 封禁 IPv4 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
-| banIP6CIDR | string | /128 | 封禁 IPv6 CIDR. 可扩大单个 Peer 的封禁 IP 范围 |
+| banIPCIDR | string | /32 | IPv4 封禁范围. Peer 被封禁后，同网段后续出现的 Peer 也会被封禁；统计仍按实际 IP 独立保存，仅向客户端下发已观测到的具体 IP |
+| banIP6CIDR | string | /128 | IPv6 封禁范围. 扩大范围后的统计与提交方式同 banIPCIDR，不枚举网段；动态封禁遵循 banTime，不写入永久规则文件 |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 ClientName 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignoreNoLeechersTorrent | bool | false (禁用) | 忽略没有下载者的 Torrent. 启用后有助于提高性能, 但部分客户端 (如 qBittorrent) 可能会出现不准确的问题 |
 | ignorePTTorrent | bool | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |

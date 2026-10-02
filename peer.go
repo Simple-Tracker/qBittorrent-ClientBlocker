@@ -39,6 +39,12 @@ var execPeerCommand = ExecCommand
 
 // AddBlockPeer 将 Peer 添加到封禁列表.
 func AddBlockPeer(module string, reason string, peerIP string, peerPort int, torrentInfoHash string, peerID string, peerClient string, peerDownloaded int64, peerUploaded int64) {
+	// 封禁名单只保存实际 IP；CIDR 规则由 blockCIDRMap 单独维护。
+	if net.ParseIP(peerIP) == nil {
+		LogError("AddBlockPeer", "Invalid peer IP: %q", true, peerIP)
+		return
+	}
+
 	var blockPeerPortMap map[int]bool
 	var lastPeerID string
 	var lastPeerClient string
@@ -434,12 +440,8 @@ func ProcessPeer(peer *Peer, torrentInfoHash string, torrentTotalSize int64, blo
 	case -2:
 		*emptyPeersCount++
 	case 0:
-		if peerNet == nil {
-			AddIPInfo(nil, peerIP, peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
-			AddTorrentInfo(torrentInfoHash, torrentTotalSize, nil, peerIP, peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
-		} else {
-			AddIPInfo(peerNet, peerNet.String(), peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
-			AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerNet.String(), peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
-		}
+		// 网段只用于扩大封禁范围，不能代替 Peer 身份或混合不同 IP 的统计。
+		AddIPInfo(peerNet, peerIP, peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
+		AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerIP, peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
 	}
 }

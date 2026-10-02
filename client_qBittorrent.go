@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"net"
 	"net/url"
 	"os"
 	"sort"
@@ -156,6 +157,9 @@ func (c *QBClient) FetchTorrentPeersResponse(hash string) *qB_TorrentPeersStruct
 }
 
 func (c *QBClient) SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	if !QB_validateBlockPeerIPs(blockPeerMap) {
+		return false
+	}
 	cfg := ConfigSnapshot()
 	if !qB_useNewBanPeersMethod {
 		unchanged := !c.banMethod && c.banCache != nil && c.banURL == cfg.ClientURL && len(c.banCache) == len(blockPeerMap)
@@ -452,11 +456,25 @@ func QB_FetchTorrentPeers(infoHash string) *qB_TorrentPeersStruct {
 // 每个表单限制为 256 KiB，避免全端口展开产生单个巨型请求。
 const qBMaxBanFormBytes = 256 * 1024
 
+// 先验证整份名单，避免分批提交到一半才发现 CIDR 或无效地址。
+func QB_validateBlockPeerIPs(peers map[string]BlockPeerInfoStruct) bool {
+	for ip := range peers {
+		if net.ParseIP(ip) == nil {
+			LogError("QB_SubmitBlockPeer", "Invalid peer IP: %q", true, ip)
+			return false
+		}
+	}
+	return true
+}
+
 func QB_SubmitBlockPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
 	return QB_submitBlockPeerBatches(blockPeerMap, nil)
 }
 
 func QB_submitBlockPeerBatches(blockPeerMap map[string]BlockPeerInfoStruct, completed map[[32]byte]bool) bool {
+	if !QB_validateBlockPeerIPs(blockPeerMap) {
+		return false
+	}
 	cfg := ConfigSnapshot()
 	if qB_useNewBanPeersMethod && len(blockPeerMap) > 0 {
 		var form strings.Builder
@@ -587,6 +605,9 @@ func QB_TestShadowBanAPI() bool {
 	return true
 }
 func QB_SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
+	if !QB_validateBlockPeerIPs(blockPeerMap) {
+		return false
+	}
 	shadowBanIPPortsList := []string{}
 	for peerIP, peerInfo := range blockPeerMap {
 		for port := range peerInfo.Port {

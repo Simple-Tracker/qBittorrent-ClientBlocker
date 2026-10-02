@@ -146,8 +146,8 @@ Docker version is configured through the same name variable configuration, which
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
-| banIPCIDR | string | /32 | Block IPv4 CIDR. Used to expand Peer’s block IP range |
-| banIP6CIDR | string | /128 | Block IPv6 CIDR. Used to expand Peer’s block IP range |
+| banIPCIDR | string | /32 | IPv4 ban range. After a peer is banned, subsequently observed peers in the same subnet are also banned. Statistics remain separate for each actual IP; only observed IP addresses are sent to the client |
+| banIP6CIDR | string | /128 | IPv6 ban range. Uses the same statistics and submission behavior as banIPCIDR without enumerating the subnet. Dynamic bans follow banTime and are not written to permanent rule files |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignoreNoLeechersTorrent | bool | false | Ignore torrent without leechers. Enabling may improve performance, but may cause inaccuracies with some clients (such as qBittorrent) |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
