@@ -128,6 +128,17 @@ func MakeScreenshotScaleQBServer(tb testing.TB, peers map[string]BlockPeerInfoSt
 			peerPort = port
 		}
 		torrentIndex := index % torrentCount
+		hash := torrents[torrentIndex].InfoHash
+		// 稳态样本与已有封禁记录使用相同 torrent 和原始连接计数。
+		peerInfo.InfoHash = hash
+		peerInfo.TorrentDownloaded = map[string]int64{hash: peerInfo.Downloaded}
+		peerInfo.TorrentUploaded = map[string]int64{hash: peerInfo.Uploaded}
+		peerInfo.TorrentDownloadedRaw = map[string]int64{hash: peerInfo.Downloaded}
+		peerInfo.TorrentUploadedRaw = map[string]int64{hash: peerInfo.Uploaded}
+		peerInfo.trafficCounters = map[string]map[int]PeerTrafficCounter{
+			hash: {peerPort: {Downloaded: peerInfo.Downloaded, Uploaded: peerInfo.Uploaded, LastSeen: peerInfo.Timestamp}},
+		}
+		peers[peerIP] = peerInfo
 		peersByTorrent[torrentIndex][peerIP+":"+strconv.Itoa(peerPort)] = qB_PeerStruct{
 			IP:         peerIP,
 			Port:       peerPort,

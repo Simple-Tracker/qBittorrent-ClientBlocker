@@ -71,7 +71,7 @@ func TestCIDRBTNReportsKeepIndividualPeersAndHistory(t *testing.T) {
 	for _, peer := range histories.Peers {
 		historyIPs = append(historyIPs, peer.IPAddress)
 		index := peer.PeerPort - 6881
-		if index < 0 || index >= len(ips) || peer.IPAddress != ips[index] || peer.UploadedOffset != int64(2+index)<<20 || peer.DownloadedOffset != int64(2+index)<<19 {
+		if index < 0 || index >= len(ips) || peer.IPAddress != ips[index] || peer.UploadedOffset != int64(3+index)<<20 || peer.DownloadedOffset != int64(3+index)<<19 {
 			t.Fatalf("mixed history report: %v", peer)
 		}
 	}

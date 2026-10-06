@@ -338,6 +338,20 @@ func BTN_GetConfig() {
 	Log("BTN_GetConfig", GetLangText("Success-BTNConfigLoaded"), true)
 }
 
+func btnPeerConnections(peer PeerInfoStruct) map[int]PeerInfoStruct {
+	if len(peer.Connections) > 0 {
+		return peer.Connections
+	}
+	// 兼容尚无连接快照的记录，其计数仍为下载器原始值。
+	port := 0
+	for p := range peer.Port {
+		port = p
+		break
+	}
+	peer.RawDownloaded, peer.RawUploaded = peer.Downloaded, peer.Uploaded
+	return map[int]PeerInfoStruct{port: peer}
+}
+
 func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp int64) {
 	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
@@ -350,27 +364,24 @@ func BTN_SubmitPeers(torrentMap map[string]TorrentInfoStruct, currentTimestamp i
 	for torrentInfoHash, torrentInfo := range torrentMap {
 		identifier := GetTorrentIdentifier(torrentInfoHash)
 		for peerIP, peerInfo := range torrentInfo.Peers {
-			port := 0
-			for p := range peerInfo.Port {
-				port = p
-				break
+			for port, peerInfo := range btnPeerConnections(peerInfo) {
+				peers = append(peers, BTN_PeerInternalStruct{
+					IPAddress:          peerIP,
+					PeerPort:           port,
+					PeerID:             peerInfo.ID,
+					ClientName:         peerInfo.Client,
+					TorrentIdentifier:  identifier,
+					TorrentSize:        torrentInfo.Size,
+					TorrentIsPrivate:   false,
+					Downloaded:         peerInfo.RawDownloaded,
+					RTDownloadSpeed:    -1,
+					Uploaded:           peerInfo.RawUploaded,
+					RTUploadSpeed:      -1,
+					PeerProgress:       peerInfo.Progress,
+					DownloaderProgress: 1.0,
+					PeerFlag:           "",
+				})
 			}
-			peers = append(peers, BTN_PeerInternalStruct{
-				IPAddress:          peerIP,
-				PeerPort:           port,
-				PeerID:             peerInfo.ID,
-				ClientName:         peerInfo.Client,
-				TorrentIdentifier:  identifier,
-				TorrentSize:        torrentInfo.Size,
-				TorrentIsPrivate:   false,
-				Downloaded:         peerInfo.Downloaded,
-				RTDownloadSpeed:    -1,
-				Uploaded:           peerInfo.Uploaded,
-				RTUploadSpeed:      -1,
-				PeerProgress:       peerInfo.Progress,
-				DownloaderProgress: 1.0,
-				PeerFlag:           "",
-			})
 		}
 	}
 	torrentMapMutex.RUnlock()
@@ -472,7 +483,7 @@ func BTN_SubmitBans(blockPeerMap map[string]BlockPeerInfoStruct, currentTimestam
 	}
 }
 
-func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map[string]TorrentInfoStruct, currentTimestamp int64) {
+func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, _ map[string]TorrentInfoStruct, currentTimestamp int64) {
 	currConfig, _, _ := BtnSnapshot()
 	if btn_isGettingConfig.Load() || currConfig == nil {
 		return
@@ -481,59 +492,47 @@ func BTN_SubmitHistories(torrentMap map[string]TorrentInfoStruct, lastTorrentMap
 	ability, _ := currConfig.Ability["submit_histories"]
 	peers := []BTN_PeerHistoryStruct{}
 	torrentMapMutex.RLock()
-	lastTorrentMapMutex.RLock()
 	for torrentInfoHash, torrentInfo := range torrentMap {
 		identifier := GetTorrentIdentifier(torrentInfoHash)
-		lastTorrentInfo, hasLastTorrent := lastTorrentMap[torrentInfoHash]
 
 		for peerIP, peerInfo := range torrentInfo.Peers {
-			port := 0
-			for p := range peerInfo.Port {
-				port = p
-				break
-			}
-
-			var dlOffset, upOffset int64 = 0, 0
-			if hasLastTorrent {
-				if lastPeerInfo, hasLastPeer := lastTorrentInfo.Peers[peerIP]; hasLastPeer {
-					if peerInfo.Downloaded >= lastPeerInfo.Downloaded {
-						dlOffset = peerInfo.Downloaded - lastPeerInfo.Downloaded
-					} else {
-						dlOffset = peerInfo.Downloaded
-					}
-					if peerInfo.Uploaded >= lastPeerInfo.Uploaded {
-						upOffset = peerInfo.Uploaded - lastPeerInfo.Uploaded
-					} else {
-						upOffset = peerInfo.Uploaded
+			for port, peerInfo := range btnPeerConnections(peerInfo) {
+				firstSeen, lastSeen := peerInfo.FirstSeen, peerInfo.LastSeen
+				if lastSeen == 0 {
+					lastSeen = firstSeen
+					if lastSeen == 0 {
+						lastSeen = currentTimestamp
 					}
 				}
+				if firstSeen == 0 {
+					firstSeen = lastSeen
+				}
+				peers = append(peers, BTN_PeerHistoryStruct{
+					BTN_PeerInternalStruct: BTN_PeerInternalStruct{
+						IPAddress:          peerIP,
+						PeerPort:           port,
+						PeerID:             peerInfo.ID,
+						ClientName:         peerInfo.Client,
+						TorrentIdentifier:  identifier,
+						TorrentSize:        torrentInfo.Size,
+						TorrentIsPrivate:   false,
+						Downloaded:         peerInfo.Downloaded,
+						RTDownloadSpeed:    -1,
+						Uploaded:           peerInfo.Uploaded,
+						RTUploadSpeed:      -1,
+						PeerProgress:       peerInfo.Progress,
+						DownloaderProgress: 1.0,
+						PeerFlag:           "",
+					},
+					// BTN 协议 3 的 offset 是原始会话计数，不是两次上报之差。
+					DownloadedOffset: peerInfo.RawDownloaded,
+					UploadedOffset:   peerInfo.RawUploaded,
+					FirstTimeSeen:    firstSeen * 1000,
+					LastTimeSeen:     lastSeen * 1000,
+				})
 			}
-
-			peers = append(peers, BTN_PeerHistoryStruct{
-				BTN_PeerInternalStruct: BTN_PeerInternalStruct{
-					IPAddress:          peerIP,
-					PeerPort:           port,
-					PeerID:             peerInfo.ID,
-					ClientName:         peerInfo.Client,
-					TorrentIdentifier:  identifier,
-					TorrentSize:        torrentInfo.Size,
-					TorrentIsPrivate:   false,
-					Downloaded:         peerInfo.Downloaded,
-					RTDownloadSpeed:    -1,
-					Uploaded:           peerInfo.Uploaded,
-					RTUploadSpeed:      -1,
-					PeerProgress:       peerInfo.Progress,
-					DownloaderProgress: 1.0,
-					PeerFlag:           "",
-				},
-				DownloadedOffset: dlOffset,
-				UploadedOffset:   upOffset,
-				FirstTimeSeen:    currentTimestamp * 1000,
-				LastTimeSeen:     currentTimestamp * 1000,
-			})
 		}
 	}
-	lastTorrentMapMutex.RUnlock()
 	torrentMapMutex.RUnlock()
 
 	data := BTN_SubmitHistoriesStruct{

@@ -23,6 +23,7 @@ type BlockPeerInfoStruct struct {
 	TorrentUploaded      map[string]int64
 	TorrentDownloadedRaw map[string]int64
 	TorrentUploadedRaw   map[string]int64
+	trafficCounters      map[string]map[int]PeerTrafficCounter
 }
 type BlockCIDRInfoStruct struct {
 	Timestamp int64
@@ -52,6 +53,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	var torrentUploaded map[string]int64
 	var torrentDownloadedRaw map[string]int64
 	var torrentUploadedRaw map[string]int64
+	var trafficCounters map[string]map[int]PeerTrafficCounter
 
 	blockPeerMapMutex.Lock()
 	if blockPeer, exist := blockPeerMap[peerIP]; !exist {
@@ -68,6 +70,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		torrentUploaded = blockPeer.TorrentUploaded
 		torrentDownloadedRaw = blockPeer.TorrentDownloadedRaw
 		torrentUploadedRaw = blockPeer.TorrentUploadedRaw
+		trafficCounters = blockPeer.trafficCounters
 		if torrentDownloaded == nil {
 			torrentDownloaded = make(map[string]int64)
 		}
@@ -81,6 +84,9 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 			torrentUploadedRaw = make(map[string]int64)
 		}
 	}
+	if trafficCounters == nil {
+		trafficCounters = make(map[string]map[int]PeerTrafficCounter)
+	}
 
 	if peerID == "" {
 		peerID = lastPeerID
@@ -91,19 +97,9 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 
 	// 使用 delta-based 累加处理流量统计.
 	if torrentInfoHash != "" {
-		// 计算下载下载量差额.
-		downloadedDelta := peerDownloaded - torrentDownloadedRaw[torrentInfoHash]
-		if peerDownloaded < torrentDownloadedRaw[torrentInfoHash] {
-			downloadedDelta = peerDownloaded
-		}
+		downloadedDelta, uploadedDelta := blockedPeerCounterDelta(trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded)
 		torrentDownloaded[torrentInfoHash] += downloadedDelta
 		torrentDownloadedRaw[torrentInfoHash] = peerDownloaded
-
-		// 计算上传下载量差额.
-		uploadedDelta := peerUploaded - torrentUploadedRaw[torrentInfoHash]
-		if peerUploaded < torrentUploadedRaw[torrentInfoHash] {
-			uploadedDelta = peerUploaded
-		}
 		torrentUploaded[torrentInfoHash] += uploadedDelta
 		torrentUploadedRaw[torrentInfoHash] = peerUploaded
 	} else {
@@ -137,6 +133,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		TorrentUploaded:      torrentUploaded,
 		TorrentDownloadedRaw: torrentDownloadedRaw,
 		TorrentUploadedRaw:   torrentUploadedRaw,
+		trafficCounters:      trafficCounters,
 	}
 	blockPeerMapMutex.Unlock()
 
@@ -149,13 +146,95 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerIP}", peerIP, -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{peerPort}", strconv.Itoa(peerPort), -1)
 		execCommand_Ban = strings.Replace(execCommand_Ban, "{torrentInfoHash}", torrentInfoHash, -1)
-		status, out, err := ExecCommand(execCommand_Ban)
+		status, out, err := execPeerCommand(execCommand_Ban)
 
 		if status {
 			Log("AddBlockPeer", GetLangText("Success-ExecCommand"), true, out)
 		} else {
 			LogError("AddBlockPeer", GetLangText("Failed-ExecCommand"), true, out, err)
 		}
+	}
+}
+
+func blockedPeerCounterDelta(counters map[string]map[int]PeerTrafficCounter, hash string, port int, downloaded, uploaded int64) (int64, int64) {
+	if counters[hash] == nil {
+		counters[hash] = make(map[int]PeerTrafficCounter)
+	}
+	previous, exist := counters[hash][port]
+	// 暂时未知的计数不能覆盖上次有效基线，否则恢复上报时会重复累计。
+	current := previous
+	if !exist || downloaded >= 0 {
+		current.Downloaded = downloaded
+	}
+	if !exist || uploaded >= 0 {
+		current.Uploaded = uploaded
+	}
+	current.LastSeen = currentTimestamp
+	counters[hash][port] = current
+	return CounterDelta(downloaded, previous.Downloaded), CounterDelta(uploaded, previous.Uploaded)
+}
+
+// SeedBlockedPeerCounters 为已经计入封禁总量的统计快照安装连接基线。
+// 调用方提供持锁读取的快照；此处只获取封禁锁并复制，避免反向获取统计锁。
+func SeedBlockedPeerCounters(peerIP string, counters map[string]map[int]PeerTrafficCounter) {
+	blockPeerMapMutex.Lock()
+	defer blockPeerMapMutex.Unlock()
+	peer, exist := blockPeerMap[peerIP]
+	if !exist {
+		return
+	}
+	if peer.trafficCounters == nil {
+		peer.trafficCounters = make(map[string]map[int]PeerTrafficCounter)
+	}
+	for hash, ports := range counters {
+		if peer.trafficCounters[hash] == nil {
+			peer.trafficCounters[hash] = make(map[int]PeerTrafficCounter, len(ports))
+		}
+		delete(peer.trafficCounters[hash], -1)
+		for port, counter := range ports {
+			peer.trafficCounters[hash][port] = counter
+		}
+	}
+	blockPeerMap[peerIP] = peer
+}
+
+// UpdateBlockedPeerTraffic 只更新实际观测到的流量，不重复执行封禁操作或修改封禁原因。
+func UpdateBlockedPeerTraffic(peerIP string, peerPort int, torrentInfoHash string, peerDownloaded, peerUploaded int64) {
+	if torrentInfoHash == "" {
+		return
+	}
+	blockPeerMapMutex.Lock()
+	peer, exist := blockPeerMap[peerIP]
+	if !exist {
+		blockPeerMapMutex.Unlock()
+		return
+	}
+	if peer.TorrentDownloaded == nil {
+		peer.TorrentDownloaded = make(map[string]int64)
+	}
+	if peer.TorrentUploaded == nil {
+		peer.TorrentUploaded = make(map[string]int64)
+	}
+	if peer.TorrentDownloadedRaw == nil {
+		peer.TorrentDownloadedRaw = make(map[string]int64)
+	}
+	if peer.TorrentUploadedRaw == nil {
+		peer.TorrentUploadedRaw = make(map[string]int64)
+	}
+	if peer.trafficCounters == nil {
+		peer.trafficCounters = make(map[string]map[int]PeerTrafficCounter)
+	}
+	downloadedDelta, uploadedDelta := blockedPeerCounterDelta(peer.trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded)
+	peer.TorrentDownloaded[torrentInfoHash] += downloadedDelta
+	peer.TorrentUploaded[torrentInfoHash] += uploadedDelta
+	peer.TorrentDownloadedRaw[torrentInfoHash] = peerDownloaded
+	peer.TorrentUploadedRaw[torrentInfoHash] = peerUploaded
+	peer.Downloaded += downloadedDelta
+	peer.Uploaded += uploadedDelta
+	blockPeerMap[peerIP] = peer
+	blockPeerMapMutex.Unlock()
+	if downloadedDelta != 0 || uploadedDelta != 0 {
+		WebUI_RecordBlockPeerAdded(peerIP)
 	}
 }
 
@@ -313,6 +392,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 	}
 
 	if IsBlockedPeer(peerIP, peerPort, true) {
+		UpdateBlockedPeerTraffic(peerIP, peerPort, torrentInfoHash, peerDownloaded, peerUploaded)
 		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient))
 		if peerPort == -1 {
 			return 3, nil

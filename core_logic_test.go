@@ -56,6 +56,10 @@ func TestIPAggregationAndUploadDelta(t *testing.T) {
 	config = &testConfig
 	ipMap = map[string]IPInfoStruct{}
 
+	AddIPInfo(nil, "203.0.113.10", 6881, "torrent-a", 0, 2<<20)
+	AddIPInfo(nil, "203.0.113.10", 6882, "torrent-b", 0, 7<<20)
+	baseline := make(map[string]IPInfoStruct)
+	DeepCopyIPMap(ipMap, baseline)
 	AddIPInfo(nil, "203.0.113.10", 6881, "torrent-a", 4<<20, 5<<20)
 	AddIPInfo(nil, "203.0.113.10", 6882, "torrent-b", 6<<20, 8<<20)
 	info := ipMap["203.0.113.10"]
@@ -63,7 +67,7 @@ func TestIPAggregationAndUploadDelta(t *testing.T) {
 		t.Fatalf("unexpected aggregated IP info: %#v", info)
 	}
 
-	previous := IPInfoStruct{TorrentUploaded: map[string]int64{"torrent-a": 2 << 20, "torrent-b": 7 << 20}}
+	previous := baseline["203.0.113.10"]
 	if deltaMB := IsIPTooHighUploaded(info, previous); deltaMB != 4 {
 		t.Fatalf("upload delta=%d MB, want 4", deltaMB)
 	}
@@ -89,7 +93,7 @@ func TestTorrentAggregation(t *testing.T) {
 	AddTorrentInfo("torrent-a", 100<<20, peerNet, "203.0.113.10", 6881, 0.1, 10, 20, "peer-a", "client-a")
 	AddTorrentInfo("torrent-a", 100<<20, peerNet, "203.0.113.10", 6882, 0.2, 30, 40, "peer-a", "client-a")
 	peer := torrentMap["torrent-a"].Peers["203.0.113.10"]
-	if len(peer.Port) != 2 || peer.Progress != 0.2 || peer.Uploaded != 40 {
+	if len(peer.Port) != 2 || peer.Progress != 0.2 || peer.Uploaded != 60 {
 		t.Fatalf("unexpected aggregated torrent peer: %#v", peer)
 	}
 }

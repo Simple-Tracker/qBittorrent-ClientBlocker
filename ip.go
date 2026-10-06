@@ -6,12 +6,14 @@ import (
 )
 
 type IPInfoStruct struct {
-	LastSeen          int64            `json:"-"`
-	TorrentLastSeen   map[string]int64 `json:"-"`
-	Net               *net.IPNet
-	Port              map[int]bool
-	TorrentDownloaded map[string]int64
-	TorrentUploaded   map[string]int64
+	TorrentPeers            map[string]map[int]PeerTrafficCounter `json:"-"`
+	TorrentObservedUploaded map[string]int64                      `json:"-"`
+	LastSeen                int64                                 `json:"-"`
+	TorrentLastSeen         map[string]int64                      `json:"-"`
+	Net                     *net.IPNet
+	Port                    map[int]bool
+	TorrentDownloaded       map[string]int64
+	TorrentUploaded         map[string]int64
 }
 
 var ipMap = make(map[string]IPInfoStruct)
@@ -25,6 +27,8 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 		return
 	}
 
+	var torrentPeers map[string]map[int]PeerTrafficCounter
+	var observedUploaded map[string]int64
 	var torrentLastSeen map[string]int64
 	var clientPortMap map[int]bool
 	var clientTorrentDownloadedMap map[string]int64
@@ -35,6 +39,8 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 		clientTorrentDownloadedMap = make(map[string]int64)
 		clientTorrentUploadedMap = make(map[string]int64)
 	} else {
+		torrentPeers = info.TorrentPeers
+		observedUploaded = info.TorrentObservedUploaded
 		torrentLastSeen = info.TorrentLastSeen
 		clientPortMap = info.Port
 		clientTorrentDownloadedMap = info.TorrentDownloaded
@@ -46,31 +52,44 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 	if torrentLastSeen == nil {
 		torrentLastSeen = make(map[string]int64)
 	}
+	if torrentPeers == nil {
+		torrentPeers = make(map[string]map[int]PeerTrafficCounter)
+	}
+	if torrentPeers[torrentInfoHash] == nil {
+		torrentPeers[torrentInfoHash] = make(map[int]PeerTrafficCounter)
+	}
+	if observedUploaded == nil {
+		observedUploaded = make(map[string]int64)
+	}
+	previous, seen := torrentPeers[torrentInfoHash][peerPort]
+	if !seen {
+		previous.Downloaded, previous.Uploaded = -1, -1
+	}
+	uploadedDelta := CounterDelta(peerUploaded, previous.Uploaded)
+	counter := previous
+	if peerDownloaded >= 0 {
+		counter.Downloaded = peerDownloaded
+	}
+	if peerUploaded >= 0 {
+		counter.Uploaded = peerUploaded
+	}
+	counter.LastSeen = currentTimestamp
+	torrentPeers[torrentInfoHash][peerPort] = counter
+	if seen && previous.Uploaded >= 0 && peerUploaded >= 0 {
+		observedUploaded[torrentInfoHash] += uploadedDelta
+	} else if _, exists := observedUploaded[torrentInfoHash]; !exists {
+		observedUploaded[torrentInfoHash] = 0
+	}
 	torrentLastSeen[torrentInfoHash] = currentTimestamp
 	clientPortMap[peerPort] = true
-	clientTorrentDownloadedMap[torrentInfoHash] = peerDownloaded
-	clientTorrentUploadedMap[torrentInfoHash] = peerUploaded
+	clientTorrentDownloadedMap[torrentInfoHash] = AccumulateCounter(clientTorrentDownloadedMap[torrentInfoHash], peerDownloaded, previous.Downloaded)
+	clientTorrentUploadedMap[torrentInfoHash] = AccumulateCounter(clientTorrentUploadedMap[torrentInfoHash], peerUploaded, previous.Uploaded)
 
-	ipMap[peerIP] = IPInfoStruct{LastSeen: currentTimestamp, TorrentLastSeen: torrentLastSeen, Net: cidr, Port: clientPortMap, TorrentDownloaded: clientTorrentDownloadedMap, TorrentUploaded: clientTorrentUploadedMap}
+	ipMap[peerIP] = IPInfoStruct{TorrentPeers: torrentPeers, TorrentObservedUploaded: observedUploaded, LastSeen: currentTimestamp, TorrentLastSeen: torrentLastSeen, Net: cidr, Port: clientPortMap, TorrentDownloaded: clientTorrentDownloadedMap, TorrentUploaded: clientTorrentUploadedMap}
 	ipMapMutex.Unlock()
 }
 func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
-	var totalUploaded int64 = 0
-
-	for torrentInfoHash, torrentUploaded := range ipInfo.TorrentUploaded {
-		if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
-			if lastTorrentUploaded, exist := lastIPInfo.TorrentUploaded[torrentInfoHash]; !exist {
-				// 首次观测或历史已淘汰：先建立基线，不能把累计量视为增量。
-				continue
-			} else {
-				if torrentUploaded < lastTorrentUploaded {
-					totalUploaded += torrentUploaded
-				} else {
-					totalUploaded += (torrentUploaded - lastTorrentUploaded)
-				}
-			}
-		}
-	}
+	totalUploaded := IPUploadedDelta(ipInfo, lastIPInfo)
 
 	if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
 		var totalUploadedMB int64 = (totalUploaded / 1024 / 1024)
@@ -81,6 +100,22 @@ func IsIPTooHighUploaded(ipInfo IPInfoStruct, lastIPInfo IPInfoStruct) int64 {
 
 	return 0
 }
+
+// IPUploadedDelta excludes each connection's first sample from the observed interval.
+func IPUploadedDelta(info, previous IPInfoStruct) int64 {
+	currentCounters, previousCounters := info.TorrentUploaded, previous.TorrentUploaded
+	if info.TorrentObservedUploaded != nil {
+		currentCounters, previousCounters = info.TorrentObservedUploaded, previous.TorrentObservedUploaded
+	}
+	var uploaded int64
+	for hash, current := range currentCounters {
+		if last, exists := previousCounters[hash]; exists || info.TorrentObservedUploaded != nil {
+			uploaded += CounterDelta(current, last)
+		}
+	}
+	return uploaded
+}
+
 func IsMatchCIDR(peerNet *net.IPNet) bool {
 	if peerNet != nil {
 		blockCIDRMapMutex.RLock()
@@ -122,8 +157,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				if len(ipInfo.Port) > int(ConfigSnapshot().MaxIPPortCount) {
 					Log("CheckAllIP_AddBlockPeer (Too many ports)", "%s:%d", true, ip, -1)
 					ipBlockCount++
-					AddBlockPeer("CheckAllIP", "Too many ports", ip, -1, "", "", "", 0, 0)
-					AddBlockCIDR(ip, ipInfo.Net)
+					BlockIPFromStatistics(ip, "Too many ports", ipInfo)
 					continue
 				}
 			}
@@ -133,17 +167,7 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
 					ipBlockCount++
 
-					var totalDownloaded int64 = 0
-					var totalUploaded int64 = 0
-					for _, v := range ipInfo.TorrentDownloaded {
-						totalDownloaded += v
-					}
-					for _, v := range ipInfo.TorrentUploaded {
-						totalUploaded += v
-					}
-
-					AddBlockPeer("CheckAllIP", "Global-Too high uploaded", ip, -1, "", "", "", totalDownloaded, totalUploaded)
-					AddBlockCIDR(ip, ipInfo.Net)
+					BlockIPFromStatistics(ip, "Global-Too high uploaded", ipInfo)
 				}
 			}
 		}
@@ -155,4 +179,22 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 	}
 
 	return 0
+}
+
+// BlockIPFromStatistics keeps the initial total and its connection baselines in sync.
+func BlockIPFromStatistics(ip, reason string, info IPInfoStruct) {
+	var downloaded, uploaded int64
+	for _, value := range info.TorrentDownloaded {
+		if value > 0 {
+			downloaded += value
+		}
+	}
+	for _, value := range info.TorrentUploaded {
+		if value > 0 {
+			uploaded += value
+		}
+	}
+	AddBlockPeer("CheckAllIP", reason, ip, -1, "", "", "", downloaded, uploaded)
+	SeedBlockedPeerCounters(ip, info.TorrentPeers)
+	AddBlockCIDR(ip, info.Net)
 }

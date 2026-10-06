@@ -50,6 +50,9 @@ func CleanHistory() {
 	removeIP := func(entry historyEntry) { delete(ipMap, entry.key); delete(lastIPMap, entry.key) }
 	removeIPTorrent := func(entry historyEntry) {
 		info := ipMap[entry.key]
+		delete(info.TorrentPeers, entry.sub)
+		delete(info.TorrentObservedUploaded, entry.sub)
+		delete(lastIPMap[entry.key].TorrentObservedUploaded, entry.sub)
 		delete(info.TorrentLastSeen, entry.sub)
 		delete(info.TorrentDownloaded, entry.sub)
 		delete(info.TorrentUploaded, entry.sub)

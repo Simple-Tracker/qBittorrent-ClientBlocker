@@ -167,8 +167,8 @@ func TestAddBlockPeerAccumulatesTorrentTraffic(t *testing.T) {
 	AddBlockPeer("test", "traffic", "203.0.113.30", 6881, "torrent-b", "peer", "client", 30, 40)
 
 	peer := blockPeerMap["203.0.113.30"]
-	if peer.Downloaded != 200 || peer.Uploaded != 120 {
-		t.Fatalf("traffic downloaded=%d uploaded=%d, want 200/120", peer.Downloaded, peer.Uploaded)
+	if peer.Downloaded != 300 || peer.Uploaded != 170 {
+		t.Fatalf("traffic downloaded=%d uploaded=%d, want 300/170", peer.Downloaded, peer.Uploaded)
 	}
 	if len(peer.Port) != 2 || peer.TorrentDownloadedRaw["torrent-a"] != 20 || peer.TorrentDownloadedRaw["torrent-b"] != 30 {
 		t.Fatalf("unexpected peer aggregation: %#v", peer)

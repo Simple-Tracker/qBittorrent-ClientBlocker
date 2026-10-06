@@ -24,11 +24,19 @@ func DeepCopyIPMap(src map[string]IPInfoStruct, dest map[string]IPInfoStruct) {
 			for tk, tv := range v.TorrentUploaded {
 				newTorrentUploadedMap[tk] = tv
 			}
+			observed := make(map[string]int64)
+			for hash, uploaded := range v.TorrentObservedUploaded {
+				observed[hash] = uploaded
+			}
+			if v.TorrentObservedUploaded == nil {
+				observed = nil
+			}
 			dest[k] = IPInfoStruct{
-				LastSeen:        v.LastSeen,
-				Net:             v.Net,
-				Port:            newPortMap,
-				TorrentUploaded: newTorrentUploadedMap,
+				TorrentObservedUploaded: observed,
+				LastSeen:                v.LastSeen,
+				Net:                     v.Net,
+				Port:                    newPortMap,
+				TorrentUploaded:         newTorrentUploadedMap,
 			}
 		}
 	}
@@ -41,18 +49,7 @@ func DeepCopyTorrentMap(src map[string]TorrentInfoStruct, dest map[string]Torren
 		for k, v := range src {
 			newPeers := make(map[string]PeerInfoStruct)
 			for pk, pv := range v.Peers {
-				newPortMap := make(map[int]bool)
-				for ppk, ppv := range pv.Port {
-					newPortMap[ppk] = ppv
-				}
-				newPeers[pk] = PeerInfoStruct{
-					LastSeen:   pv.LastSeen,
-					Net:        pv.Net,
-					Port:       newPortMap,
-					Progress:   pv.Progress,
-					Downloaded: pv.Downloaded,
-					Uploaded:   pv.Uploaded,
-				}
+				newPeers[pk] = CopyPeerInfo(pv)
 			}
 			dest[k] = TorrentInfoStruct{
 				Size:  v.Size,
@@ -61,6 +58,22 @@ func DeepCopyTorrentMap(src map[string]TorrentInfoStruct, dest map[string]Torren
 		}
 	}
 }
+func CopyPeerInfo(info PeerInfoStruct) PeerInfoStruct {
+	ports := make(map[int]bool, len(info.Port))
+	for port, enabled := range info.Port {
+		ports[port] = enabled
+	}
+	info.Port = ports
+	if info.Connections != nil {
+		connections := make(map[int]PeerInfoStruct, len(info.Connections))
+		for port, peer := range info.Connections {
+			connections[port] = CopyPeerInfo(peer)
+		}
+		info.Connections = connections
+	}
+	return info
+}
+
 func IsUnix(path string) bool {
 	return !strings.Contains(path, "\\")
 }

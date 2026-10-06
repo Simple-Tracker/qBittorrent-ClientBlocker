@@ -180,10 +180,10 @@ func TestCIDRStatisticsKeepPeerIPsIndependent(t *testing.T) {
 					if count := checkCIDRTestStatistics(); count != 0 {
 						t.Fatalf("second cycle triggered %d bans", count)
 					}
-					// Multiple ports on the same IP retain the existing latest-sample semantics.
+					// Multiple ports on the same IP keep independent counters.
 					processCIDRTestPeer(ips[0], 6883, .4, 14<<20)
 					peer := torrentMap["hash"].Peers[ips[0]]
-					if len(peer.Port) != 2 || peer.Progress != .4 || peer.Uploaded != 14<<20 || len(ipMap[ips[1]].Port) != 1 {
+					if len(peer.Port) != 2 || peer.Progress != .4 || peer.Uploaded != 26<<20 || len(ipMap[ips[1]].Port) != 1 {
 						t.Fatalf("same-IP port behavior changed: %v", peer)
 					}
 					ok, payload := SyncWithServer_PrepareJSON(torrentMap)

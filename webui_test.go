@@ -371,7 +371,7 @@ func TestAddBlockPeerRecordsUpdatedWebUIPeers(t *testing.T) {
 		t.Fatalf("existing peer updates were not merged: %#v", response)
 	}
 	peer := response.Peers[0]
-	if peer.Module != "BTN" || peer.Reason != "latest" || peer.ID != "new-id" || peer.Client != "new-client" || peer.Timestamp != 20 || peer.Downloaded != 5 || peer.Uploaded != 6 {
+	if peer.Module != "BTN" || peer.Reason != "latest" || peer.ID != "new-id" || peer.Client != "new-client" || peer.Timestamp != 20 || peer.Downloaded != 6 || peer.Uploaded != 8 {
 		t.Fatalf("delta contains stale peer data: %#v", peer)
 	}
 	if len(peer.Ports) != 2 || peer.Ports[0] != "6881" || peer.Ports[1] != "6882" {

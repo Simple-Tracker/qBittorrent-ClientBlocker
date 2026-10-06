@@ -12,14 +12,20 @@ type TorrentInfoStruct struct {
 	Peers map[string]PeerInfoStruct
 }
 type PeerInfoStruct struct {
-	LastSeen   int64 `json:"-"`
-	Net        *net.IPNet
-	Port       map[int]bool
-	Progress   float64
-	Downloaded int64
-	Uploaded   int64
-	ID         string
-	Client     string
+	Connections   map[int]PeerInfoStruct `json:"-"`
+	Counters      PeerTrafficCounter     `json:"-"`
+	Session       uint64                 `json:"-"`
+	RawDownloaded int64                  `json:"-"`
+	RawUploaded   int64                  `json:"-"`
+	FirstSeen     int64                  `json:"-"`
+	LastSeen      int64                  `json:"-"`
+	Net           *net.IPNet
+	Port          map[int]bool
+	Progress      float64
+	Downloaded    int64
+	Uploaded      int64
+	ID            string
+	Client        string
 }
 
 var torrentMap = make(map[string]TorrentInfoStruct)
@@ -50,9 +56,60 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 	}
 	peerPortMap[peerPort] = true
 
-	peers[peerIP] = PeerInfoStruct{LastSeen: currentTimestamp, Net: cidr, Port: peerPortMap, Progress: peerProgress, Downloaded: peerDownloaded, Uploaded: peerUploaded, ID: peerID, Client: peerClient}
+	info := peers[peerIP]
+	if info.Connections == nil {
+		info.Connections = make(map[int]PeerInfoStruct)
+	}
+	previous, seen := info.Connections[peerPort]
+	firstSeen := previous.FirstSeen
+	if firstSeen == 0 {
+		firstSeen = previous.LastSeen
+	}
+	if firstSeen == 0 {
+		firstSeen = currentTimestamp
+	}
+	if info.FirstSeen == 0 {
+		info.FirstSeen = info.LastSeen
+	}
+	if info.FirstSeen == 0 {
+		info.FirstSeen = currentTimestamp
+	}
+	counter := previous.Counters
+	if !seen {
+		counter.Downloaded, counter.Uploaded = -1, -1
+	}
+	previousDownloaded, previousUploaded := counter.Downloaded, counter.Uploaded
+	session := previous.Session
+	if (peerDownloaded >= 0 && peerDownloaded < previousDownloaded) || (peerUploaded >= 0 && peerUploaded < previousUploaded) || (previous.ID != "" && peerID != "" && previous.ID != peerID) {
+		session++
+	}
+	if previous.ID != "" && peerID != "" && previous.ID != peerID {
+		previousDownloaded, previousUploaded = 0, 0
+	}
+	if peerDownloaded >= 0 {
+		counter.Downloaded = peerDownloaded
+	}
+	if peerUploaded >= 0 {
+		counter.Uploaded = peerUploaded
+	}
+	counter.LastSeen = currentTimestamp
+	info.Connections[peerPort] = PeerInfoStruct{
+		Counters:  counter,
+		FirstSeen: firstSeen, LastSeen: currentTimestamp, Net: cidr, Port: map[int]bool{peerPort: true},
+		Progress: peerProgress, Downloaded: AccumulateCounter(previous.Downloaded, peerDownloaded, previousDownloaded), Uploaded: AccumulateCounter(previous.Uploaded, peerUploaded, previousUploaded),
+		RawDownloaded: peerDownloaded, RawUploaded: peerUploaded, ID: peerID, Client: peerClient, Session: session,
+	}
+	peers[peerIP] = PeerInfoStruct{Connections: info.Connections, FirstSeen: info.FirstSeen, LastSeen: currentTimestamp, Net: cidr, Port: peerPortMap, Progress: peerProgress, Downloaded: AccumulateCounter(info.Downloaded, peerDownloaded, previousDownloaded), Uploaded: AccumulateCounter(info.Uploaded, peerUploaded, previousUploaded), ID: peerID, Client: peerClient}
 	torrentMap[torrentInfoHash] = TorrentInfoStruct{Size: torrentTotalSize, Peers: peers}
 	torrentMapMutex.Unlock()
+}
+
+// PeerConnections keeps traffic and progress paired with the actual endpoint.
+func PeerConnections(info PeerInfoStruct) map[int]PeerInfoStruct {
+	if info.Connections != nil {
+		return info.Connections
+	}
+	return map[int]PeerInfoStruct{0: info}
 }
 
 // IsProgressNotMatchUploaded 判断 Peer 报告进度是否与已上传量不匹配.
@@ -114,49 +171,69 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 		defer lastTorrentMapMutex.Unlock()
 
 		for torrentInfoHash, torrentInfo := range torrentMap {
-			for peerIP, peerInfo := range torrentInfo.Peers {
-				lastTorrentInfo, exist := lastTorrentMap[torrentInfoHash]
-				if exist {
-					if lastPeerInfo, exist := lastTorrentInfo.Peers[peerIP]; exist {
+			for peerIP, info := range torrentInfo.Peers {
+				for port, peerInfo := range PeerConnections(info) {
+					lastTorrentInfo := lastTorrentMap[torrentInfoHash]
+					lastInfo, hasPeer := lastTorrentInfo.Peers[peerIP]
+					lastPeerInfo, hasLast := PeerConnections(lastInfo)[port]
+					hasLast = hasLast && hasPeer
+					if hasLast {
 						if lastPeerInfo.Uploaded == peerInfo.Uploaded {
 							continue
 						}
 					}
-				}
 
-				if IsBlockedPeer(peerIP, -1, false) {
-					continue
-				}
-
-				if ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0 {
-					if float64(peerInfo.Uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * ConfigSnapshot().IPUpCheckPerTorrentRatio) {
-						Log("CheckAllTorrent_AddBlockPeer (Torrent-Too high uploaded)", "%s (Uploaded: %.2f MB)", true, peerIP, (float64(peerInfo.Uploaded) / 1024 / 1024))
-						ipBlockCount++
-						AddBlockPeer("CheckAllTorrent", "Torrent-Too high uploaded", peerIP, -1, torrentInfoHash, peerInfo.ID, peerInfo.Client, 0, peerInfo.Uploaded)
-						AddBlockCIDR(peerIP, peerInfo.Net)
+					if IsBlockedPeer(peerIP, -1, false) {
 						continue
 					}
-				}
 
-				if ConfigSnapshot().BanByRelativeProgressUploaded {
-					if lastPeerInfo, exist := lastTorrentMap[torrentInfoHash].Peers[peerIP]; exist {
-						if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentInfo.Size, peerInfo, lastPeerInfo); uploadDuring > 0 {
-							for port := range peerInfo.Port {
-								if IsBlockedPeer(peerIP, port, false) {
+					uploaded := peerInfo.Uploaded
+					if info.Connections != nil {
+						uploaded = peerInfo.RawUploaded
+					}
+					if ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckPerTorrentRatio > 0 {
+						if float64(uploaded) > (float64(torrentInfo.Size) * peerInfo.Progress * ConfigSnapshot().IPUpCheckPerTorrentRatio) {
+							Log("CheckAllTorrent_AddBlockPeer (Torrent-Too high uploaded)", "%s (Uploaded: %.2f MB)", true, peerIP, (float64(peerInfo.Uploaded) / 1024 / 1024))
+							ipBlockCount++
+							AddBlockPeer("CheckAllTorrent", "Torrent-Too high uploaded", peerIP, -1, torrentInfoHash, peerInfo.ID, peerInfo.Client, peerInfo.Downloaded, peerInfo.Uploaded)
+							if info.Connections != nil {
+								SeedBlockedPeerCounters(peerIP, map[string]map[int]PeerTrafficCounter{torrentInfoHash: {port: peerInfo.Counters}})
+							}
+							AddBlockCIDR(peerIP, peerInfo.Net)
+							continue
+						}
+					}
+
+					if ConfigSnapshot().BanByRelativeProgressUploaded {
+						if hasLast && peerInfo.Session == lastPeerInfo.Session {
+							currentProgress, previousProgress := peerInfo, lastPeerInfo
+							if info.Connections != nil {
+								if peerInfo.RawUploaded < 0 || lastPeerInfo.RawUploaded < 0 {
 									continue
 								}
-								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
-								blockCount++
-								AddBlockPeer("CheckAllTorrent", "Bad-Relative_Progress_Uploaded", peerIP, port, torrentInfoHash, peerInfo.ID, peerInfo.Client, 0, peerInfo.Uploaded)
-								AddBlockCIDR(peerIP, peerInfo.Net)
+								currentProgress.Uploaded, previousProgress.Uploaded = peerInfo.RawUploaded, lastPeerInfo.RawUploaded
 							}
-							continue
+							if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentInfo.Size, currentProgress, previousProgress); uploadDuring > 0 {
+								for port := range peerInfo.Port {
+									if IsBlockedPeer(peerIP, port, false) {
+										continue
+									}
+									Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
+									blockCount++
+									AddBlockPeer("CheckAllTorrent", "Bad-Relative_Progress_Uploaded", peerIP, port, torrentInfoHash, peerInfo.ID, peerInfo.Client, peerInfo.Downloaded, peerInfo.Uploaded)
+									if info.Connections != nil {
+										SeedBlockedPeerCounters(peerIP, map[string]map[int]PeerTrafficCounter{torrentInfoHash: {port: peerInfo.Counters}})
+									}
+									AddBlockCIDR(peerIP, peerInfo.Net)
+								}
+								continue
+							}
 						}
 					}
 				}
 			}
-		}
 
+		}
 		lastTorrentCleanTimestamp = currentTimestamp
 		DeepCopyTorrentMap(torrentMap, lastTorrentMap)
 
