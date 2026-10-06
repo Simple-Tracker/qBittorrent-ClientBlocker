@@ -39,7 +39,8 @@ func TestBlockedPeerTrafficUpdatesWithoutRepeatingBan(t *testing.T) {
 	ProcessPeer(&Peer{IP: ip, Port: 6881, ID: "new-id", Client: "new-client", DlSpeed: 1,
 		Downloaded: 150, Uploaded: 300, Progress: .2}, "hash", 100<<20, &blocks, &ipBlocks, &bad, &empty)
 	peer := blockPeerMap[ip]
-	if peer.Downloaded != 150 || peer.Uploaded != 300 || peer.Timestamp != 101 {
+	// A different non-empty PeerID starts another session on this endpoint.
+	if peer.Downloaded != 200 || peer.Uploaded != 400 || peer.Timestamp != 101 {
 		t.Fatalf("observed blocked traffic was not updated: %+v", peer)
 	}
 	if peer.Module != initial.Module || peer.Reason != initial.Reason || peer.InfoHash != initial.InfoHash || peer.ID != initial.ID || peer.Client != initial.Client {
@@ -49,7 +50,7 @@ func TestBlockedPeerTrafficUpdatesWithoutRepeatingBan(t *testing.T) {
 		t.Fatal("traffic observation repeated a ban action")
 	}
 	updated := GetWebUIBlockPeerSync(strconv.FormatUint(snapshot.Cursor, 10))
-	if len(updated.Peers) != 1 || updated.Peers[0].Uploaded != 300 || updated.Peers[0].Downloaded != 150 {
+	if len(updated.Peers) != 1 || updated.Peers[0].Uploaded != 400 || updated.Peers[0].Downloaded != 200 {
 		t.Fatalf("WebUI did not receive the updated traffic: %+v", updated)
 	}
 }

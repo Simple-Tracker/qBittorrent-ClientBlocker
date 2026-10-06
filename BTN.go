@@ -339,7 +339,7 @@ func BTN_GetConfig() {
 }
 
 func btnPeerConnections(peer PeerInfoStruct) map[int]PeerInfoStruct {
-	if len(peer.Connections) > 0 {
+	if peer.Connections != nil {
 		return peer.Connections
 	}
 	// 兼容尚无连接快照的记录，其计数仍为下载器原始值。

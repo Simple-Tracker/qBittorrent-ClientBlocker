@@ -22,7 +22,7 @@ var ipMapMutex sync.RWMutex
 var lastIPMapMutex sync.RWMutex
 var lastIPCleanTimestamp int64 = 0
 
-func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerDownloaded int64, peerUploaded int64) {
+func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash string, peerDownloaded int64, peerUploaded int64, peerIDs ...string) {
 	if !(ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) {
 		return
 	}
@@ -39,6 +39,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 		clientTorrentDownloadedMap = make(map[string]int64)
 		clientTorrentUploadedMap = make(map[string]int64)
 	} else {
+		PruneIPPorts(&info, currentTimestamp, EffectiveHistoryRetention(ConfigSnapshot()))
 		torrentPeers = info.TorrentPeers
 		observedUploaded = info.TorrentObservedUploaded
 		torrentLastSeen = info.TorrentLastSeen
@@ -65,6 +66,7 @@ func AddIPInfo(cidr *net.IPNet, peerIP string, peerPort int, torrentInfoHash str
 	if !seen {
 		previous.Downloaded, previous.Uploaded = -1, -1
 	}
+	previous, _ = AlignPeerTrafficCounter(previous, peerIDs...)
 	uploadedDelta := CounterDelta(peerUploaded, previous.Uploaded)
 	counter := previous
 	if peerDownloaded >= 0 {
@@ -129,7 +131,7 @@ func IsMatchCIDR(peerNet *net.IPNet) bool {
 	return false
 }
 func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct) int {
-	// 首轮同样检查端口数量并建立快照；上传增量只比较已有历史的 IP。
+	// 首轮同样检查端口数量；每个连接的首次原始计数只用于建立基线。
 	if (ConfigSnapshot().MaxIPPortCount > 0 || (ConfigSnapshot().IPUploadedCheck && ConfigSnapshot().IPUpCheckIncrementMB > 0)) && currentTimestamp > (lastIPCleanTimestamp+int64(ConfigSnapshot().IPUpCheckInterval)) {
 		ipBlockCount := 0
 
@@ -138,14 +140,21 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 		defer ipMapMutex.Unlock()
 		defer lastIPMapMutex.Unlock()
 
+		retention := EffectiveHistoryRetention(ConfigSnapshot())
+		for ip, info := range ipMap {
+			PruneIPPorts(&info, currentTimestamp, retention)
+			ipMap[ip] = info
+		}
+
 		// Keep connection history under real IPs; only the upload decision is grouped.
 		uploadedByNetwork := make(map[string]int64)
-		if ConfigSnapshot().IPUploadedCheck {
+		// A window older than retained connection history must establish a new baseline.
+		if ConfigSnapshot().IPUploadedCheck && (retention == 0 || lastIPCleanTimestamp == 0 || currentTimestamp-lastIPCleanTimestamp <= retention) {
 			for ip, info := range ipMap {
 				if info.LastSeen > 0 && info.LastSeen <= lastIPCleanTimestamp {
 					continue
 				}
-				if !IsBlockedPeer(ip, -1, false) {
+				if len(info.Port) > 0 && !IsBlockedPeer(ip, -1, false) {
 					uploadedByNetwork[IPUploadGroup(ip)] += IPUploadedDelta(info, lastIPMap[ip])
 				}
 			}

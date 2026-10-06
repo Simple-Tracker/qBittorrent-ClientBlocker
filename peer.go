@@ -88,6 +88,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 		trafficCounters = make(map[string]map[int]PeerTrafficCounter)
 	}
 
+	observedPeerID := peerID
 	if peerID == "" {
 		peerID = lastPeerID
 	}
@@ -97,7 +98,7 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 
 	// 使用 delta-based 累加处理流量统计.
 	if torrentInfoHash != "" {
-		downloadedDelta, uploadedDelta := blockedPeerCounterDelta(trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded)
+		downloadedDelta, uploadedDelta := blockedPeerCounterDelta(trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded, observedPeerID)
 		torrentDownloaded[torrentInfoHash] += downloadedDelta
 		torrentDownloadedRaw[torrentInfoHash] = peerDownloaded
 		torrentUploaded[torrentInfoHash] += uploadedDelta
@@ -156,11 +157,15 @@ func AddBlockPeer(module string, reason string, peerIP string, peerPort int, tor
 	}
 }
 
-func blockedPeerCounterDelta(counters map[string]map[int]PeerTrafficCounter, hash string, port int, downloaded, uploaded int64) (int64, int64) {
+func blockedPeerCounterDelta(counters map[string]map[int]PeerTrafficCounter, hash string, port int, downloaded, uploaded int64, peerIDs ...string) (int64, int64) {
 	if counters[hash] == nil {
 		counters[hash] = make(map[int]PeerTrafficCounter)
 	}
 	previous, exist := counters[hash][port]
+	if !exist {
+		previous.Downloaded, previous.Uploaded = -1, -1
+	}
+	previous, _ = AlignPeerTrafficCounter(previous, peerIDs...)
 	// 暂时未知的计数不能覆盖上次有效基线，否则恢复上报时会重复累计。
 	current := previous
 	if !exist || downloaded >= 0 {
@@ -199,7 +204,7 @@ func SeedBlockedPeerCounters(peerIP string, counters map[string]map[int]PeerTraf
 }
 
 // UpdateBlockedPeerTraffic 只更新实际观测到的流量，不重复执行封禁操作或修改封禁原因。
-func UpdateBlockedPeerTraffic(peerIP string, peerPort int, torrentInfoHash string, peerDownloaded, peerUploaded int64) {
+func UpdateBlockedPeerTraffic(peerIP string, peerPort int, torrentInfoHash string, peerDownloaded, peerUploaded int64, peerIDs ...string) {
 	if torrentInfoHash == "" {
 		return
 	}
@@ -224,7 +229,7 @@ func UpdateBlockedPeerTraffic(peerIP string, peerPort int, torrentInfoHash strin
 	if peer.trafficCounters == nil {
 		peer.trafficCounters = make(map[string]map[int]PeerTrafficCounter)
 	}
-	downloadedDelta, uploadedDelta := blockedPeerCounterDelta(peer.trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded)
+	downloadedDelta, uploadedDelta := blockedPeerCounterDelta(peer.trafficCounters, torrentInfoHash, peerPort, peerDownloaded, peerUploaded, peerIDs...)
 	peer.TorrentDownloaded[torrentInfoHash] += downloadedDelta
 	peer.TorrentUploaded[torrentInfoHash] += uploadedDelta
 	peer.TorrentDownloadedRaw[torrentInfoHash] = peerDownloaded
@@ -385,6 +390,19 @@ func MatchBlockList(blockRegex *regexp2.Regexp, peerIP string, peerPort int, pee
 	return false
 }
 
+func IsTrackedPeer(peerIP string, peerPort int, torrentInfoHash string) bool {
+	ipMapMutex.RLock()
+	_, tracked := ipMap[peerIP].TorrentPeers[torrentInfoHash][peerPort]
+	ipMapMutex.RUnlock()
+	if tracked {
+		return true
+	}
+	torrentMapMutex.RLock()
+	_, tracked = torrentMap[torrentInfoHash].Peers[peerIP].Connections[peerPort]
+	torrentMapMutex.RUnlock()
+	return tracked
+}
+
 // CheckPeer 对单个 Peer 进行完整检查.
 func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpeed, peerUpSpeed int64, peerProgress float64, peerDownloaded, peerUploaded int64, torrentInfoHash string, torrentTotalSize int64) (int, *net.IPNet) {
 	if peerIP == "" || CheckPrivateIP(peerIP) {
@@ -392,7 +410,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 	}
 
 	if IsBlockedPeer(peerIP, peerPort, true) {
-		UpdateBlockedPeerTraffic(peerIP, peerPort, torrentInfoHash, peerDownloaded, peerUploaded)
+		UpdateBlockedPeerTraffic(peerIP, peerPort, torrentInfoHash, peerDownloaded, peerUploaded, peerID)
 		Log("Debug-CheckPeer_IgnorePeer (Blocked)", "%s:%d %s|%s", false, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient))
 		if peerPort == -1 {
 			return 3, nil
@@ -479,6 +497,12 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 	}
 
 	if peerDlSpeed <= 0 && peerUpSpeed <= 0 {
+		cfg := ConfigSnapshot()
+		ignored := (cfg.IgnoreEmptyPeer && !hasPeerClient) || (cfg.IgnoreByDownloaded > 0 && (peerDownloaded/1024/1024) >= int64(cfg.IgnoreByDownloaded))
+		// 已观测连接的尾样本仍可能增加累计量；新出现的空闲连接继续忽略。
+		if !ignored && IsTrackedPeer(peerIP, peerPort, torrentInfoHash) {
+			return 0, peerNet
+		}
 		return -2, peerNet
 	}
 
@@ -519,8 +543,8 @@ func ProcessPeer(peer *Peer, torrentInfoHash string, torrentTotalSize int64, blo
 	case -2:
 		*emptyPeersCount++
 	case 0:
-		// 网段只用于扩大封禁范围，不能代替 Peer 身份或混合不同 IP 的统计。
-		AddIPInfo(peerNet, peerIP, peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded)
+		// 保留实际 Peer 身份；网段汇总在统计判定阶段进行。
+		AddIPInfo(peerNet, peerIP, peer.Port, torrentInfoHash, peer.Downloaded, peer.Uploaded, peer.ID)
 		AddTorrentInfo(torrentInfoHash, torrentTotalSize, peerNet, peerIP, peer.Port, peer.Progress, peer.Downloaded, peer.Uploaded, peer.ID, peer.Client)
 	}
 }

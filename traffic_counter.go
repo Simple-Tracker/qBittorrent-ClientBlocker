@@ -4,6 +4,21 @@ type PeerTrafficCounter struct {
 	Downloaded int64
 	Uploaded   int64
 	LastSeen   int64
+	PeerID     string
+}
+
+// AlignPeerTrafficCounter preserves the last known identity through empty IDs.
+// A confirmed replacement starts both raw counters at zero, including while unknown.
+func AlignPeerTrafficCounter(counter PeerTrafficCounter, peerIDs ...string) (PeerTrafficCounter, bool) {
+	if len(peerIDs) == 0 || peerIDs[0] == "" {
+		return counter, false
+	}
+	changed := counter.PeerID != "" && counter.PeerID != peerIDs[0]
+	if changed {
+		counter.Downloaded, counter.Uploaded = 0, 0
+	}
+	counter.PeerID = peerIDs[0]
+	return counter, changed
 }
 
 // CounterDelta handles a connection counter restarting from zero.

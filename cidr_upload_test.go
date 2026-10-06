@@ -2,6 +2,35 @@ package main
 
 import "testing"
 
+func TestCIDRUploadExcludesExpiredMembersAfterLongPause(t *testing.T) {
+	for _, tc := range cidrTestCases[:2] {
+		t.Run(tc.name, func(t *testing.T) {
+			installCIDRTest(t, tc.mask4, tc.mask6)
+			UpdateConfig(func(c *ConfigStruct) {
+				c.HistoryRetention, c.Interval = 120, 1
+				c.MaxIPPortCount, c.IPUpCheckIncrementMB = 0, 100
+			})
+			processCIDRTestPeer(tc.ip, 6881, .5, 100<<20)
+			CheckAllIP(ipMap, lastIPMap)
+			currentTimestamp = 101
+			processCIDRTestPeer(tc.ip, 6881, .5, 300<<20)
+			currentTimestamp = 300
+			processCIDRTestPeer(tc.neighbor, 6881, .5, 1000<<20)
+			// The original IP can also return on a new port after all old ports expired.
+			processCIDRTestPeer(tc.ip, 6882, .5, 1000<<20)
+			if n := CheckAllIP(ipMap, lastIPMap); n != 0 {
+				t.Fatalf("expired traffic caused %d bans of a newly observed subnet member", n)
+			}
+			currentTimestamp += 2
+			processCIDRTestPeer(tc.ip, 6882, .5, 1060<<20)
+			processCIDRTestPeer(tc.neighbor, 6881, .5, 1060<<20)
+			if n := CheckAllIP(ipMap, lastIPMap); n != 2 {
+				t.Fatalf("fresh traffic after rebuilding the baseline caused %d bans, want 2", n)
+			}
+		})
+	}
+}
+
 func TestCIDRUploadSumsObservedIncrements(t *testing.T) {
 	for _, tc := range cidrTestCases {
 		for _, newIPs := range []bool{false, true} {

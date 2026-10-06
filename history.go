@@ -9,6 +9,67 @@ type historyEntry struct {
 	seen     int64
 }
 
+func EffectiveHistoryRetention(cfg *ConfigStruct) int64 {
+	retention := int64(cfg.HistoryRetention)
+	if retention > 0 {
+		for _, interval := range []uint32{cfg.Interval, cfg.IPUpCheckInterval, cfg.TorrentMapCleanInterval} {
+			if minimum := int64(interval) * 2; retention < minimum {
+				retention = minimum
+			}
+		}
+	}
+	return retention
+}
+
+// Caller holds ipMapMutex. Expiring raw samples must not subtract recorded traffic.
+func PruneIPPorts(info *IPInfoStruct, now, retention int64) {
+	if retention <= 0 || info.TorrentPeers == nil {
+		return
+	}
+	if info.Port == nil {
+		info.Port = make(map[int]bool)
+	}
+	for port := range info.Port {
+		delete(info.Port, port)
+	}
+	for hash, peers := range info.TorrentPeers {
+		for port, peer := range peers {
+			if peer.LastSeen > 0 && now-peer.LastSeen > retention {
+				delete(peers, port)
+			} else {
+				info.Port[port] = true
+			}
+		}
+		if len(peers) == 0 {
+			delete(info.TorrentPeers, hash)
+		}
+	}
+}
+
+// Caller holds torrentMapMutex and lastTorrentMapMutex when previous is provided.
+func PruneTorrentPorts(info, previous *PeerInfoStruct, now, retention int64) {
+	if retention <= 0 || info.Connections == nil {
+		return
+	}
+	if info.Port == nil {
+		info.Port = make(map[int]bool)
+	}
+	for port := range info.Port {
+		delete(info.Port, port)
+	}
+	for port, peer := range info.Connections {
+		if peer.LastSeen > 0 && now-peer.LastSeen > retention {
+			delete(info.Connections, port)
+			if previous != nil {
+				delete(previous.Connections, port)
+				delete(previous.Port, port)
+			}
+		} else {
+			info.Port[port] = true
+		}
+	}
+}
+
 // 超限时优先淘汰最久未观测的记录；只在超过容量时排序。
 func TrimHistory(entries []historyEntry, limit uint32, remove func(historyEntry)) {
 	if limit == 0 || uint64(len(entries)) <= uint64(limit) {
@@ -36,14 +97,7 @@ func CleanHistory() {
 	}
 	lastHistoryCleanTimestamp = now
 	cfg := ConfigSnapshot()
-	retention := int64(cfg.HistoryRetention)
-	if retention > 0 {
-		for _, interval := range []uint32{cfg.Interval, cfg.IPUpCheckInterval, cfg.TorrentMapCleanInterval} {
-			if minimum := int64(interval) * 2; retention < minimum {
-				retention = minimum
-			}
-		}
-	}
+	retention := EffectiveHistoryRetention(cfg)
 	expired := func(seen int64) bool { return retention > 0 && seen > 0 && now-seen > retention }
 	ipMapMutex.Lock()
 	lastIPMapMutex.Lock()
@@ -80,6 +134,10 @@ func CleanHistory() {
 		}
 	}
 	TrimHistory(ipTorrents, cfg.HistoryMaxEntries, removeIPTorrent)
+	for key, info := range ipMap {
+		PruneIPPorts(&info, now, retention)
+		ipMap[key] = info
+	}
 	lastIPMapMutex.Unlock()
 	ipMapMutex.Unlock()
 
@@ -92,6 +150,9 @@ func CleanHistory() {
 	var peers []historyEntry
 	for hash, torrent := range torrentMap {
 		for ip, peer := range torrent.Peers {
+			previous := lastTorrentMap[hash].Peers[ip]
+			PruneTorrentPorts(&peer, &previous, now, retention)
+			torrent.Peers[ip] = peer
 			entry := historyEntry{key: hash, sub: ip, seen: peer.LastSeen}
 			if expired(peer.LastSeen) {
 				removePeer(entry)

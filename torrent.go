@@ -51,6 +51,11 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 		if peerInfo, exist := peers[peerIP]; !exist {
 			peerPortMap = make(map[int]bool)
 		} else {
+			lastTorrentMapMutex.Lock()
+			previous := lastTorrentMap[torrentInfoHash].Peers[peerIP]
+			PruneTorrentPorts(&peerInfo, &previous, currentTimestamp, EffectiveHistoryRetention(ConfigSnapshot()))
+			lastTorrentMapMutex.Unlock()
+			peers[peerIP] = peerInfo
 			peerPortMap = peerInfo.Port
 		}
 	}
@@ -78,13 +83,14 @@ func AddTorrentInfo(torrentInfoHash string, torrentTotalSize int64, cidr *net.IP
 	if !seen {
 		counter.Downloaded, counter.Uploaded = -1, -1
 	}
+	if counter.PeerID == "" {
+		counter.PeerID = previous.ID
+	}
+	counter, identityChanged := AlignPeerTrafficCounter(counter, peerID)
 	previousDownloaded, previousUploaded := counter.Downloaded, counter.Uploaded
 	session := previous.Session
-	if (peerDownloaded >= 0 && peerDownloaded < previousDownloaded) || (peerUploaded >= 0 && peerUploaded < previousUploaded) || (previous.ID != "" && peerID != "" && previous.ID != peerID) {
+	if (peerDownloaded >= 0 && peerDownloaded < previousDownloaded) || (peerUploaded >= 0 && peerUploaded < previousUploaded) || identityChanged {
 		session++
-	}
-	if previous.ID != "" && peerID != "" && previous.ID != peerID {
-		previousDownloaded, previousUploaded = 0, 0
 	}
 	if peerDownloaded >= 0 {
 		counter.Downloaded = peerDownloaded
@@ -172,6 +178,9 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 
 		for torrentInfoHash, torrentInfo := range torrentMap {
 			for peerIP, info := range torrentInfo.Peers {
+				previous := lastTorrentMap[torrentInfoHash].Peers[peerIP]
+				PruneTorrentPorts(&info, &previous, currentTimestamp, EffectiveHistoryRetention(ConfigSnapshot()))
+				torrentInfo.Peers[peerIP] = info
 				for port, peerInfo := range PeerConnections(info) {
 					lastTorrentInfo := lastTorrentMap[torrentInfoHash]
 					lastInfo, hasPeer := lastTorrentInfo.Peers[peerIP]
