@@ -1,7 +1,5 @@
 # qBittorrent-ClientBlocker
 
-[WebUI 文档](doc/WebUI.md)
-
 [中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
 [中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
@@ -138,16 +136,16 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | debug_CheckPeer | string | false (禁用) | 调试模式 (CheckPeer, 须先启用 debug). 启用后调试信息会包括每个 Torrent Peer, 但信息量较大 |
 | interval | uint32 | 6 (秒) | 屏蔽循环间隔 (不支持热重载). 每个循环间隔会从后端获取相关信息用于判断及屏蔽, 短间隔有助于降低封禁耗时但可能造成客户端卡顿, 长间隔有助于降低 CPU 资源占用 |
 | cleanInterval | uint32 | 3600 (秒) | 屏蔽清理间隔. 短间隔会使过期 Peer 在达到屏蔽持续时间后更快被解除屏蔽, 长间隔有助于合并清理过期 Peer 日志 |
-| gcInterval | uint32 | 60 (秒) | 主动 GC 间隔. 设置为 0 可禁用主动 GC；较短间隔有助于控制内存, 但会增加 CPU 占用 |
-| historyRetention | uint32 | 3600 (秒) | IP、种子 Peer 及 IP 下种子计数的闲置保留时间，0 禁用过期淘汰。实际至少保留两个检测周期；每分钟清理，不依赖主动 GC |
-| historyMaxEntries | uint32 | 100000 | IP、IP-种子计数、种子-Peer 三类历史各自的容量上限，0 不限制。超限优先淘汰最久未观测记录及其基线；不影响封禁名单 |
+| gcInterval | uint32 | 60 (秒) | 主动 GC 间隔. 设置为 0 可禁用主动 GC; 较短间隔有助于控制内存, 但会增加 CPU 占用 |
+| historyRetention | uint32 | 3600 (秒) | 历史统计保留时间. 超过此时间未更新的 IP 及 Torrent Peer 统计会被清理, 0 禁用过期清理 |
+| historyMaxEntries | uint32 | 100000 | 各类历史统计的数量上限. 超过上限时先清理最久未更新的记录, 0 不限制. 清理不会解除已屏蔽的 Peer |
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (blockListURL/ipBlockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
 | restartInterval | uint32 | 6 (秒) | 重启 Torrent 间隔. 用于部分客户端 (Transmission) 屏蔽列表无法立即生效的措施, 通过重启 Torrent 来实现. 过短间隔可能造成屏蔽不生效 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
-| banIPCIDR | string | /32 | IPv4 封禁范围. Peer 被封禁后，同网段后续出现的 Peer 也会被封禁；统计按实际 IP 独立保存，上传增量按配置网段汇总判定，仅向客户端下发已观测到的具体 IP |
-| banIP6CIDR | string | /128 | IPv6 封禁范围. 统计与提交方式同 banIPCIDR，不枚举网段。BitComet 使用永久封禁接口，按 banTime 解封仅跟踪当前进程向当前客户端成功提交的记录；重启前遗留的永久封禁需手动解除 |
+| banIPCIDR | string | /32 | IPv4 屏蔽范围. Peer 被屏蔽后, 同一网段内的其它 Peer 也会被屏蔽, 默认仅屏蔽单个 IP |
+| banIP6CIDR | string | /128 | IPv6 屏蔽范围. 用法同 banIPCIDR, 默认仅屏蔽单个 IP |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 ClientName 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignoreNoLeechersTorrent | bool | false (禁用) | 忽略没有下载者的 Torrent. 启用后有助于提高性能, 但部分客户端 (如 qBittorrent) 可能会出现不准确的问题 |
 | ignorePTTorrent | bool | true (启用) | 忽略 PT Torrent. 若主要 Tracker 包含 ```?passkey=```/```?authkey=```/```?secure=```/```32 位大小写英文及数字组成的字符串``` |
@@ -183,9 +181,9 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | btnAppSecret | string | 空 | BTN AppSecret. 部分 BTN 服务器可能需要认证 |
 | btnSyncRules | bool | true (启用) | 同步 BTN 服务器的云端封禁规则 |
 | btnSyncException | bool | true (启用) | 同步 BTN 服务器的云端例外规则 (白名单) |
-| btnSubmitPeers | bool | false (禁用) | 上报 Peer 快照至 BTN 服务器 |
+| btnSubmitPeers | bool | false (禁用) | 上报 Peer 信息至 BTN 服务器 |
 | btnSubmitBans | bool | false (禁用) | 上报本地封禁记录至 BTN 服务器 |
-| btnSubmitHistories | bool | false (禁用) | 上报 Peer 流量增量历史至 BTN 服务器 |
+| btnSubmitHistories | bool | false (禁用) | 上报 Peer 流量统计至 BTN 服务器 |
 | blockList | []string | 空 (于 config.json 附带) | 屏蔽客户端列表. 同时判断 PeerID 及 ClientName, 不区分大小写, 支持正则表达式 |
 | blockListURL | []string | 空 | 屏蔽客户端列表 URL. 支持格式同 blockList, 一行一条 |
 | blockListFile | []string | 空 | 屏蔽客户端列表文件. 支持格式同 blockList, 一行一条 |
@@ -196,7 +194,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | genIPDat | uint32 | 0 (禁用) | 1: 生成 IPBlockList.dat. 包括所有被封禁的 Peer IPCIDR, 格式同 ipBlockList; 2: 生成 IPFilter.dat. 包括所有被封禁的 Peer IP; 一行一条 |
 | ipUploadedCheck | bool | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | uint32 | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
-| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP 上传增量检测/增量大小. 将当前 banIPCIDR/banIP6CIDR 网段内实际观测到的上传增量相加，超过阈值时封禁该网段本周期观测到的 IP；默认 /32、/128 仍逐 IP 判定，首次原始计数不计作增量 |
+| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP 上传增量检测/增量大小. 若同一网段 IP 的总上传增量大于设置值, 则允许屏蔽该网段的 Peer. 网段范围由 banIPCIDR/banIP6CIDR 决定, 默认按单个 IP 计算 |
 | ipUpCheckPerTorrentRatio | float64 | 3 (X) | IP 上传增量检测/增量倍率. 若 IP 单个 Torrent 上传增量大小大于设置增量倍率及 Torrent 大小之乘积, 则允许屏蔽 Peer |
 | maxIPPortCount | uint32 | 0 (禁用) | 每 IP 最大端口数. 若 IP 端口数大于设置值, 会自动屏蔽 Peer |
 | banByProgressUploaded | bool | false (禁用) | 增强自动屏蔽 (根据进度及上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽 条件后, 会自动屏蔽 Peer |
@@ -209,22 +207,24 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 | ignoreByDownloaded | uint32 | 100 (MB) | 增强自动屏蔽*/最高下载量. 若从 Peer 下载量大于此项, 则跳过增强自动屏蔽 |
 
-## 源码结构与构建
+注意: 使用 BitComet 时, 重启本程序或更换客户端后, 此前由本程序屏蔽的 Peer 需在 BitComet 中手动解除.
 
-- `main.go`：程序入口，接收构建时注入的版本号。
-- `internal/app`：启动、配置、规则与各模块的调用协调。
-- `internal/client`：下载器公共接口；`qbittorrent`、`transmission`、`bitcomet` 子包分别实现各下载器协议。
-- `internal/stats`：连接流量累计、历史清理及 IP/CIDR 统计判定。
-- `internal/webui`：WebUI 接口、页面、日志及健康状态。
+## 构建 Build
 
-在项目根目录执行：
+代码布局:  
+- `main.go`: 程序入口, 接收构建时注入的版本号.
+- `internal/app`: 启动, 配置, 规则与各模块的调用协调.
+- `internal/client`: 下载器公共接口; `qbittorrent`, `transmission`, `bitcomet` 子包分别实现各下载器协议.
+- `internal/stats`: 连接流量累计, 历史清理及 IP/CIDR 统计判定.
+- `internal/webui`: WebUI 接口, 页面, 日志及健康状态.
 
+在项目根目录执行:  
 ```sh
 go build -o qBittorrent-ClientBlocker .
 go test -race ./...
 ```
 
-运行所需的配置文件和 `lang/` 仍与可执行文件放在一起。
+运行所需的配置文件和 `lang/` 须与可执行文件放在一起.
 
 ## 反馈 Feedback
 用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  

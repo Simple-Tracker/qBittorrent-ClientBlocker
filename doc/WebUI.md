@@ -4,7 +4,7 @@ WebUI 是 qBittorrent-ClientBlocker 内置的只读监控页面, 并通过 RESTf
 
 ## 启用
 
-在 `config.json` 中设置：
+在 `config.json` 中设置:
 
 ```JSON
 {
@@ -23,13 +23,13 @@ API 当前仅支持 `GET`, 响应为 JSON, 并携带 `Cache-Control: no-store`. 
 
 ### 运行状态
 
-请求：
+请求:
 
 ```HTTP
 GET /api/v1/status
 ```
 
-响应示例：
+响应示例:
 
 ```JSON
 {
@@ -55,22 +55,22 @@ GET /api/v1/status
 
 ### 封禁列表
 
-请求：
+请求:
 
 ```HTTP
 GET /api/v1/bans?query=192.0.2&module=CheckPeer&sort=-timestamp&limit=50
 ```
 
-支持以下参数：
+支持以下参数:
 
-- `query`：搜索 IP、端口、模块、原因、客户端名称和 Peer ID; 不区分大小写, 最多 256 字节.
-- `module`、`reason`：精确匹配, 最多 256 字节.
-- `from`、`to`：按封禁记录时间筛选, 使用 Unix 秒并包含边界; 0 表示不限制.
-- `sort`：可选 `timestamp`、`-timestamp`、`ip`、`-ip`、`uploaded`、`-uploaded`; `-` 表示降序.
-- `limit`：每页数量, 范围 1 至 200, 默认 50.
-- `cursor`：上一页响应中的 `next_cursor`. 使用游标时, 其他参数必须保持不变.
+- `query`: 搜索 IP, 端口, 模块, 原因, 客户端名称和 Peer ID; 不区分大小写, 最多 256 字节.
+- `module`, `reason`: 精确匹配, 最多 256 字节.
+- `from`, `to`: 按封禁记录时间筛选, 使用 Unix 秒并包含边界; 0 表示不限制.
+- `sort`: 可选 `timestamp`, `-timestamp`, `ip`, `-ip`, `uploaded`, `-uploaded`; `-` 表示降序.
+- `limit`: 每页数量, 范围 1 至 200, 默认 50.
+- `cursor`: 上一页响应中的 `next_cursor`. 使用游标时, 其他参数必须保持不变.
 
-响应示例：
+响应示例:
 
 ```JSON
 {
@@ -95,23 +95,23 @@ GET /api/v1/bans?query=192.0.2&module=CheckPeer&sort=-timestamp&limit=50
 }
 ```
 
-封禁列表使用一份最多保留 30 秒的共享快照, 使翻页期间顺序稳定. `next_cursor` 为空为最后一页. 快照过期时返回 `409 snapshot_expired`, 客户端应丢弃游标并从第一页重新请求.
+封禁列表最多缓存 30 秒, 翻页时使用同一份数据. `next_cursor` 为空为最后一页. 缓存过期时返回 `409 snapshot_expired`, 客户端应丢弃游标并从第一页重新请求.
 
 ### Peer 详情
 
-请求：
+请求:
 
 ```HTTP
 GET /api/v1/bans/192.0.2.1
 ```
 
-IPv6 地址需要进行 URL 编码：
+IPv6 地址需要进行 URL 编码:
 
 ```HTTP
 GET /api/v1/bans/2001%3Adb8%3A%3A1
 ```
 
-响应示例：
+响应示例:
 
 ```JSON
 {
@@ -127,30 +127,30 @@ GET /api/v1/bans/2001%3Adb8%3A%3A1
 }
 ```
 
-详情读取当前内存记录, 不使用列表快照. 记录不存在时返回 404; IP 格式无效时返回 400.
+Peer 详情返回最新数据, 不使用列表缓存. 记录不存在时返回 404; IP 格式无效时返回 400.
 
 ### 结构化日志
 
-首次请求：
+首次请求:
 
 ```HTTP
 GET /api/v1/logs?level=error&limit=100
 ```
 
-后续请求将上一响应的 `next_cursor` 作为 `after` 原样传回：
+后续请求将上一响应的 `next_cursor` 作为 `after` 原样传回:
 
 ```HTTP
 GET /api/v1/logs?level=error&limit=100&after=OPAQUE_CURSOR
 ```
 
-支持以下参数：
+支持以下参数:
 
-- `after`：上一响应中的 `next_cursor`.
-- `level`：可选 `info`、`error`、`debug`; 为空时返回全部级别.
-- `module`：模块名精确匹配, 最多 256 字节.
-- `limit`：每次返回数量, 范围 1 至 200, 默认 100.
+- `after`: 上一响应中的 `next_cursor`.
+- `level`: 可选 `info`, `error`, `debug`; 为空时返回全部级别.
+- `module`: 模块名精确匹配, 最多 256 字节.
+- `limit`: 每次返回数量, 范围 1 至 200, 默认 100.
 
-响应示例：
+响应示例:
 
 ```JSON
 {
@@ -168,11 +168,11 @@ GET /api/v1/logs?level=error&limit=100&after=OPAQUE_CURSOR
 }
 ```
 
-日志最多在内存中保留 1000 条, 每条消息最多 4 KB. `reset=true` 时, 客户端应先清空本地日志视图, 再追加 `items`. 即使 `items` 为空, 也应保存新的 `next_cursor`. `has_more=true` 时可继续请求下一页. 程序重启、筛选条件变化或游标落后于保留窗口时会触发重置.
+日志最多保留 1000 条, 每条消息最多 4 KB. `reset=true` 时, 客户端应先清空本地日志视图, 再追加 `items`. 即使 `items` 为空, 也应保存新的 `next_cursor`. `has_more=true` 时可继续请求下一页. 程序重启, 筛选条件变化或请求的日志已被清理时会触发重置.
 
 ## 错误响应
 
-错误响应示例：
+错误响应示例:
 
 ```JSON
 {
@@ -185,10 +185,10 @@ GET /api/v1/logs?level=error&limit=100&after=OPAQUE_CURSOR
 
 | HTTP 状态 | code | 含义 |
 | --- | --- | --- |
-| 400 | `invalid_query` | 查询参数、范围、排序或 `limit` 无效 |
+| 400 | `invalid_query` | 查询参数, 范围, 排序或 `limit` 无效 |
 | 400 | `invalid_cursor` | 游标格式错误或与当前查询条件不匹配 |
 | 400 | `invalid_ip` | Peer 详情路径中的 IP 无效 |
 | 401 | `unauthorized` | Basic Auth 缺失或错误 |
 | 404 | `not_found` | API 路径或 Peer 记录不存在 |
 | 405 | `method_not_allowed` | 请求方法不是 GET |
-| 409 | `snapshot_expired` | 封禁列表快照已过期, 应从第一页重新请求 |
+| 409 | `snapshot_expired` | 封禁列表缓存已过期, 应从第一页重新请求 |

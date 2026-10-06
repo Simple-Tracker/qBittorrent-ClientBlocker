@@ -1,7 +1,5 @@
 # qBittorrent-ClientBlocker
 
-[WebUI documentation (Chinese)](doc/WebUI.md)
-
 [中文 (默认, Beta 版本)](README.md) [English (Default, Beta Version)](README.en.md)  
 [中文 (Public 正式版)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.md) [English (Public version)](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/blob/master/README.en.md)
 
@@ -139,15 +137,15 @@ Docker version is configured through the same name variable configuration, which
 | interval | uint32 | 6 (秒) | Ban Check Interval (Hot-reload is not supported). Each cycle interval will obtain relevant information from backend for judgment and blocking. Short interval can help reduce ban time but may cause client to freeze, but Long interval can help reduce CPU usage |
 | cleanInterval | uint32 | 3600 (Sec) | Clean blocked peer interval. Short interval will cause expired Peer to be unblocked faster after blocking duration is reached, but Long interval will help merge and clean up expired Peer log |
 | gcInterval | uint32 | 60 (Sec) | Forced GC interval. Set to 0 to disable forced GC. A shorter interval can reduce memory usage but increases CPU usage |
-| historyRetention | uint32 | 3600 (Sec) | Idle retention for IP, torrent-peer and IP-torrent history. 0 disables expiry. At least two detection intervals are retained; cleanup runs every minute independently of forced GC |
-| historyMaxEntries | uint32 | 100000 | Capacity of each history store (IPs, IP-torrent counters, torrent-peers). 0 disables the cap. Oldest observations and their baselines are evicted together; bans are unaffected |
+| historyRetention | uint32 | 3600 (Sec) | History retention time. IP and Torrent Peer statistics are removed if they have not been updated within this time. 0 disables expiry |
+| historyMaxEntries | uint32 | 100000 | Maximum number of records for each type of history. When exceeded, records that have gone longest without an update are removed first. 0 disables the limit. Cleanup does not unblock banned peers |
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (blockListURL/ipBlockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
 | restartInterval | uint32 | 6 (Sec) | Restart Torrent interval. This is a measure to solve the problem that the blocklist of some clients (Transmission) cannot be effective. It is implemented by restarting Torrent. Too short an interval may cause the blocking to be ineffective |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
-| banIPCIDR | string | /32 | IPv4 ban range. After a peer is banned, subsequently observed peers in the same subnet are also banned. Statistics remain separate for each actual IP; upload increments are summed by the configured subnet, and only observed IP addresses are sent to the client |
-| banIP6CIDR | string | /128 | IPv6 ban range. Uses the same statistics and submission behavior as banIPCIDR without enumerating the subnet. BitComet uses permanent bans; banTime removal tracks only bans successfully submitted by this process to the current client. Permanent bans left before a restart require manual removal |
+| banIPCIDR | string | /32 | IPv4 ban range. When a peer is blocked, other peers in the same subnet are also blocked. The default blocks only a single IP |
+| banIP6CIDR | string | /128 | IPv6 ban range. Works the same way as banIPCIDR. The default blocks only a single IP |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignoreNoLeechersTorrent | bool | false | Ignore torrent without leechers. Enabling may improve performance, but may cause inaccuracies with some clients (such as qBittorrent) |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |
@@ -183,9 +181,9 @@ Docker version is configured through the same name variable configuration, which
 | btnAppSecret | string | Empty | BTN AppSecret. Some BTN servers may require authentication |
 | btnSyncRules | bool | true (Enable) | Sync BTN server cloud ban rules |
 | btnSyncException | bool | true (Enable) | Sync BTN server cloud exception rules (whitelist) |
-| btnSubmitPeers | bool | false (Disable) | Submit Peer snapshots to BTN server |
+| btnSubmitPeers | bool | false (Disable) | Submit Peer information to BTN server |
 | btnSubmitBans | bool | false (Disable) | Submit local ban records to BTN server |
-| btnSubmitHistories | bool | false (Disable) | Submit Peer traffic delta history snapshots to BTN server |
+| btnSubmitHistories | bool | false (Disable) | Submit Peer traffic statistics to BTN server |
 | blockList | []string | Empty (Included in config.json) | Block client list. Judge PeerID or ClientName at the same time, case-insensitive, support regular expression |
 | blockListURL | []string | Empty | Block client list URL. Support format is same as blockList, one rule per line |
 | blockListFile | []string | Empty | Block client list File. Support format is same as blockList, one rule per line |
@@ -196,7 +194,7 @@ Docker version is configured through the same name variable configuration, which
 | genIPDat | uint32 | 0 (Disable) | 1: Generate IPBlockList.dat. Include All Peer IPCIDR, support format is same as ipBlockList; 2: Generate IPFilter.dat. Include All Peer IP; One rule per line |
 | ipUploadedCheck | bool | false | IP upload incremental detection. After the following IP upload incremental conditions are met, Peer will be automatically block |
 | ipUpCheckInterval | uint32 | 300 (Sec) | IP upload incremental detection/Interval. Used to determine the previous cycle and the current cycle to compare Peer's IP upload increment. It is also used for maxIPPortCount |
-| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP upload incremental detection/Increment size. Sums observed upload increments within the current banIPCIDR/banIP6CIDR subnet. When the threshold is exceeded, bans IPs observed in that subnet during this cycle. Defaults /32 and /128 still check individual IPs; initial raw counters are excluded |
+| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP upload incremental detection/Increment size. If the total upload increment from IPs in the same subnet exceeds this value, peers in that subnet can be blocked. The subnet is set by banIPCIDR/banIP6CIDR. Defaults check each IP separately |
 | ipUpCheckPerTorrentRatio | float64 | 3 (X) | IP upload incremental detection/Increment ratio. If the IP single torrent upload increment size is greater than the product of the set increment ratio and the torrent size, Peer will be automatically block |
 | maxIPPortCount | uint32 | 0 (Disable) | Maximum number of ports per IP. If the number of IP ports is greater than the set value, Peer will be automatically block |
 | banByProgressUploaded | bool | false | Enhanced automatic blocking (blocking Peer based on progress and uploaded, not verified by testing). After the following enhanced automatic blocking conditions are met, Peer will be automatically blocked |
@@ -209,22 +207,24 @@ Docker version is configured through the same name variable configuration, which
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
 | ignoreByDownloaded | uint32 | 100 (MB) | Enhanced automatic blocking*/Max downloaded. If downloaded from Peer is greater than this value, enhanced automatic blocking will be skipped |
 
-## Source layout and build
+Note: When using BitComet, peers blocked by this program before a restart or a switch to another client must be unblocked manually in BitComet.
 
+## 构建 Build
+
+Source code layout:  
 - `main.go`: entry point and build-time version injection.
 - `internal/app`: startup, configuration, rules and module coordination.
 - `internal/client`: shared downloader interfaces; the `qbittorrent`, `transmission` and `bitcomet` subpackages implement each downloader protocol.
 - `internal/stats`: connection traffic accounting, history cleanup and IP/CIDR detection.
 - `internal/webui`: WebUI endpoints, page, logs and health status.
 
-Run from the repository root:
-
+Run from the repository root:  
 ```sh
 go build -o qBittorrent-ClientBlocker .
 go test -race ./...
 ```
 
-Keep runtime configuration files and `lang/` alongside the executable.
+The required runtime config files and ```lang``` must be kept alongside the executable.
 
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), ask/discuss/share usage through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions), contribute code improvement to blocker through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls).  
