@@ -239,10 +239,14 @@ func TestCIDRStatisticalBansSubmitActualIPs(t *testing.T) {
 					processCIDRTestPeer(tc.ip, port, progress, uploaded)
 					// A newly observed neighbor must establish its own upload baseline.
 					processCIDRTestPeer(tc.neighbor, 6883, .9, 20<<20)
-					if count := checkCIDRTestStatistics(); count != 1 {
-						t.Fatalf("statistical bans=%d, want 1", count)
+					wantIPs := []string{tc.ip}
+					if rule == "globalUpload" && tc.network != "" {
+						wantIPs = append(wantIPs, tc.neighbor)
 					}
-					if len(blockPeerMap) != 1 || blockPeerMap[tc.ip].Module == "" {
+					if count := checkCIDRTestStatistics(); count != len(wantIPs) {
+						t.Fatalf("statistical bans=%d, want %d", count, len(wantIPs))
+					}
+					if len(blockPeerMap) != len(wantIPs) || blockPeerMap[tc.ip].Module == "" {
 						t.Fatalf("wrong ban identity: %v", blockPeerMap)
 					}
 					if tc.network != "" && !blockCIDRMap[tc.network].IPs[tc.ip] {
@@ -251,7 +255,7 @@ func TestCIDRStatisticalBansSubmitActualIPs(t *testing.T) {
 					if !QB_SubmitBlockPeer(blockPeerMap) {
 						t.Fatal("ban submission failed")
 					}
-					assertCIDRTestIPSet(t, *submitted, expectedCIDRBanIPs(tc.ip))
+					assertCIDRTestIPSet(t, *submitted, expectedCIDRBanIPs(wantIPs...))
 				})
 			}
 		})

@@ -146,7 +146,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
 | banAllPort | bool | true (启用) | 屏蔽 IP 所有端口. 默认启用且当前不支持设置 |
-| banIPCIDR | string | /32 | IPv4 封禁范围. Peer 被封禁后，同网段后续出现的 Peer 也会被封禁；统计仍按实际 IP 独立保存，仅向客户端下发已观测到的具体 IP |
+| banIPCIDR | string | /32 | IPv4 封禁范围. Peer 被封禁后，同网段后续出现的 Peer 也会被封禁；统计按实际 IP 独立保存，上传增量按配置网段汇总判定，仅向客户端下发已观测到的具体 IP |
 | banIP6CIDR | string | /128 | IPv6 封禁范围. 统计与提交方式同 banIPCIDR，不枚举网段。BitComet 使用永久封禁接口，按 banTime 解封仅跟踪当前进程向当前客户端成功提交的记录；重启前遗留的永久封禁需手动解除 |
 | ignoreEmptyPeer | bool | true (启用) | 忽略无 PeerID 及 ClientName 的 Peer. 通常出现于连接未完全建立的客户端 |
 | ignoreNoLeechersTorrent | bool | false (禁用) | 忽略没有下载者的 Torrent. 启用后有助于提高性能, 但部分客户端 (如 qBittorrent) 可能会出现不准确的问题 |
@@ -196,7 +196,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | genIPDat | uint32 | 0 (禁用) | 1: 生成 IPBlockList.dat. 包括所有被封禁的 Peer IPCIDR, 格式同 ipBlockList; 2: 生成 IPFilter.dat. 包括所有被封禁的 Peer IP; 一行一条 |
 | ipUploadedCheck | bool | false (禁用) | IP 上传增量检测. 在满足下列 IP 上传增量 条件后, 会自动屏蔽 Peer |
 | ipUpCheckInterval | uint32 | 300 (秒) | IP 上传增量检测/检测间隔. 用于确定上一周期及当前周期, 以比对客户端对 IP 上传增量. 也顺便用于 maxIPPortCount |
-| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP 上传增量检测/增量大小. 若 IP 全局上传增量大小大于设置增量大小, 则允许屏蔽 Peer |
+| ipUpCheckIncrementMB | uint32 | 38000 (MB) | IP 上传增量检测/增量大小. 将当前 banIPCIDR/banIP6CIDR 网段内实际观测到的上传增量相加，超过阈值时封禁该网段本周期观测到的 IP；默认 /32、/128 仍逐 IP 判定，首次原始计数不计作增量 |
 | ipUpCheckPerTorrentRatio | float64 | 3 (X) | IP 上传增量检测/增量倍率. 若 IP 单个 Torrent 上传增量大小大于设置增量倍率及 Torrent 大小之乘积, 则允许屏蔽 Peer |
 | maxIPPortCount | uint32 | 0 (禁用) | 每 IP 最大端口数. 若 IP 端口数大于设置值, 会自动屏蔽 Peer |
 | banByProgressUploaded | bool | false (禁用) | 增强自动屏蔽 (根据进度及上传量屏蔽 Peer, 未经测试验证). 在满足下列 增强自动屏蔽 条件后, 会自动屏蔽 Peer |

@@ -138,6 +138,19 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 		defer ipMapMutex.Unlock()
 		defer lastIPMapMutex.Unlock()
 
+		// Keep connection history under real IPs; only the upload decision is grouped.
+		uploadedByNetwork := make(map[string]int64)
+		if ConfigSnapshot().IPUploadedCheck {
+			for ip, info := range ipMap {
+				if info.LastSeen > 0 && info.LastSeen <= lastIPCleanTimestamp {
+					continue
+				}
+				if !IsBlockedPeer(ip, -1, false) {
+					uploadedByNetwork[IPUploadGroup(ip)] += IPUploadedDelta(info, lastIPMap[ip])
+				}
+			}
+		}
+
 	ipMapLoop:
 		for ip, ipInfo := range ipMap {
 			if ipInfo.LastSeen > 0 && ipInfo.LastSeen <= lastIPCleanTimestamp {
@@ -162,11 +175,12 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 				}
 			}
 
-			if lastIPInfo, exist := lastIPMap[ip]; exist {
-				if uploadDuring := IsIPTooHighUploaded(ipInfo, lastIPInfo); uploadDuring > 0 {
+			if ConfigSnapshot().IPUpCheckIncrementMB > 0 {
+				if uploadDuring := uploadedByNetwork[IPUploadGroup(ip)] / 1024 / 1024; uploadDuring > int64(ConfigSnapshot().IPUpCheckIncrementMB) {
 					Log("CheckAllIP_AddBlockPeer (Global-Too high uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, ip, -1, uploadDuring)
 					ipBlockCount++
 
+					ipInfo.Net = ParseIPCIDRByConfig(ip)
 					BlockIPFromStatistics(ip, "Global-Too high uploaded", ipInfo)
 				}
 			}
@@ -179,6 +193,13 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 	}
 
 	return 0
+}
+
+func IPUploadGroup(ip string) string {
+	if cidr := ParseIPCIDRByConfig(ip); cidr != nil {
+		return cidr.String()
+	}
+	return ip
 }
 
 // BlockIPFromStatistics keeps the initial total and its connection baselines in sync.
