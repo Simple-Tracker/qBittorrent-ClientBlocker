@@ -209,6 +209,23 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | 增强自动屏蔽_相对/滞后防误判倍率. 若 Peer 报告相对下载进度与设置倍率之乘积得到之相对下载进度 比 客户端相对上传进度 还低, 则允许屏蔽 Peer |
 | ignoreByDownloaded | uint32 | 100 (MB) | 增强自动屏蔽*/最高下载量. 若从 Peer 下载量大于此项, 则跳过增强自动屏蔽 |
 
+## 源码结构与构建
+
+- `main.go`：程序入口，接收构建时注入的版本号。
+- `internal/app`：启动、配置、规则与各模块的调用协调。
+- `internal/client`：下载器公共接口；`qbittorrent`、`transmission`、`bitcomet` 子包分别实现各下载器协议。
+- `internal/stats`：连接流量累计、历史清理及 IP/CIDR 统计判定。
+- `internal/webui`：WebUI 接口、页面、日志及健康状态。
+
+在项目根目录执行：
+
+```sh
+go build -o qBittorrent-ClientBlocker .
+go test -race ./...
+```
+
+运行所需的配置文件和 `lang/` 仍与可执行文件放在一起。
+
 ## 反馈 Feedback
 用户及开发者可以通过 [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues) 反馈 bug, 通过 [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions) 提问/讨论/分享 使用方法, 通过 [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls) 向客户端屏蔽器贡献代码改进.  
 注意: 应基于 dev 分支. 为 Feature 发起 Pull Request 时, 请不要同步创建 Issue. 由于人手有限, 开发进度可能较为缓慢.

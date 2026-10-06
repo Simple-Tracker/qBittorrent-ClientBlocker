@@ -209,6 +209,23 @@ Docker version is configured through the same name variable configuration, which
 | banByRelativePUAntiErrorRatio | float64 | 3 (X) | Enhanced automatic blocking_Relative/Lag anti-misjudgment ratio. If the relative download progress obtained by the product of the relative download progress reported by the peer and the set ratio is lower than the relative upload progress of the client, Peer will be automatically block |
 | ignoreByDownloaded | uint32 | 100 (MB) | Enhanced automatic blocking*/Max downloaded. If downloaded from Peer is greater than this value, enhanced automatic blocking will be skipped |
 
+## Source layout and build
+
+- `main.go`: entry point and build-time version injection.
+- `internal/app`: startup, configuration, rules and module coordination.
+- `internal/client`: shared downloader interfaces; the `qbittorrent`, `transmission` and `bitcomet` subpackages implement each downloader protocol.
+- `internal/stats`: connection traffic accounting, history cleanup and IP/CIDR detection.
+- `internal/webui`: WebUI endpoints, page, logs and health status.
+
+Run from the repository root:
+
+```sh
+go build -o qBittorrent-ClientBlocker .
+go test -race ./...
+```
+
+Keep runtime configuration files and `lang/` alongside the executable.
+
 ## 反馈 Feedback
 User and developer can report bug through [Issue](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/issues), ask/discuss/share usage through [Discussion](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/discussions), contribute code improvement to blocker through [Pull Request](https://github.com/Simple-Tracker/qBittorrent-ClientBlocker/pulls).  
 Note: Should be based on dev branch. When opening a Pull Request for a Feature, please do not create an Issue simultaneously.

@@ -17,16 +17,18 @@ RUN PROGRAM_VERSION="$(basename ${GITHUB_REF})"; \
 
 RUN . /envfile; echo "Running on ${BUILDOS}/${BUILDARCH}, Building for ${TARGETOS}/${TARGETARCH}, Version: ${PROGRAM_VERSION}"
 
-ADD lang/ *LICENSE* *.md *.go *.sh *.txt *.json *.html go.mod go.sum ./
-
+COPY go.mod go.sum ./
 RUN go mod download
+COPY main.go ./
+COPY internal/ ./internal/
 RUN . /envfile; go build -ldflags "-w -X \"main.programVersion=${PROGRAM_VERSION}\"" -o qBittorrent-ClientBlocker
-RUN rm -f *.go go.mod go.sum
 
 FROM alpine
 WORKDIR /app
 
-COPY --from=go /app ./
+COPY --from=go /app/qBittorrent-ClientBlocker ./
+COPY lang/ ./lang/
+COPY LICENSE *.md *.txt *.json entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 RUN apk update && apk add --no-cache jq socat
 
