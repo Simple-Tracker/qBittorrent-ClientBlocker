@@ -34,6 +34,7 @@ type ConfigStruct struct {
 	HistoryRetention              uint32
 	HistoryMaxEntries             uint32
 	UpdateInterval                uint32
+	RuleCachePath                 string
 	RestartInterval               uint32
 	TorrentMapCleanInterval       uint32
 	BanTime                       uint32
@@ -90,16 +91,16 @@ type ConfigStruct struct {
 	IPUploadedCheck               bool
 	IPUpCheckInterval             uint32
 	IPUpCheckIncrementMB          uint32
-	IPUpCheckPerTorrentRatio      float64 `json:"ipUpCheckPerTorrentRatio" toml:"ipUpCheckPerTorrentRatio"`
-	MaxIPPortCount                uint32  `json:"maxIPPortCount" toml:"maxIPPortCount"`
-	BanByProgressUploaded         bool    `json:"banByProgressUploaded" toml:"banByProgressUploaded"`
-	BanByPUStartMB                uint32  `json:"banByPUStartMB" toml:"banByPUStartMB"`
-	BanByPUStartPercent           float64 `json:"banByPUStartPercent" toml:"banByPUStartPercent"`
-	BanByPUAntiErrorRatio         float64 `json:"banByPUAntiErrorRatio" toml:"banByPUAntiErrorRatio"`
-	BanByRelativeProgressUploaded bool    `json:"banByRelativeProgressUploaded" toml:"banByRelativeProgressUploaded"`
-	BanByRelativePUStartMB        uint32  `json:"banByRelativePUStartMB" toml:"banByRelativePUStartMB"`
-	BanByRelativePUStartPercent   float64 `json:"banByRelativePUStartPercent" toml:"banByRelativePUStartPercent"`
-	BanByRelativePUAntiErrorRatio float64 `json:"banByRelativePUAntiErrorRatio" toml:"banByRelativePUAntiErrorRatio"`
+	IPUpCheckPerTorrentRatio      float64
+	MaxIPPortCount                uint32
+	BanByProgressUploaded         bool
+	BanByPUStartMB                uint32
+	BanByPUStartPercent           float64
+	BanByPUAntiErrorRatio         float64
+	BanByRelativeProgressUploaded bool
+	BanByRelativePUStartMB        uint32
+	BanByRelativePUStartPercent   float64
+	BanByRelativePUAntiErrorRatio float64
 }
 
 var programName = "qBittorrent-ClientBlocker"
@@ -115,24 +116,6 @@ var needHideWindow bool
 var needHideSystray bool
 
 var randomStrRegexp = regexp2.MustCompile("[a-zA-Z0-9]{32}", 0)
-var blockListCompiled sync.Map
-var ipBlockListCompiled sync.Map
-var ruleReloadMutex sync.Mutex
-var ruleGeneration uint64
-var blockListURLFetching atomic.Bool
-var ipBlockListURLFetching atomic.Bool
-
-var blockListURLLastFetch int64 = 0
-var ipBlockListURLLastFetch int64 = 0
-
-// blockListFileLastMod 记录黑名单文件的最后修改时间, 用于热重载判断.
-var blockListFileLastMod = make(map[string]int64)
-
-// ipBlockListFileLastMod 记录 IP 黑名单文件的最后修改时间.
-var ipBlockListFileLastMod = make(map[string]int64)
-
-// lastModMutex 用于保护上述修改时间映射的并发读写.
-var lastModMutex sync.RWMutex
 
 // currentTimestamp 记录当前的 UNIX 时间戳.
 var currentTimestamp int64 = 0
@@ -180,6 +163,7 @@ var config *ConfigStruct = &ConfigStruct{
 	HistoryRetention:              3600,
 	HistoryMaxEntries:             100000,
 	UpdateInterval:                86400,
+	RuleCachePath:                 "cache/rules",
 	RestartInterval:               6,
 	TorrentMapCleanInterval:       60,
 	BanTime:                       86400,
@@ -276,312 +260,6 @@ var httpServer = http.Server{
 	Handler:      &httpServerHandler{},
 }
 
-func SetBlockListFromContent(blockListContent []string, blockListSource string) int {
-	setCount := 0
-
-	for index, content := range blockListContent {
-		content = StrTrim(ProcessRemark(content))
-		if content == "" {
-			LogError("Debug-SetBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, blockListSource)
-			continue
-		}
-
-		if _, exists := blockListCompiled.Load(content); exists {
-			continue
-		}
-
-		Log("Debug-SetBlockListFromContent_Compile", ":%d %s (Source: %s)", false, index, content, blockListSource)
-
-		reg, err := regexp2.Compile("(?i)"+content, 0)
-		if err != nil {
-			LogError("SetBlockListFromContent_Compile", GetLangText("Error-SetBlockListFromContent_Compile"), true, index, content, blockListSource)
-			continue
-		}
-
-		reg.MatchTimeout = 50 * time.Millisecond
-
-		blockListCompiled.Store(content, reg)
-		setCount++
-	}
-
-	return setCount
-}
-func SetBlockListFromFile() bool {
-	if len(ConfigSnapshot().BlockListFile) == 0 {
-		return true
-	}
-
-	setCount := 0
-	updated := false
-
-	for _, filePath := range ConfigSnapshot().BlockListFile {
-		blockListFileStat, err := os.Stat(filePath)
-		if err != nil {
-			LogError("SetBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
-			return false
-		}
-
-		// 最大 8 MB.
-		if blockListFileStat.Size() > 8388608 {
-			LogError("SetBlockListFromFile", GetLangText("Error-LargeFile"), true)
-			continue
-		}
-
-		// 获取当前文件的最后修改时间.
-		fileLastMod := blockListFileStat.ModTime().Unix()
-		// 为了线程安全, 先加读锁获取映射中的旧值到局部变量 lastMod.
-		lastModMutex.RLock()
-		lastMod := blockListFileLastMod[filePath]
-		lastModMutex.RUnlock()
-
-		// 如果文件未修改, 则跳过处理.
-		if fileLastMod == lastMod {
-			continue
-		}
-		if lastMod != 0 {
-			Log("Debug-SetBlockListFromFile", GetLangText("Debug-SetBlockListFromFile_HotReload"), false, filePath)
-		}
-
-		blockListContent, err := os.ReadFile(filePath)
-		if err != nil {
-			LogError("SetBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
-			return false
-		}
-
-		// 处理完成后, 加写锁更新映射.
-		lastModMutex.Lock()
-		blockListFileLastMod[filePath] = fileLastMod
-		lastModMutex.Unlock()
-
-		var content []string
-		if filepath.Ext(filePath) == ".json" {
-			err = json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
-			if err != nil {
-				LogError("SetBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
-				continue
-			}
-		} else {
-			content = strings.Split(string(blockListContent), "\n")
-		}
-
-		setCount += SetBlockListFromContent(content, filePath)
-		updated = true
-	}
-
-	if updated {
-		Log("SetBlockListFromFile", GetLangText("Success-SetBlockListFromFile"), true, setCount)
-	}
-	return true
-}
-func SetBlockListFromURL() bool {
-	if !blockListURLFetching.CompareAndSwap(false, true) {
-		return true
-	}
-	defer blockListURLFetching.Store(false)
-	ruleReloadMutex.Lock()
-	cfg, generation := ConfigSnapshot(), ruleGeneration
-	now := atomic.LoadInt64(&currentTimestamp)
-	if len(cfg.BlockListURL) == 0 || (blockListURLLastFetch+int64(cfg.UpdateInterval)) > now {
-		ruleReloadMutex.Unlock()
-		return true
-	}
-	blockListURLLastFetch = now
-	ruleReloadMutex.Unlock()
-	setCount := 0
-
-	for _, blockListURL := range cfg.BlockListURL {
-		httpStatusCode, httpHeader, blockListContent := Fetch(blockListURL, false, false, true, nil)
-		if httpStatusCode == 304 {
-			continue
-		}
-
-		if blockListContent == nil {
-			//blockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
-			LogError("SetBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-			continue
-		}
-
-		// 最大 8 MB.
-		if len(blockListContent) > 8388608 {
-			LogError("SetBlockListFromURL", GetLangText("Error-LargeFile"), true)
-			continue
-		}
-
-		var content []string
-		if strings.HasSuffix(strings.ToLower(strings.Split(httpHeader.Get("Content-Type"), ";")[0]), "json") {
-			err := json.Unmarshal(jsonc.ToJSON(blockListContent), &content)
-			if err != nil {
-				LogError("SetBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, blockListURL, err.Error())
-				continue
-			}
-		} else {
-			content = strings.Split(string(blockListContent), "\n")
-		}
-
-		ruleReloadMutex.Lock()
-		if generation != ruleGeneration {
-			requestStateMutex.Lock()
-			delete(urlETagCache, blockListURL)
-			delete(urlLastModCache, blockListURL)
-			requestStateMutex.Unlock()
-			ruleReloadMutex.Unlock()
-			return false
-		}
-		setCount += SetBlockListFromContent(content, blockListURL)
-		ruleReloadMutex.Unlock()
-	}
-
-	Log("SetBlockListFromURL", GetLangText("Success-SetBlockListFromURL"), true, setCount)
-	return true
-}
-func SetIPBlockListFromContent(ipBlockListContent []string, ipBlockListSource string) int {
-	setCount := 0
-
-	for index, content := range ipBlockListContent {
-		content = StrTrim(ProcessRemark(content))
-		if content == "" {
-			LogError("Debug-SetIPBlockListFromContent_Compile", GetLangText("Error-Debug-EmptyLineWithSource"), false, index, ipBlockListSource)
-			continue
-		}
-
-		if _, exists := ipBlockListCompiled.Load(content); exists {
-			continue
-		}
-
-		Log("Debug-SetIPBlockListFromContent_Compile", ":%d %s (Source: %s)", false, index, content, ipBlockListSource)
-		cidr := ParseIPCIDR(content)
-		if cidr == nil {
-			LogError("SetIPBlockListFromContent_Compile", GetLangText("Error-SetIPBlockListFromContent_Compile"), true, index, content, ipBlockListSource)
-			continue
-		}
-
-		ipBlockListCompiled.Store(content, cidr)
-		setCount++
-	}
-
-	return setCount
-}
-func SetIPBlockListFromFile() bool {
-	if len(ConfigSnapshot().IPBlockListFile) == 0 {
-		return true
-	}
-
-	setCount := 0
-	updated := false
-
-	for _, filePath := range ConfigSnapshot().IPBlockListFile {
-		ipBlockListFileStat, err := os.Stat(filePath)
-		if err != nil {
-			LogError("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), false, filePath, err.Error())
-			return false
-		}
-
-		// 获取当前文件的最后修改时间.
-		fileLastMod := ipBlockListFileStat.ModTime().Unix()
-		// 加读锁获取旧值.
-		lastModMutex.RLock()
-		lastMod := ipBlockListFileLastMod[filePath]
-		lastModMutex.RUnlock()
-
-		if fileLastMod <= lastMod {
-			continue
-		}
-
-		if lastMod != 0 {
-			Log("Debug-SetIPBlockListFromFile", GetLangText("Debug-SetIPBlockListFromFile_HotReload"), false, filePath)
-		}
-
-		ipBlockListFile, err := os.ReadFile(filePath)
-		if err != nil {
-			LogError("SetIPBlockListFromFile", GetLangText("Error-LoadFile"), true, filePath, err.Error())
-			return false
-		}
-
-		// 加写锁更新.
-		lastModMutex.Lock()
-		ipBlockListFileLastMod[filePath] = fileLastMod
-		lastModMutex.Unlock()
-
-		var content []string
-		if filepath.Ext(filePath) == ".json" {
-			err := json.Unmarshal(jsonc.ToJSON(ipBlockListFile), &content)
-			if err != nil {
-				LogError("SetIPBlockListFromFile", GetLangText("Error-GenJSONWithID"), true, filePath, err.Error())
-			}
-		} else {
-			content = strings.Split(string(ipBlockListFile), "\n")
-		}
-
-		setCount += SetIPBlockListFromContent(content, filePath)
-		updated = true
-	}
-
-	if updated {
-		Log("SetIPBlockListFromFile", GetLangText("Success-SetIPBlockListFromFile"), true, setCount)
-	}
-	return true
-}
-func SetIPBlockListFromURL() bool {
-	if !ipBlockListURLFetching.CompareAndSwap(false, true) {
-		return true
-	}
-	defer ipBlockListURLFetching.Store(false)
-	ruleReloadMutex.Lock()
-	cfg, generation := ConfigSnapshot(), ruleGeneration
-	now := atomic.LoadInt64(&currentTimestamp)
-	if len(cfg.IPBlockListURL) == 0 || (ipBlockListURLLastFetch+int64(cfg.UpdateInterval)) > now {
-		ruleReloadMutex.Unlock()
-		return true
-	}
-	ipBlockListURLLastFetch = now
-	ruleReloadMutex.Unlock()
-	setCount := 0
-
-	for _, ipBlockListURL := range cfg.IPBlockListURL {
-		httpStatusCode, httpHeader, ipBlockListContent := Fetch(ipBlockListURL, false, false, true, nil)
-		if httpStatusCode == 304 {
-			continue
-		}
-
-		if ipBlockListContent == nil {
-			//ipBlockListURLLastFetch -= (int64(configSnapshot().UpdateInterval) + 900)
-			LogError("SetIPBlockListFromURL", GetLangText("Error-FetchResponse2"), true)
-			continue
-		}
-
-		if len(ipBlockListContent) > 8388608 {
-			LogError("SetIPBlockListFromURL", GetLangText("Error-LargeFile"), true)
-			continue
-		}
-
-		var content []string
-		if strings.HasSuffix(httpHeader.Get("Content-Type"), "json") {
-			err := json.Unmarshal(jsonc.ToJSON(ipBlockListContent), &content)
-			if err != nil {
-				LogError("SetIPBlockListFromURL", GetLangText("Error-GenJSONWithID"), true, ipBlockListURL, err.Error())
-				continue
-			}
-		} else {
-			content = strings.Split(string(ipBlockListContent), "\n")
-		}
-
-		ruleReloadMutex.Lock()
-		if generation != ruleGeneration {
-			requestStateMutex.Lock()
-			delete(urlETagCache, ipBlockListURL)
-			delete(urlLastModCache, ipBlockListURL)
-			requestStateMutex.Unlock()
-			ruleReloadMutex.Unlock()
-			return false
-		}
-		setCount += SetIPBlockListFromContent(content, ipBlockListURL)
-		ruleReloadMutex.Unlock()
-	}
-
-	Log("SetIPBlockListFromURL", GetLangText("Success-SetIPBlockListFromURL"), true, setCount)
-
-	return true
-}
 func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) int {
 	configFileStat, err := os.Stat(filename)
 	if err != nil {
@@ -698,19 +376,19 @@ func InitConfig() {
 		btnRules, btnExceptions = &BTN_RulesStruct{}, &BTN_ExceptionStruct{}
 	}
 	btnStateMutex.Unlock()
-	// 已清空编译规则, 必须重新读取本地文件和远端内容, 不能沿用 304 校验器.
+	// 重建各来源规则; 远端校验器从已验证的缓存恢复.
 	blockListFileLastMod = make(map[string]int64)
 	ipBlockListFileLastMod = make(map[string]int64)
 	requestStateMutex.Lock()
 	urlETagCache, urlLastModCache = make(map[string]string), make(map[string]string)
 	requestStateMutex.Unlock()
-	EraseSyncMap(&blockListCompiled)
+	ruleStore.Reset()
 	blockListURLLastFetch = 0
 	SetBlockListFromContent(currentConfig.BlockList, "BlockList")
 
-	EraseSyncMap(&ipBlockListCompiled)
 	ipBlockListURLLastFetch = 0
 	SetIPBlockListFromContent(currentConfig.IPBlockList, "IPBlockList")
+	RestoreRuleCaches(currentConfig)
 }
 
 func FormatConfigValueForLog(fieldName string, value interface{}) interface{} {
@@ -834,7 +512,7 @@ func PrepareEnv() bool {
 	RegFlag()
 	ShowVersion()
 	log.SetFlags(0)
-	log.SetOutput(logwriter)
+	log.SetOutput(appLogger)
 
 	if shortFlag_ShowVersion || longFlag_ShowVersion {
 		return false

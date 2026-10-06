@@ -81,28 +81,31 @@ Usually, occasional errors can be ignored. The reasons may be: 1. Network proble
 
     3. Run docker image and view log to observe whether the information output is normal;
 
-       The following command templates are used as a reference only, please replace ```/path/config.json``` to your config path (The file should be created before mounting).
+       The following command template is for reference only. Replace ```/path/config.json``` with your config file path (create the file before mounting) and ```/path/rule-cache``` with your cache directory path.
 
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
             -v /path/config.json:/app/config.json \
+            -v /path/rule-cache:/app/cache/rules \
             simpletracker/qbittorrent-clientblocker:latest
         ```
 
--   Configuration method 1: Use environment variable
+-   Configuration method 2: Use environment variable
 
     -   Prerequisite: Set the ```useENV``` environment variable is ```true```.
     -   Use environment variables to configure settings on demand. For details, see [配置 Config](#配置-config).
     -   If config is complicated,  blockList may not take effect. Therefore, if you need to configure this setting, it's not recommended to use environment variable.
-    -   The following command templates are used as a reference only.
+    -   The following command template is for reference only. Replace ```/path/rule-cache``` with your cache directory path.
 
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
+            -v /path/rule-cache:/app/cache/rules \
             -e useENV=true \
             -e debug=false \
             -e logPath=logs \
+            -e ruleCachePath=cache/rules \
             -e blockList='["ExampleBlockList1", "ExampleBlockList2"]' \
             -e clientURL=http://example.com \
             -e clientUsername=exampleUser \
@@ -140,6 +143,7 @@ Docker version is configured through the same name variable configuration, which
 | historyRetention | uint32 | 3600 (Sec) | History retention time. IP and Torrent Peer statistics are removed if they have not been updated within this time. 0 disables expiry |
 | historyMaxEntries | uint32 | 100000 | Maximum number of records for each type of history. When exceeded, records that have gone longest without an update are removed first. 0 disables the limit. Cleanup does not unblock banned peers |
 | updateInterval | uint32 | 86400 (Sec) | List URL update interval (blockListURL/ipBlockListURL). Reasonable intervals help improve update efficiency and reduce network usage |
+| ruleCachePath | string | cache/rules | Remote rule cache directory. Restore valid cached rules at startup and config reload, then refresh in the background; an empty string disables disk caching |
 | restartInterval | uint32 | 6 (Sec) | Restart Torrent interval. This is a measure to solve the problem that the blocklist of some clients (Transmission) cannot be effective. It is implemented by restarting Torrent. Too short an interval may cause the blocking to be ineffective |
 | torrentMapCleanInterval | uint32 | 60 (Sec) | Torrent Map Clean Interval (Only useful after enable ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded, It's also the judgment interval). Short interval can make judgments more frequent but may cause delayed misjudgments |
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
@@ -213,7 +217,12 @@ Note: When using BitComet, peers blocked by this program before a restart or a s
 
 Source code layout:  
 - `main.go`: entry point and build-time version injection.
-- `internal/app`: startup, configuration, rules and module coordination.
+- `internal/app`: startup, configuration, scanning, rule refresh and module coordination.
+- `internal/app/rules`: rule compilation, source ownership and disk caching.
+- `internal/app/logging`: log files, log buffers and crash records.
+- `internal/app/i18n`: language file loading and text lookup.
+- `internal/app/proxy`: platform proxy discovery and selection.
+- `internal/app/platform`: Windows console windows, hotkeys and system tray.
 - `internal/client`: shared downloader interfaces; the `qbittorrent`, `transmission` and `bitcomet` subpackages implement each downloader protocol.
 - `internal/stats`: connection traffic accounting, history cleanup and IP/CIDR detection.
 - `internal/webui`: WebUI endpoints, page, logs and health status.

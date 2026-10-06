@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Simple-Tracker/qBittorrent-ClientBlocker/internal/app/platform"
 	"github.com/Simple-Tracker/qBittorrent-ClientBlocker/internal/webui"
 )
 
@@ -301,7 +302,7 @@ func Task() {
 		blockPeerSubmission.Pending = true
 
 		iblcLen := 0
-		ipBlockListCompiled.Range(func(key, value any) bool {
+		ruleStore.IPBlockList.Range(func(key, value any) bool {
 			iblcLen++
 			return true
 		})
@@ -379,7 +380,7 @@ func Stop(recoverErr any, recoverStack []byte) {
 	client.CloseIdleConnections()
 	external.CloseIdleConnections()
 	StopServer()
-	Platform_Stop()
+	platform.Stop()
 
 	if recoverErr != nil {
 		os.Exit(2)

@@ -1,6 +1,6 @@
 //go:build windows
 
-package app
+package platform
 
 // 图标由 2goarray v0.1.0 生成 (http://github.com/cratonica/2goarray).
 var icon_Windows = []byte{

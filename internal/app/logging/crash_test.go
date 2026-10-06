@@ -1,4 +1,4 @@
-package app
+package logging
 
 import (
 	"os"
@@ -7,20 +7,12 @@ import (
 )
 
 func TestWriteCrashLogAppendsToCrashLog(t *testing.T) {
-	oldConfig := *config
-	defer func() {
-		tmpConf := oldConfig
-	config = &tmpConf
-	}()
+	directory := t.TempDir()
+	l := NewLogger(Services{Settings: func() Settings { return Settings{LogPath: directory} }})
+	l.WriteCrashLog("test-location", "panic-a", []byte("stack-a\n"))
+	l.WriteCrashLog("test-location", "panic-b", []byte("stack-b\n"))
 
-	tmpConf := oldConfig
-	config = &tmpConf
-	config.LogPath = t.TempDir()
-
-	WriteCrashLog("test-location", "panic-a", []byte("stack-a\n"))
-	WriteCrashLog("test-location", "panic-b", []byte("stack-b\n"))
-
-	content, err := os.ReadFile(CrashLogPath())
+	content, err := os.ReadFile(l.CrashLogPath())
 	if err != nil {
 		t.Fatalf("failed to read crash log: %v", err)
 	}

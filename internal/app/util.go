@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	rulepkg "github.com/Simple-Tracker/qBittorrent-ClientBlocker/internal/app/rules"
 )
 
 func IsUnix(path string) bool {
@@ -15,13 +17,8 @@ func IsUnix(path string) bool {
 func IsIPv6(ip string) bool {
 	return (strings.Count(ip, ":") >= 2)
 }
-func ProcessRemark(str string) string {
-	// 删除所有注释内容.
-	return StrTrim(strings.SplitN(strings.SplitN(str, "#", 2)[0], "//", 2)[0])
-}
-func StrTrim(str string) string {
-	return strings.Trim(str, "  \n\r")
-}
+func ProcessRemark(str string) string { return rulepkg.ProcessRemark(str) }
+func StrTrim(str string) string       { return rulepkg.StrTrim(str) }
 func GetDateTime(withTime bool) string {
 	formatStr := "2006-01-02"
 	if withTime {
@@ -36,22 +33,7 @@ func CheckPrivateIP(ip string) bool {
 	}
 	return (ipParsed.IsLoopback() || ipParsed.IsPrivate())
 }
-func ParseIPCIDR(ip string) *net.IPNet {
-	if !strings.Contains(ip, "/") {
-		if IsIPv6(ip) {
-			ip += "/128"
-		} else {
-			ip += "/32"
-		}
-	}
-
-	_, cidr, err := net.ParseCIDR(ip)
-	if err != nil {
-		return nil
-	}
-
-	return cidr
-}
+func ParseIPCIDR(ip string) *net.IPNet { return rulepkg.ParseIPCIDR(ip) }
 func ParseIPCIDRByConfig(ip string) *net.IPNet {
 	cidr := ""
 

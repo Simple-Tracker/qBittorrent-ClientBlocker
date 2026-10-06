@@ -11,12 +11,12 @@ func TestSetBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	oldBlockListFileLastMod := blockListFileLastMod
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 		blockListFileLastMod = oldBlockListFileLastMod
-		EraseSyncMap(&blockListCompiled)
+		EraseSyncMap(&ruleStore.BlockList)
 	}()
 
-	EraseSyncMap(&blockListCompiled)
+	EraseSyncMap(&ruleStore.BlockList)
 	blockListFileLastMod = make(map[string]int64)
 
 	dir := t.TempDir()
@@ -43,7 +43,7 @@ func TestSetBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	if !SetBlockListFromFile() {
 		t.Fatal("SetBlockListFromFile should succeed")
 	}
-	if _, exists := blockListCompiled.Load("NewAgent"); !exists {
+	if _, exists := ruleStore.BlockList.Load("NewAgent"); !exists {
 		t.Fatal("second changed file should still be processed")
 	}
 }
@@ -53,12 +53,12 @@ func TestSetIPBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	oldIPBlockListFileLastMod := ipBlockListFileLastMod
 	defer func() {
 		tmpConf := oldConfig
-	config = &tmpConf
+		config = &tmpConf
 		ipBlockListFileLastMod = oldIPBlockListFileLastMod
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	}()
 
-	EraseSyncMap(&ipBlockListCompiled)
+	EraseSyncMap(&ruleStore.IPBlockList)
 	ipBlockListFileLastMod = make(map[string]int64)
 
 	dir := t.TempDir()
@@ -85,7 +85,7 @@ func TestSetIPBlockListFromFileContinuesPastUnchangedFile(t *testing.T) {
 	if !SetIPBlockListFromFile() {
 		t.Fatal("SetIPBlockListFromFile should succeed")
 	}
-	if _, exists := ipBlockListCompiled.Load("2.2.2.2"); !exists {
+	if _, exists := ruleStore.IPBlockList.Load("2.2.2.2"); !exists {
 		t.Fatal("second changed IP file should still be processed")
 	}
 }

@@ -1,4 +1,9 @@
 {
+	"Success-RuleCacheLoaded": "Restored %d remote rules (source: %s, last updated: %s)",
+	"Error-RuleCacheRead": "Failed to read rule cache (source: %s): %v",
+	"Error-RuleCacheWrite": "Failed to save rule cache; using rules in memory (source: %s): %v",
+	"Error-RemoteRulesInvalid": "Failed to update remote rules (source: %s): %v",
+	"RuleCache-Fallback": "Using the last valid rules (source: %s, last updated: %s)",
 	"ProgramVersion": "Program version",
 	"ConfigPath": "Config path",
 	"DebugMode": "Debug mode",

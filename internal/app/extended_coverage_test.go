@@ -213,12 +213,13 @@ func TestConfigInitialisationAndRemoteLists(t *testing.T) {
 		currentTimestamp = oldTimestamp
 		blockListURLLastFetch = oldBlockFetch
 		ipBlockListURLLastFetch = oldIPFetch
-		EraseSyncMap(&blockListCompiled)
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.BlockList)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	})
 
 	testConfig := oldConfig
 	testConfig.Interval = 0
+	testConfig.RuleCachePath = ""
 	testConfig.Timeout = 0
 	testConfig.ClientURL = "http://client.invalid///"
 	testConfig.Proxy = "None"
@@ -235,10 +236,10 @@ func TestConfigInitialisationAndRemoteLists(t *testing.T) {
 	if httpTransport.DisableKeepAlives || !httpTransport.TLSClientConfig.InsecureSkipVerify {
 		t.Fatal("transport settings not applied")
 	}
-	if _, ok := blockListCompiled.Load("Agent.*"); !ok {
+	if _, ok := ruleStore.BlockList.Load("Agent.*"); !ok {
 		t.Fatal("block list was not compiled")
 	}
-	if _, ok := ipBlockListCompiled.Load("192.0.2.1"); !ok {
+	if _, ok := ruleStore.IPBlockList.Load("192.0.2.1"); !ok {
 		t.Fatal("IP block list was not compiled")
 	}
 
@@ -268,10 +269,10 @@ func TestConfigInitialisationAndRemoteLists(t *testing.T) {
 	if !SetBlockListFromURL() || !SetIPBlockListFromURL() {
 		t.Fatal("remote list update failed")
 	}
-	if _, ok := blockListCompiled.Load("PlainAgent"); !ok {
+	if _, ok := ruleStore.BlockList.Load("PlainAgent"); !ok {
 		t.Fatal("plain remote block list missing")
 	}
-	if _, ok := ipBlockListCompiled.Load("198.51.100.0/24"); !ok {
+	if _, ok := ruleStore.IPBlockList.Load("198.51.100.0/24"); !ok {
 		t.Fatal("JSON remote IP list missing")
 	}
 	SetBlockListFromURL()
@@ -289,13 +290,11 @@ func TestServerRoutesUtilitiesAndLanguage(t *testing.T) {
 	oldConfig := *config
 	oldType := currentClientType
 	oldClient := currentClient
-	oldLang := langContent
 	t.Cleanup(func() {
 		restored := oldConfig
 		config = &restored
 		currentClientType = oldType
 		currentClient = oldClient
-		langContent = oldLang
 	})
 
 	testConfig := oldConfig
@@ -370,14 +369,6 @@ func TestServerRoutesUtilitiesAndLanguage(t *testing.T) {
 		t.Fatal("missing command succeeded")
 	}
 
-	langContent = map[string]string{"custom": "translated"}
-	if GetLangText("custom") != "translated" || GetLangText("ProgramVersion") == "ProgramVersion" || GetLangText("missing-id") != "missing-id" {
-		t.Fatal("language lookup order failed")
-	}
-	if LoadLang("does-not-exist") {
-		t.Fatal("missing language unexpectedly loaded")
-	}
-	_ = GetLangCode()
 }
 
 func TestSyncSchedulingAndCrashWrapper(t *testing.T) {
@@ -410,9 +401,7 @@ func TestSyncSchedulingAndCrashWrapper(t *testing.T) {
 		t.Fatal("full submit did not clear in-progress state")
 	}
 
-	done := make(chan struct{})
-	GoWithCrashLog("coverage-panic", func() {
-		defer close(done)
+	done := appLogger.GoWithCrashLog("coverage-panic", func() {
 		panic("covered")
 	})
 	select {
@@ -420,18 +409,8 @@ func TestSyncSchedulingAndCrashWrapper(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("panic wrapper did not return")
 	}
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		if _, err := os.Stat(CrashLogPath()); err == nil {
-			// 文件创建不等于写入结束; 与日志写入锁同步后才能恢复全局配置.
-			crashLogMutex.Lock()
-			crashLogMutex.Unlock()
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("panic wrapper did not write crash log")
-		}
-		time.Sleep(time.Millisecond)
+	if _, err := os.Stat(appLogger.CrashLogPath()); err != nil {
+		t.Fatal("panic wrapper did not write crash log")
 	}
 
 	var m sync.Map
@@ -451,9 +430,8 @@ func TestLoadInitConfigAppliesFilesWithoutClient(t *testing.T) {
 	oldAdditionalFilename := additionConfigFilename
 	oldConfigLastMod := configLastMod
 	oldLastURL := lastURL
-	oldLogFile := logFile
-	oldToday := todayStr
-	oldLastLogPath := lastLogPath
+	oldLogger := appLogger
+	appLogger = NewAppLogger()
 	t.Cleanup(func() {
 		_ = CloseLogFile()
 		restored := oldConfig
@@ -462,9 +440,7 @@ func TestLoadInitConfigAppliesFilesWithoutClient(t *testing.T) {
 		additionConfigFilename = oldAdditionalFilename
 		configLastMod = oldConfigLastMod
 		lastURL = oldLastURL
-		logFile = oldLogFile
-		todayStr = oldToday
-		lastLogPath = oldLastLogPath
+		appLogger = oldLogger
 	})
 
 	dir := t.TempDir()
@@ -483,10 +459,10 @@ func TestLoadInitConfigAppliesFilesWithoutClient(t *testing.T) {
 	if config.Interval != 2 || config.ClientURL != "" {
 		t.Fatalf("loaded config=%#v", config)
 	}
-	if _, ok := blockListCompiled.Load("LoadedAgent"); !ok {
+	if _, ok := ruleStore.BlockList.Load("LoadedAgent"); !ok {
 		t.Fatal("loaded block rule was not compiled")
 	}
-	if _, ok := ipBlockListCompiled.Load("203.0.113.0/24"); !ok {
+	if _, ok := ruleStore.IPBlockList.Load("203.0.113.0/24"); !ok {
 		t.Fatal("loaded IP rule was not compiled")
 	}
 }
@@ -771,29 +747,26 @@ func TestProcessPeerCountersAndTaskGuards(t *testing.T) {
 
 func TestWebUIServerRoutingAndLogWriter(t *testing.T) {
 	oldConfig := *config
-	oldBuffer := logBuffer
-	oldMax := logBufferMaxSize
+	oldLogger := appLogger
+	appLogger = NewAppLogger()
 	t.Cleanup(func() {
 		restored := oldConfig
 		config = &restored
-		logBuffer = oldBuffer
-		logBufferMaxSize = oldMax
+		appLogger = oldLogger
 	})
 	testConfig := oldConfig
 	testConfig.WebUI = true
 	testConfig.WebUIUsername = ""
 	testConfig.LogToFile = false
 	config = &testConfig
-	logBuffer = nil
-	logBufferMaxSize = 2
-	writer := LogWriter{}
+	writer := appLogger
 	if n, err := writer.Write([]byte("one\n")); err != nil || n != 4 {
 		t.Fatalf("log writer n=%d err=%v", n, err)
 	}
 	_, _ = writer.Write([]byte("two\n"))
 	_, _ = writer.Write([]byte("three\n"))
-	if len(logBuffer) != 2 {
-		t.Fatalf("log buffer size=%d", len(logBuffer))
+	if len(appLogger.LegacyLogs()) != 3 {
+		t.Fatalf("log buffer size=%d", len(appLogger.LegacyLogs()))
 	}
 	handler := &httpServerHandler{}
 	for _, path := range []string{"/", "/api/status", "/api/peers", "/api/logs"} {
@@ -805,11 +778,9 @@ func TestWebUIServerRoutingAndLogWriter(t *testing.T) {
 	}
 }
 
-func TestLanguageFilesAndQBConfigRejection(t *testing.T) {
-	oldLang := langContent
+func TestQBConfigRejection(t *testing.T) {
 	oldConfig := *config
 	t.Cleanup(func() {
-		langContent = oldLang
 		restored := oldConfig
 		config = &restored
 	})
@@ -819,21 +790,6 @@ func TestLanguageFilesAndQBConfigRejection(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldWorkingDir) })
-	if err := os.Mkdir("lang", 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join("lang", "ok.json"), []byte(`{"hello":"world"}`), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if !LoadLang("ok") || GetLangText("hello") != "world" {
-		t.Fatal("valid language file did not load")
-	}
-	if err := os.WriteFile(filepath.Join("lang", "bad.json"), []byte(`{`), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if LoadLang("bad") {
-		t.Fatal("invalid language file loaded")
-	}
 
 	home := filepath.Join(dir, "home")
 	t.Setenv("HOME", home)

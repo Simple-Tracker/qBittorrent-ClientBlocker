@@ -147,8 +147,8 @@ func TestLocalRuleFileErrorAndJSONBranches(t *testing.T) {
 	originalConfig := ConfigSnapshot()
 	t.Cleanup(func() {
 		ReplaceConfig(originalConfig)
-		EraseSyncMap(&blockListCompiled)
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.BlockList)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	})
 
 	testConfig := *originalConfig
@@ -182,10 +182,10 @@ func TestLocalRuleFileErrorAndJSONBranches(t *testing.T) {
 	if !SetBlockListFromFile() || !SetIPBlockListFromFile() {
 		t.Fatal("JSON rule files should load")
 	}
-	if _, ok := blockListCompiled.Load("Client.*"); !ok {
+	if _, ok := ruleStore.BlockList.Load("Client.*"); !ok {
 		t.Fatal("valid block-list expression was not compiled")
 	}
-	if _, ok := ipBlockListCompiled.Load("192.0.2.1"); !ok {
+	if _, ok := ruleStore.IPBlockList.Load("192.0.2.1"); !ok {
 		t.Fatal("valid IP rule was not compiled")
 	}
 
@@ -450,7 +450,7 @@ func TestTaskGeneratesFilterAfterCleaningExpiredPeer(t *testing.T) {
 		lastCleanTimestamp = originalLastClean
 		syncServer_CompiledRules = originalRules
 		_ = os.Chdir(originalWorkingDirectory)
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	})
 
 	directory := t.TempDir()
@@ -480,7 +480,7 @@ func TestTaskGeneratesFilterAfterCleaningExpiredPeer(t *testing.T) {
 	statistics.State().TorrentMap = make(map[string]stats.TorrentInfoStruct)
 	statistics.State().LastTorrentMap = make(map[string]stats.TorrentInfoStruct)
 	syncServer_CompiledRules = nil
-	EraseSyncMap(&ipBlockListCompiled)
+	EraseSyncMap(&ruleStore.IPBlockList)
 
 	Task()
 	if len(blockPeerMap) != 0 || stub.normalBan != 1 {
@@ -579,7 +579,7 @@ func TestPeerCommandAndRareDecisionBranches(t *testing.T) {
 		currentClientType = originalClientType
 		qB_useNewBanPeersMethod = originalNewBanMethod
 		currentTimestamp = originalTimestamp
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	})
 
 	testConfig := *originalConfig
@@ -621,9 +621,9 @@ func TestPeerCommandAndRareDecisionBranches(t *testing.T) {
 	if !MatchBlockList(peerIDRegex, "203.0.113.1", 1, "peer-id", "") {
 		t.Fatal("peer ID block-list match failed")
 	}
-	EraseSyncMap(&ipBlockListCompiled)
-	ipBlockListCompiled.Store("nil", nil)
-	ipBlockListCompiled.Store("wrong-type", "not-a-network")
+	EraseSyncMap(&ruleStore.IPBlockList)
+	ruleStore.IPBlockList.Store("nil", nil)
+	ruleStore.IPBlockList.Store("wrong-type", "not-a-network")
 	status, _ := CheckPeer("not-an-ip", 6881, "id", "client", 1, 1, 0, 0, 0, "hash", 100)
 	if status != 0 {
 		t.Fatalf("invalid textual IP status=%d", status)
@@ -644,88 +644,6 @@ func TestPeerCommandAndRareDecisionBranches(t *testing.T) {
 	status, _ = CheckPeer("198.51.100.2", 6881, "id", "client", 1, 1, 0, 2*1024*1024, 0, "hash", 100)
 	if status != -2 {
 		t.Fatalf("download-threshold peer status=%d", status)
-	}
-}
-
-func TestLoggingErrorAndBufferBranches(t *testing.T) {
-	originalConfig := ConfigSnapshot()
-	originalLogFile := logFile
-	originalToday := todayStr
-	originalLastPath := lastLogPath
-	originalBuffer := logBuffer
-	originalBufferMax := logBufferMaxSize
-	t.Cleanup(func() {
-		_ = CloseLogFile()
-		ReplaceConfig(originalConfig)
-		logFile = originalLogFile
-		todayStr = originalToday
-		lastLogPath = originalLastPath
-		logBuffer = originalBuffer
-		logBufferMaxSize = originalBufferMax
-	})
-
-	directory := t.TempDir()
-	closedFile, err := os.Create(filepath.Join(directory, "closed.log"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := closedFile.Close(); err != nil {
-		t.Fatal(err)
-	}
-	logFile = closedFile
-	if CloseLogFile() {
-		t.Fatal("closing an already closed log file should fail")
-	}
-	logFile = nil
-
-	testConfig := *originalConfig
-	testConfig.Debug = true
-	testConfig.LogDebug = true
-	testConfig.LogToFile = true
-	testConfig.WebUI = true
-	testConfig.LogPath = filepath.Join(directory, "logs")
-	ReplaceConfig(&testConfig)
-	todayStr = ""
-	lastLogPath = ""
-	if !LoadLog() {
-		t.Fatal("debug log file did not open")
-	}
-	logBuffer = nil
-	logBufferMaxSize = 2
-	Log("Debug-Coverage", "first", false)
-	Log("Coverage", "second", false)
-	Log("Coverage", "third", false)
-	if len(logBuffer) != 2 || !strings.Contains(logBuffer[1], "third") {
-		t.Fatalf("trimmed WebUI log buffer=%#v", logBuffer)
-	}
-
-	testConfig.LogToFile = false
-	ReplaceConfig(&testConfig)
-	if LoadLog() {
-		t.Fatal("disabled file logging unexpectedly loaded")
-	}
-	blockingFile := filepath.Join(directory, "blocking-file")
-	if err := os.WriteFile(blockingFile, []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	testConfig.LogToFile = true
-	testConfig.LogPath = filepath.Join(blockingFile, "child")
-	ReplaceConfig(&testConfig)
-	if LoadLog() {
-		t.Fatal("invalid log directory unexpectedly loaded")
-	}
-
-	openFailurePath := filepath.Join(directory, "open-failure")
-	logFilename := filepath.Join(openFailurePath, GetDateTime(false)+".txt")
-	if err := os.MkdirAll(logFilename, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	testConfig.LogPath = openFailurePath
-	ReplaceConfig(&testConfig)
-	todayStr = ""
-	lastLogPath = ""
-	if LoadLog() {
-		t.Fatal("log path ending in a directory unexpectedly opened")
 	}
 }
 

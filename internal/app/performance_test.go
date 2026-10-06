@@ -418,18 +418,12 @@ func BenchmarkScreenshotScaleQBSteadyStateRuntimeCycle(b *testing.B) {
 	InstallScreenshotScaleQBClient(b, server)
 	config.WebUI = true
 
-	logBufferMutex.Lock()
-	oldLogBuffer := logBuffer
-	logBuffer = make([]string, logBufferMaxSize)
-	for index := range logBuffer {
-		logBuffer[index] = fmt.Sprintf("[%d][Task] synthetic benchmark log entry", index)
+	oldLogger := appLogger
+	appLogger = NewAppLogger()
+	b.Cleanup(func() { appLogger = oldLogger })
+	for index := 0; index < 100; index++ {
+		Log("Task", "synthetic benchmark log entry %d", false, index)
 	}
-	logBufferMutex.Unlock()
-	b.Cleanup(func() {
-		logBufferMutex.Lock()
-		logBuffer = oldLogBuffer
-		logBufferMutex.Unlock()
-	})
 
 	statusRequest := httptest.NewRequest(http.MethodGet, "http://example.com/api/status", nil)
 	peerRequest := httptest.NewRequest(http.MethodGet, "http://example.com/api/peers?sync=1&cursor=0", nil)

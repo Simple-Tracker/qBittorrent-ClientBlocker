@@ -38,7 +38,7 @@ func installCIDRTest(t *testing.T, mask4, mask6 string) {
 		btnConfig = oldBTN
 		btnStateMutex.Unlock()
 	})
-	for _, rules := range []*sync.Map{&blockListCompiled, &ipBlockListCompiled} {
+	for _, rules := range []*sync.Map{&ruleStore.BlockList, &ruleStore.IPBlockList} {
 		rules := rules
 		saved := make(map[any]any)
 		rules.Range(func(k, v any) bool { saved[k] = v; return true })
@@ -269,7 +269,7 @@ func TestCIDRFixedRulesAndRuntimeBanLifecycle(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			installCIDRTest(t, tc.mask4, tc.mask6)
 			submitted := installCIDRBanServer(t)
-			ipBlockListCompiled.Store(tc.network, ParseIPCIDR(tc.network))
+			ruleStore.IPBlockList.Store(tc.network, ParseIPCIDR(tc.network))
 			if count := processCIDRTestPeer(tc.ip, 6881, .5, 1<<20); count != 1 || blockPeerMap[tc.ip].Reason != "Bad-IP_Normal" {
 				t.Fatal("fixed CIDR rule did not ban the observed peer")
 			}
@@ -278,7 +278,7 @@ func TestCIDRFixedRulesAndRuntimeBanLifecycle(t *testing.T) {
 				t.Fatal("initial submission failed")
 			}
 			assertCIDRTestIPSet(t, *submitted, expectedCIDRBanIPs(tc.ip))
-			ipBlockListCompiled.Delete(tc.network)
+			ruleStore.IPBlockList.Delete(tc.network)
 			currentTimestamp = 105
 			if count := processCIDRTestPeer(tc.neighbor, 6882, .5, 1<<20); count != 1 || blockPeerMap[tc.neighbor].Reason != "Bad-CIDR" {
 				t.Fatal("runtime subnet did not ban the later peer")

@@ -81,12 +81,13 @@
 
     3. 运行 Docker 并查看日志, 观察信息输出是否正常即可;
 
-       以下命令模版仅作为参考, 请替换 ```/path/config.json``` 为你的配置文件路径 (挂载前应先创建文件).
+       以下命令模版仅作为参考, 请替换 ```/path/config.json``` 为你的配置文件路径 (挂载前应先创建文件), ```/path/rule-cache``` 为你的缓存目录路径.
 
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
             -v /path/config.json:/app/config.json \
+            -v /path/rule-cache:/app/cache/rules \
             simpletracker/qbittorrent-clientblocker:latest
         ```
 
@@ -95,14 +96,16 @@
     -   使用前提: 设置 ```useENV``` 环境变量为 ```true```.
     -   使用环境变量按需配置设置, 具体见 [配置 Config](#配置-config).
     -   若设置较复杂, 则可能出现 blockList 不生效的情况. 因此, 若需要配置此设置, 则使用环境变量是不推荐的.
-    -   以下命令模版仅作为参考.
+    -   以下命令模版仅作为参考, 请替换 ```/path/rule-cache``` 为你的缓存目录路径.
 
         ```
         docker run -d \
             --name=qbittorrent-clientblocker --network=bridge --restart unless-stopped \
+            -v /path/rule-cache:/app/cache/rules \
             -e useENV=true \
             -e debug=false \
             -e logPath=logs \
+            -e ruleCachePath=cache/rules \
             -e blockList='["ExampleBlockList1", "ExampleBlockList2"]' \
             -e clientURL=http://example.com \
             -e clientUsername=exampleUser \
@@ -140,6 +143,7 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | historyRetention | uint32 | 3600 (秒) | 历史统计保留时间. 超过此时间未更新的 IP 及 Torrent Peer 统计会被清理, 0 禁用过期清理 |
 | historyMaxEntries | uint32 | 100000 | 各类历史统计的数量上限. 超过上限时先清理最久未更新的记录, 0 不限制. 清理不会解除已屏蔽的 Peer |
 | updateInterval | uint32 | 86400 (秒) | 列表 URL 更新间隔 (blockListURL/ipBlockListURL). 合理的间隔有助于提高更新效率并降低网络占用 |
+| ruleCachePath | string | cache/rules | 远端规则缓存目录. 启动及配置重载时先恢复有效缓存, 再后台更新; 空字符串禁用磁盘缓存 |
 | restartInterval | uint32 | 6 (秒) | 重启 Torrent 间隔. 用于部分客户端 (Transmission) 屏蔽列表无法立即生效的措施, 通过重启 Torrent 来实现. 过短间隔可能造成屏蔽不生效 |
 | torrentMapCleanInterval | uint32 | 60 (秒) | Torrent Map 清理间隔 (启用 ipUploadedCheck+ipUpCheckPerTorrentRatio/banByRelativeProgressUploaded 后生效, 也是其判断间隔). 短间隔可使判断更频繁但可能造成滞后误判 |
 | banTime | uint32 | 86400 (秒) | 屏蔽持续时间. 短间隔会使 Peer 更快被解除屏蔽 |
@@ -213,7 +217,12 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 
 代码布局:  
 - `main.go`: 程序入口, 接收构建时注入的版本号.
-- `internal/app`: 启动, 配置, 规则与各模块的调用协调.
+- `internal/app`: 启动, 配置, 扫描, 规则刷新与各模块的调用协调.
+- `internal/app/rules`: 规则编译, 来源管理与磁盘缓存.
+- `internal/app/logging`: 日志文件, 日志缓冲与崩溃记录.
+- `internal/app/i18n`: 语言文件加载与文案查找.
+- `internal/app/proxy`: 平台代理发现与选择.
+- `internal/app/platform`: Windows 窗口, 热键与托盘.
 - `internal/client`: 下载器公共接口; `qbittorrent`, `transmission`, `bitcomet` 子包分别实现各下载器协议.
 - `internal/stats`: 连接流量累计, 历史清理及 IP/CIDR 统计判定.
 - `internal/webui`: WebUI 接口, 页面, 日志及健康状态.

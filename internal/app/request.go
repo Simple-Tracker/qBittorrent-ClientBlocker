@@ -213,7 +213,7 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 		return 404, response.Header, nil
 	}
 
-	if allowCache && response.StatusCode == 304 {
+	if response.StatusCode == 304 && (allowCache || request.Header.Get("If-None-Match") != "" || request.Header.Get("If-Modified-Since") != "") {
 		Log("Debug-Fetch", GetLangText("Debug-Request_NoChange"), false, url)
 		return 304, response.Header, nil
 	}

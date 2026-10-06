@@ -36,11 +36,7 @@ func init() {
 			}
 			return webUIBlockPeer(ip, peer), true
 		},
-		LegacyLogs: func() []string {
-			logBufferMutex.Lock()
-			defer logBufferMutex.Unlock()
-			return append([]string{}, logBuffer...)
-		},
+		LegacyLogs: func() []string { return appLogger.LegacyLogs() },
 		Submission: func() webui.Submission {
 			blockPeerMapMutex.RLock()
 			defer blockPeerMapMutex.RUnlock()

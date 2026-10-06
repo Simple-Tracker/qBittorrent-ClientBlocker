@@ -5,6 +5,7 @@ cleanInterval = 3_600
 gcInterval = 60
 historyRetention = 3600
 historyMaxEntries = 100000
+ruleCachePath = "cache/rules"
 banTime = 86_400
 timeout = 6
 logToFile = true

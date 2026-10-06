@@ -6,6 +6,7 @@
 	"gcInterval": 60,
 	"historyRetention": 3600,
 	"historyMaxEntries": 100000,
+	"ruleCachePath": "cache/rules",
 	"banTime": 86400,
 	"timeout": 6,
 	"logToFile": true,

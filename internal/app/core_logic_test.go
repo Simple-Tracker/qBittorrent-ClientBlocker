@@ -118,8 +118,8 @@ func TestCheckPeerCoreDecisions(t *testing.T) {
 		qB_useNewBanPeersMethod = oldQBMethod
 		btnConfig = oldBTNConfig
 		syncServer_CompiledRules = oldSyncRules
-		EraseSyncMap(&blockListCompiled)
-		EraseSyncMap(&ipBlockListCompiled)
+		EraseSyncMap(&ruleStore.BlockList)
+		EraseSyncMap(&ruleStore.IPBlockList)
 	})
 
 	testConfig := oldConfig
@@ -139,8 +139,8 @@ func TestCheckPeerCoreDecisions(t *testing.T) {
 	qB_useNewBanPeersMethod = true
 	btnConfig = nil
 	syncServer_CompiledRules = nil
-	EraseSyncMap(&blockListCompiled)
-	EraseSyncMap(&ipBlockListCompiled)
+	EraseSyncMap(&ruleStore.BlockList)
+	EraseSyncMap(&ruleStore.IPBlockList)
 
 	if status, _ := CheckPeer("203.0.113.1", 6881, "peer", "client", 1, 1, 0.5, 1, 1, "torrent", 100); status != 2 {
 		t.Fatalf("blocked port status=%d, want 2", status)
@@ -157,17 +157,17 @@ func TestCheckPeerCoreDecisions(t *testing.T) {
 		t.Fatalf("private peer status=%d, want -1", status)
 	}
 
-	blockListCompiled.Store("test-client", regexp2.MustCompile("BlockedClient", 0))
+	ruleStore.BlockList.Store("test-client", regexp2.MustCompile("BlockedClient", 0))
 	if status, _ := CheckPeer("203.0.116.1", 6881, "peer", "BlockedClient", 1, 1, 0.5, 1, 1, "torrent", 100); status != 1 {
 		t.Fatalf("client rule status=%d, want 1", status)
 	}
-	EraseSyncMap(&blockListCompiled)
+	EraseSyncMap(&ruleStore.BlockList)
 
-	ipBlockListCompiled.Store("203.0.117.1", ParseIPCIDR("203.0.117.1"))
+	ruleStore.IPBlockList.Store("203.0.117.1", ParseIPCIDR("203.0.117.1"))
 	if status, _ := CheckPeer("203.0.117.1", 6881, "peer", "client", 1, 1, 0.5, 1, 1, "torrent", 100); status != 3 {
 		t.Fatalf("IP rule status=%d, want 3", status)
 	}
-	EraseSyncMap(&ipBlockListCompiled)
+	EraseSyncMap(&ruleStore.IPBlockList)
 
 	AddBlockCIDR("203.0.119.1", ParseIPCIDR("203.0.119.0/24"))
 	if status, _ := CheckPeer("203.0.119.2", 6881, "peer", "client", 1, 1, 0.5, 1, 1, "torrent", 100); status != 1 {

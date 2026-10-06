@@ -1,19 +1,30 @@
-package app
+package logging
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime/debug"
-	"sync"
 	"time"
 )
 
-var crashLogMutex sync.Mutex
-var crashStopOnce sync.Once
+// GoWithCrashLog 在崩溃记录写入完成后关闭返回的通道.
+func (l *Logger) GoWithCrashLog(location string, fn func()) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() {
+			if recoverErr := recover(); recoverErr != nil {
+				l.WriteCrashLog(location, recoverErr, debug.Stack())
+			}
+		}()
+		fn()
+	}()
+	return done
+}
 
-func CrashLogPath() string {
-	logPath := ConfigSnapshot().LogPath
+func (l *Logger) CrashLogPath() string {
+	logPath := l.services.Settings().LogPath
 	if logPath == "" {
 		logPath = "logs"
 	}
@@ -21,11 +32,11 @@ func CrashLogPath() string {
 	return filepath.Join(logPath, "crash.log")
 }
 
-func WriteCrashLog(location string, recoverErr any, recoverStack []byte) {
-	crashLogMutex.Lock()
-	defer crashLogMutex.Unlock()
+func (l *Logger) WriteCrashLog(location string, recoverErr any, recoverStack []byte) {
+	l.crashLogMutex.Lock()
+	defer l.crashLogMutex.Unlock()
 
-	logPath := ConfigSnapshot().LogPath
+	logPath := l.services.Settings().LogPath
 	if logPath == "" {
 		logPath = "logs"
 	}
@@ -50,25 +61,4 @@ func WriteCrashLog(location string, recoverErr any, recoverStack []byte) {
 		}
 	}
 	_, _ = crashFile.Write([]byte("\n"))
-}
-
-func RecoverAndStop(location string, isFatal bool) {
-	if recoverErr := recover(); recoverErr != nil {
-		recoverStack := debug.Stack()
-		if isFatal {
-			crashStopOnce.Do(func() {
-				WriteCrashLog(location, recoverErr, recoverStack)
-				Stop(recoverErr, recoverStack)
-			})
-		} else {
-			WriteCrashLog(location, recoverErr, recoverStack)
-		}
-	}
-}
-
-func GoWithCrashLog(location string, fn func()) {
-	go func() {
-		defer RecoverAndStop(location, false)
-		fn()
-	}()
 }

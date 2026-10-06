@@ -1,4 +1,4 @@
-package app
+package i18n
 
 import (
 	"encoding/json"
@@ -8,7 +8,10 @@ import (
 	"github.com/tidwall/jsonc"
 )
 
-var langContent map[string]string
+type Translator struct{ content map[string]string }
+
+func NewTranslator() *Translator { return &Translator{} }
+
 var defaultLangContent = map[string]string{
 	"ProgramVersion":                                   "程序版本",
 	"ConfigPath":                                       "配置文件路径",
@@ -113,6 +116,11 @@ var defaultLangContent = map[string]string{
 	"Success-SetIPBlockListFromURL":                    "本次设置了 %d 条 IP 规则 (来源: IPBlockListURL)",
 	"Success-SetBlockListFromFile":                     "本次设置了 %d 条 表达式 规则 (来源: BlockListFile)",
 	"Success-SetIPBlockListFromFile":                   "本次设置了 %d 条 IP 规则 (来源: IPBlockListFile)",
+	"Success-RuleCacheLoaded":                          "已恢复 %d 条远端规则 (来源: %s, 最后更新: %s)",
+	"Error-RuleCacheRead":                              "读取规则缓存失败 (来源: %s): %v",
+	"Error-RuleCacheWrite":                             "保存规则缓存失败, 继续使用内存规则 (来源: %s): %v",
+	"Error-RemoteRulesInvalid":                         "远端规则更新失败 (来源: %s): %v",
+	"RuleCache-Fallback":                               "继续使用上次有效规则 (来源: %s, 最后更新: %s)",
 	"Success-DetectClient":                             "检测客户端类型成功: %s",
 	"Success-Login":                                    "登录成功",
 	"Success-ClearBlockPeer":                           "已清理过期客户端: %d 个",
@@ -136,25 +144,28 @@ var defaultLangContent = map[string]string{
 	"Error-BTNVersionMismatch":   "BTN 协议版本不匹配: 服务器要求 [%d, %d], 但我们支持 3。BTN 模块已禁用。",
 }
 
-func LoadLang(langCode string) bool {
+func (t *Translator) LoadLang(langCode string, logError func(string, string, bool, ...any)) bool {
+	if logError == nil {
+		logError = func(string, string, bool, ...any) {}
+	}
 	langPath := "lang/" + langCode + ".json"
 
 	_, err := os.Stat(langPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			LogError("LoadLang", GetLangText("Error-LoadLang"), false, langPath)
+			logError("LoadLang", t.GetLangText("Error-LoadLang"), false, langPath)
 		}
 		return false
 	}
 
 	langFile, err := os.ReadFile(langPath)
 	if err != nil {
-		LogError("LoadLang", GetLangText("Error-ReadLang"), false, langPath, err.Error())
+		logError("LoadLang", t.GetLangText("Error-ReadLang"), false, langPath, err.Error())
 		return false
 	}
 
-	if err := json.Unmarshal(jsonc.ToJSON(langFile), &langContent); err != nil {
-		LogError("LoadLang", GetLangText("Error-ParseLang"), false, langPath, err.Error())
+	if err := json.Unmarshal(jsonc.ToJSON(langFile), &t.content); err != nil {
+		logError("LoadLang", t.GetLangText("Error-ParseLang"), false, langPath, err.Error())
 		return false
 	}
 
@@ -168,8 +179,8 @@ func GetLangCode() string {
 
 	return "en"
 }
-func GetLangText(uniqueID string) string {
-	if content, exist := langContent[uniqueID]; exist {
+func (t *Translator) GetLangText(uniqueID string) string {
+	if content, exist := t.content[uniqueID]; exist {
 		return content
 	}
 

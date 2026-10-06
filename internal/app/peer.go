@@ -416,7 +416,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 
 	if hasPeerClient {
 		earlyStop := false
-		blockListCompiled.Range(func(key, val any) bool {
+		ruleStore.BlockList.Range(func(key, val any) bool {
 			if MatchBlockList(val.(*regexp2.Regexp), peerIP, peerPort, peerID, peerClient) {
 				Log("CheckPeer_AddBlockPeer (Bad-Client_Normal)", "%s:%d %s|%s (TorrentInfoHash: %s)", true, peerIP, peerPort, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 				AddBlockPeer("CheckPeer", "Bad-Client_Normal", peerIP, peerPort, torrentInfoHash, peerID, peerClient, peerDownloaded, peerUploaded)
@@ -444,7 +444,7 @@ func CheckPeer(peerIP string, peerPort int, peerID, peerClient string, peerDlSpe
 		Log("Debug-CheckPeer_AddBlockPeer (Bad-IP)", "%s:%d %s|%s (TorrentInfoHash: %s)", false, peerIP, -1, strconv.QuoteToASCII(peerID), strconv.QuoteToASCII(peerClient), torrentInfoHash)
 	} else {
 		earlyStop := false
-		ipBlockListCompiled.Range(func(_, v any) bool {
+		ruleStore.IPBlockList.Range(func(_, v any) bool {
 			if v == nil {
 				return true
 			}

@@ -2,6 +2,7 @@
 .gocache/
 .gomodcache/
 logs/
+cache/rules/
 qBittorrent-ClientBlocker
 qBittorrent-ClientBlocker.exe
 Sparkle3/
