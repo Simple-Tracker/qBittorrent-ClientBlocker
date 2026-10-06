@@ -190,28 +190,17 @@ func ClearBlockPeer() int {
 	if (blockPeerMap != nil && ConfigSnapshot().CleanInterval == 0) || (lastCleanTimestamp+int64(ConfigSnapshot().CleanInterval) < currentTimestamp) {
 		blockPeerMapMutex.Lock()
 		blockCIDRMapMutex.Lock()
+		// 使用封禁时保存的成员关系续期；热重载后的掩码可能已不属于原网段。
+		for _, blockCIDRInfo := range blockCIDRMap {
+			for peerIP := range blockCIDRInfo.IPs {
+				if peerInfo, exist := blockPeerMap[peerIP]; exist && currentTimestamp > peerInfo.Timestamp+int64(ConfigSnapshot().BanTime) && blockCIDRInfo.Timestamp > peerInfo.Timestamp {
+					peerInfo.Timestamp = blockCIDRInfo.Timestamp
+					blockPeerMap[peerIP] = peerInfo
+				}
+			}
+		}
 		for peerIP, peerInfo := range blockPeerMap {
 			if currentTimestamp > (peerInfo.Timestamp + int64(ConfigSnapshot().BanTime)) {
-				peerNet := ParseIPCIDRByConfig(peerIP)
-
-				if peerNet != nil {
-					peerNetStr := peerNet.String()
-					if blockCIDRInfo, exist := blockCIDRMap[peerNetStr]; exist {
-						if blockCIDRInfo.Timestamp > peerInfo.Timestamp {
-							peerInfo.Timestamp = blockCIDRInfo.Timestamp
-							blockPeerMap[peerIP] = peerInfo
-							continue
-						}
-
-						delete(blockCIDRInfo.IPs, peerIP)
-						if len(blockCIDRInfo.IPs) <= 0 {
-							delete(blockCIDRMap, peerNetStr)
-						} else {
-							blockCIDRMap[peerNetStr] = blockCIDRInfo
-						}
-					}
-				}
-
 				cleanCount++
 				delete(blockPeerMap, peerIP)
 				removedPeerIPs = append(removedPeerIPs, peerIP)
@@ -225,6 +214,16 @@ func ClearBlockPeer() int {
 						execCommands = append(execCommands, execCommandUnban)
 					}
 				}
+			}
+		}
+		for peerNetStr, blockCIDRInfo := range blockCIDRMap {
+			for peerIP := range blockCIDRInfo.IPs {
+				if _, exist := blockPeerMap[peerIP]; !exist {
+					delete(blockCIDRInfo.IPs, peerIP)
+				}
+			}
+			if len(blockCIDRInfo.IPs) == 0 {
+				delete(blockCIDRMap, peerNetStr)
 			}
 		}
 		blockCIDRMapMutex.Unlock()

@@ -147,7 +147,7 @@ Docker version is configured through the same name variable configuration, which
 | banTime | uint32 | 86400 (Sec) | Ban duration. Short interval will cause peer to be unblocked faster |
 | banAllPort | bool | true | Block IP all port. Enabled by default and setting is not currently supported |
 | banIPCIDR | string | /32 | IPv4 ban range. After a peer is banned, subsequently observed peers in the same subnet are also banned. Statistics remain separate for each actual IP; only observed IP addresses are sent to the client |
-| banIP6CIDR | string | /128 | IPv6 ban range. Uses the same statistics and submission behavior as banIPCIDR without enumerating the subnet. Dynamic bans follow banTime and are not written to permanent rule files |
+| banIP6CIDR | string | /128 | IPv6 ban range. Uses the same statistics and submission behavior as banIPCIDR without enumerating the subnet. BitComet uses permanent bans; banTime removal tracks only bans successfully submitted by this process to the current client. Permanent bans left before a restart require manual removal |
 | ignoreEmptyPeer | bool | true | Ignore peers without PeerID and ClientName. Usually occurs on clients where connection is not fully established |
 | ignoreNoLeechersTorrent | bool | false | Ignore torrent without leechers. Enabling may improve performance, but may cause inaccuracies with some clients (such as qBittorrent) |
 | ignorePTTorrent | bool | true | Ignore PT Torrent. If the main Tracker contains ```?passkey=```/```?authkey=```/```?secure=```/```A string of 32 digits consisting of uppercase and lowercase char or/and number``` |

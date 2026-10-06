@@ -105,12 +105,15 @@ func CheckAllIP(ipMap map[string]IPInfoStruct, lastIPMap map[string]IPInfoStruct
 
 	ipMapLoop:
 		for ip, ipInfo := range ipMap {
-			if IsBlockedPeer(ip, -1, true) || len(ipInfo.Port) <= 0 {
+			if ipInfo.LastSeen > 0 && ipInfo.LastSeen <= lastIPCleanTimestamp {
+				continue
+			}
+			if IsBlockedPeer(ip, -1, false) || len(ipInfo.Port) <= 0 {
 				continue
 			}
 
 			for port := range ipInfo.Port {
-				if IsBlockedPeer(ip, port, true) {
+				if IsBlockedPeer(ip, port, false) {
 					continue ipMapLoop
 				}
 			}

@@ -10,7 +10,9 @@ import (
 
 // BCClient 实现了 BitComet 的客户端接口.
 type BCClient struct {
-	Version int // 1: HTML, 2: JSON (v2.09+)
+	Version       int // 1: HTML, 2: JSON (v2.09+)
+	banURL        string
+	bannedTaskIPs map[string]map[string]bool
 }
 
 func (c *BCClient) GetClientType() string {
@@ -142,38 +144,109 @@ func (c *BCClient) FetchTorrentPeers_v2(torrent *Torrent) ([]*Peer, error) {
 }
 
 func (c *BCClient) BC_SubmitBlockPeer_v2(blockPeerMap map[string]BlockPeerInfoStruct) bool {
-	// 按 Torrent 分组 IP 以匹配 ban_ip 接口要求.
-	taskIPs := make(map[string][]string)
-	for peerIP, peerInfo := range blockPeerMap {
-		if peerInfo.InfoHash != "" {
-			taskIPs[peerInfo.InfoHash] = append(taskIPs[peerInfo.InfoHash], peerIP)
-		}
-	}
-
-	if len(taskIPs) == 0 {
-		return true
+	clientURL := ConfigSnapshot().ClientURL
+	if c.banURL != clientURL || c.bannedTaskIPs == nil {
+		c.banURL = clientURL
+		c.bannedTaskIPs = make(map[string]map[string]bool)
 	}
 
 	allSuccess := true
+	for taskID, bannedIPs := range c.bannedTaskIPs {
+		var removed []string
+		for ip := range bannedIPs {
+			if _, retained := blockPeerMap[ip]; !retained {
+				removed = append(removed, ip)
+			}
+		}
+		if len(removed) == 0 {
+			continue
+		}
+		// 仅解除本实例成功提交的地址，失败时保留记录供下一轮重试。
+		params := BC_v2_UnbanParams{TaskID: taskID, UnbanRange: "unban_peers", IPList: removed}
+		if !BC_SubmitPeerAction(clientURL, "unban_peers", params) {
+			allSuccess = false
+			continue
+		}
+		for _, ip := range removed {
+			delete(bannedIPs, ip)
+		}
+		if len(bannedIPs) == 0 {
+			delete(c.bannedTaskIPs, taskID)
+		}
+	}
+
+	// 按 Torrent 分组 IP 以匹配 ban_ip 接口要求.
+	taskIPs := make(map[string][]string)
+	ipMapMutex.RLock()
+	for peerIP, peerInfo := range blockPeerMap {
+		taskIDs := make(map[string]bool)
+		if peerInfo.InfoHash != "" {
+			taskIDs[peerInfo.InfoHash] = true
+		}
+		// 全局统计封禁没有单个 InfoHash，从已观测的 IP 记录恢复相关任务。
+		for taskID := range ipMap[peerIP].TorrentLastSeen {
+			if taskID != "" {
+				taskIDs[taskID] = true
+			}
+		}
+		for taskID := range taskIDs {
+			if !c.bannedTaskIPs[taskID][peerIP] {
+				taskIPs[taskID] = append(taskIPs[taskID], peerIP)
+			}
+		}
+	}
+	ipMapMutex.RUnlock()
+
 	for taskID, ips := range taskIPs {
 		params := BC_v2_BanParams{
 			TaskID:  taskID,
 			BanTime: "ban_ip_forever",
 			IPList:  ips,
 		}
-		postData, _ := json.Marshal(params)
-		code, _, _ := Submit(ConfigSnapshot().ClientURL+"/api/task/peers/ban_ip", postData, true, true, &Tr_jsonHeader)
-		if code != 200 {
+		if !BC_SubmitPeerAction(clientURL, "ban_ip", params) {
 			allSuccess = false
+			continue
+		}
+		if c.bannedTaskIPs[taskID] == nil {
+			c.bannedTaskIPs[taskID] = make(map[string]bool)
+		}
+		for _, ip := range ips {
+			c.bannedTaskIPs[taskID][ip] = true
 		}
 	}
 	return allSuccess
+}
+
+// API: https://wiki-zh.bitcomet.com/webui_api调用接口/task-details/
+func BC_SubmitPeerAction(clientURL, action string, params any) bool {
+	postData, err := json.Marshal(params)
+	if err != nil {
+		return false
+	}
+	code, _, body := Submit(clientURL+"/api/task/peers/"+action, postData, true, true, &Tr_jsonHeader)
+	var response BC_v2_CommonResponse
+	if code != 200 || json.Unmarshal(body, &response) != nil {
+		return false
+	}
+	if response.Result != "" && !strings.EqualFold(response.Result, "success") && !strings.EqualFold(response.Result, "ok") {
+		return false
+	}
+	if response.ErrorCode != "" && !strings.EqualFold(response.ErrorCode, "ok") {
+		return false
+	}
+	return response.Result != "" || response.ErrorCode != ""
 }
 
 type BC_v2_BanParams struct {
 	TaskID  string   `json:"task_id"`
 	BanTime string   `json:"ban_time"`
 	IPList  []string `json:"ip_list"`
+}
+
+type BC_v2_UnbanParams struct {
+	TaskID     string   `json:"task_id"`
+	UnbanRange string   `json:"unban_range"`
+	IPList     []string `json:"ip_list"`
 }
 
 func (c *BCClient) SubmitShadowBanPeer(blockPeerMap map[string]BlockPeerInfoStruct) bool {
@@ -198,7 +271,8 @@ type BC_PeerStruct struct {
 
 // BitComet v2 JSON API 结构体.
 type BC_v2_CommonResponse struct {
-	Result string `json:"result"`
+	Result    string `json:"result"`
+	ErrorCode string `json:"error_code"`
 }
 type BC_v2_TaskListResponse struct {
 	TaskList []BC_v2_Task `json:"movie_list"` // 该 API 实际返回的是 movie_list.

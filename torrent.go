@@ -124,7 +124,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					}
 				}
 
-				if IsBlockedPeer(peerIP, -1, true) {
+				if IsBlockedPeer(peerIP, -1, false) {
 					continue
 				}
 
@@ -142,7 +142,7 @@ func CheckAllTorrent(torrentMap map[string]TorrentInfoStruct, lastTorrentMap map
 					if lastPeerInfo, exist := lastTorrentMap[torrentInfoHash].Peers[peerIP]; exist {
 						if uploadDuring := IsProgressNotMatchUploaded_Relative(torrentInfo.Size, peerInfo, lastPeerInfo); uploadDuring > 0 {
 							for port := range peerInfo.Port {
-								if IsBlockedPeer(peerIP, port, true) {
+								if IsBlockedPeer(peerIP, port, false) {
 									continue
 								}
 								Log("CheckAllTorrent_AddBlockPeer (Bad-Relative_Progress_Uploaded)", "%s:%d (UploadDuring: %.2f MB)", true, peerIP, port, uploadDuring)
