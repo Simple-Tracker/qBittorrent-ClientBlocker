@@ -12,7 +12,7 @@ import (
 	clientapi "github.com/Simple-Tracker/qBittorrent-ClientBlocker/internal/client"
 )
 
-var fetchFailedCount = 0
+var fetchFailedCounts = make(map[string]int)
 var urlETagCache = make(map[string]string)
 var urlLastModCache = make(map[string]string)
 var requestStateMutex sync.RWMutex
@@ -143,13 +143,25 @@ func Fetch(url string, tryLogin bool, clientReq bool, allowCache bool, withHeade
 	response, err = client.Do(request)
 
 	if err != nil {
-		if ConfigSnapshot().FetchFailedThreshold > 0 && ConfigSnapshot().ExecCommand_FetchFailed != "" {
+		cfg := ConfigSnapshot()
+		if cfg.FetchFailedThreshold > 0 && cfg.ExecCommand_FetchFailed != "" {
+			requestURL := *request.URL
+			requestURL.RawQuery = ""
+			requestURL.ForceQuery = false
+			requestURL.Fragment = ""
+			requestURL.RawFragment = ""
+			urlWithoutQuery := requestURL.String()
 			requestStateMutex.Lock()
-			fetchFailedCount++
-			if fetchFailedCount >= ConfigSnapshot().FetchFailedThreshold {
-				fetchFailedCount = 0
+			fetchFailedCounts[urlWithoutQuery]++
+			if fetchFailedCounts[urlWithoutQuery] >= cfg.FetchFailedThreshold {
+				delete(fetchFailedCounts, urlWithoutQuery)
 				requestStateMutex.Unlock()
-				status, out, err := ExecCommand(ConfigSnapshot().ExecCommand_FetchFailed)
+				command := ParseCommand(cfg.ExecCommand_FetchFailed)
+				replacer := strings.NewReplacer("{clientURL}", cfg.ClientURL, "{URLWithoutQueryParam}", urlWithoutQuery)
+				for i := range command {
+					command[i] = replacer.Replace(command[i])
+				}
+				status, out, err := execCommandArgs(command)
 
 				if status {
 					Log("Fetch", GetLangText("Success-ExecCommand"), true, out)

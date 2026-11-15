@@ -639,7 +639,8 @@ func TestRequestReadFailuresAndRetryStatuses(t *testing.T) {
 	oldExternal := httpClientExternal
 	oldCurrent := currentClient
 	oldType := currentClientType
-	oldCount := fetchFailedCount
+	oldCounts := fetchFailedCounts
+	fetchFailedCounts = make(map[string]int)
 	t.Cleanup(func() {
 		restored := oldConfig
 		config = &restored
@@ -647,7 +648,7 @@ func TestRequestReadFailuresAndRetryStatuses(t *testing.T) {
 		httpClientExternal = oldExternal
 		currentClient = oldCurrent
 		currentClientType = oldType
-		fetchFailedCount = oldCount
+		fetchFailedCounts = oldCounts
 	})
 
 	stub := &coverageClient{login: true}

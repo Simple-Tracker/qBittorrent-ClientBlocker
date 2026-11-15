@@ -155,7 +155,10 @@ func ParseCommand(command string) []string {
 func ExecCommand(command string) (bool, string, string) {
 	commandSplit := ParseCommand(command)
 	Log("Debug-ExecCommand", "Raw: %s, Split (|): %s", false, command, strings.Join(commandSplit, "|"))
+	return execCommandArgs(commandSplit)
+}
 
+func execCommandArgs(commandSplit []string) (bool, string, string) {
 	var cmd *exec.Cmd
 	if len(commandSplit) == 1 {
 		cmd = exec.Command(commandSplit[0])
