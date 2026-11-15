@@ -173,8 +173,8 @@ Docker 版本通过相同名称的环境变量配置, 通过自动转换环境�
 | useBasicAuth | bool | false (禁用) | 同时通过 HTTP Basic Auth 进行认证. 适合只支持 Basic Auth (如 Transmission/BitComet) 或通过反向代理等方式 增加/换用 认证方式的后端 |
 | useShadowBan | bool | true (启用) | 使用 ShadowBan API 进行封禁. 仅适用于支持 ShadowBan API 的客户端 (如 qBEE), 若载入配置时检测相关 API 不可用, 将自动禁用 |
 | skipCertVerification | bool | false (禁用) | 跳过 Web API 证书校验. 适合自签及过期证书 |
-| fetchFailedThreshold | int | 0 (禁用) | 最大获取失败次数. 当超过设定次数, 将执行设置的外部命令 |
-| execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 首个参数被视作外部程序路径, 当获取失败次数超过设定次数后执行 |
+| fetchFailedThreshold | int | 0 (禁用) | 获取失败触发阈值. 同一请求 URL（忽略查询参数）的失败累计达到该次数后, 将执行设置的外部命令 |
+| execCommand_FetchFailed | string | 空 | 执行外部命令 (FetchFailed). 首个参数被视作外部程序路径, 当获取失败次数达到阈值后执行. 可使用 ```{clientURL}``` 和 ```{URLWithoutQueryParam}``` 作为参数; 占位符会作为单个参数传入, 不经过 Shell. 若命令自行调用 ```sh -c``` 等 Shell, 不要把不可信 URL 插入 Shell 脚本 |
 | execCommand_Run | string | 空 | 执行外部命令 (Run). 首个参数被视作外部程序路径, 当程序启动后执行 |
 | execCommand_Ban | string | 空 | 执行外部命令 (Ban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |
 | execCommand_Unban | string | 空 | 执行外部命令 (Unban). 首个参数被视作外部程序路径, 各参数均应使用 ```\|``` 分割, 命令可以使用 ```{peerIP}```/```{peerPort}```/```{torrentInfoHash}``` 来使用相关信息 (peerPort=-1 意味着全端口封禁) |

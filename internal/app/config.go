@@ -254,12 +254,6 @@ func UpdateConfig(update func(*ConfigStruct)) *ConfigStruct {
 	return &newConfig
 }
 
-var httpServer = http.Server{
-	ReadTimeout:  30 * time.Second,
-	WriteTimeout: 30 * time.Second,
-	Handler:      &httpServerHandler{},
-}
-
 func LoadConfig(filename string, notExistErr bool, targetConfig *ConfigStruct) int {
 	configFileStat, err := os.Stat(filename)
 	if err != nil {

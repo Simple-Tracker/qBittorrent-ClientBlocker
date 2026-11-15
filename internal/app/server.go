@@ -152,8 +152,7 @@ func StartServer() {
 	// Server 的超时配置仅在启动监听时设置, 避免与 Serve 并发修改.
 	timeout := time.Duration(ConfigSnapshot().Timeout) * time.Second
 	server := &http.Server{
-		Handler:      httpServer.Handler,
-		ConnState:    httpServer.ConnState,
+		Handler:      &httpServerHandler{},
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 	}

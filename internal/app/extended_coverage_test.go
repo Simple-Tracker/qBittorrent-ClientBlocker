@@ -472,9 +472,6 @@ func TestServerLifecycleAndClientHelpers(t *testing.T) {
 	oldType := currentClientType
 	oldStatus := Server_Status
 	oldListeners := Server_Listeners
-	oldReadTimeout := httpServer.ReadTimeout
-	oldWriteTimeout := httpServer.WriteTimeout
-	oldHandler := httpServer.Handler
 	oldURL := config.ClientURL
 	t.Cleanup(func() {
 		if Server_Status {
@@ -486,7 +483,6 @@ func TestServerLifecycleAndClientHelpers(t *testing.T) {
 		currentClientType = oldType
 		Server_Status = oldStatus
 		Server_Listeners = oldListeners
-		httpServer = http.Server{ReadTimeout: oldReadTimeout, WriteTimeout: oldWriteTimeout, Handler: oldHandler}
 	})
 
 	testConfig := oldConfig
@@ -496,25 +492,12 @@ func TestServerLifecycleAndClientHelpers(t *testing.T) {
 	currentClientType = ""
 	Server_Status = false
 	Server_Listeners = nil
-	connectionClosed := make(chan struct{}, 1)
-	httpServer = http.Server{
-		ReadTimeout:  time.Second,
-		WriteTimeout: time.Second,
-		Handler:      &httpServerHandler{},
-		ConnState: func(_ net.Conn, state http.ConnState) {
-			if state == http.StateClosed || state == http.StateHijacked {
-				select {
-				case connectionClosed <- struct{}{}:
-				default:
-				}
-			}
-		},
-	}
 	StartServer()
 	if !Server_Status || len(Server_Listeners) != 1 {
 		t.Fatalf("server status=%t listeners=%d", Server_Status, len(Server_Listeners))
 	}
-	serverURL := "http://" + Server_Listeners[0].Addr().String() + "/missing"
+	listenAddr := Server_Listeners[0].Addr().String()
+	serverURL := "http://" + listenAddr + "/missing"
 	response, err := (&http.Client{Timeout: 2 * time.Second}).Get(serverURL)
 	if err != nil {
 		t.Fatalf("server readiness request: %v", err)
@@ -522,13 +505,13 @@ func TestServerLifecycleAndClientHelpers(t *testing.T) {
 	_ = response.Body.Close()
 	StartServer() // 检查任务已在运行时的保护逻辑.
 	StopServer()
-	select {
-	case <-connectionClosed:
-	case <-time.After(2 * time.Second):
-		t.Fatal("server connection did not close")
-	}
 	if Server_Status || len(Server_Listeners) != 0 {
 		t.Fatal("server did not stop")
+	}
+	conn, err := net.DialTimeout("tcp", listenAddr, 250*time.Millisecond)
+	if err == nil {
+		_ = conn.Close()
+		t.Fatal("server listener remained open after stop")
 	}
 	StopServer() // 检查任务已停止时的保护逻辑.
 

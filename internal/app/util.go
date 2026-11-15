@@ -159,13 +159,12 @@ func ExecCommand(command string) (bool, string, string) {
 }
 
 func execCommandArgs(commandSplit []string) (bool, string, string) {
-	var cmd *exec.Cmd
-	if len(commandSplit) == 1 {
-		cmd = exec.Command(commandSplit[0])
-	} else {
-		cmd = exec.Command(commandSplit[0], commandSplit[1:]...)
+	if len(commandSplit) == 0 || commandSplit[0] == "" {
+		return false, "", "command is empty"
 	}
 
+	// exec.Command passes arguments directly to the program; it does not invoke a shell.
+	cmd := exec.Command(commandSplit[0], commandSplit[1:]...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, string(out), err.Error()
