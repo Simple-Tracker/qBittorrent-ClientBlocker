@@ -28,7 +28,7 @@ WORKDIR /app
 
 COPY --from=go /app/qBittorrent-ClientBlocker ./
 COPY lang/ ./lang/
-COPY LICENSE *.md *.txt *.json entrypoint.sh ./
+COPY LICENSE README.md README.en.md ipBlockList.txt config.json blockList.json blockList-Optional.json entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 RUN apk update && apk add --no-cache jq socat
 

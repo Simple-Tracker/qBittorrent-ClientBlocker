@@ -1,0 +1,9 @@
+.git
+.DS_Store
+.gocache
+.gomodcache
+logs
+cache
+qBittorrent-ClientBlocker
+qBittorrent-ClientBlocker.exe
+Sparkle3

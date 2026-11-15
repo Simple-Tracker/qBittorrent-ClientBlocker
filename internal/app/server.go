@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Simple-Tracker/qBittorrent-ClientBlocker/internal/client"
@@ -13,6 +14,8 @@ import (
 
 var Server_Status bool = false
 var Server_Listeners []net.Listener
+var serverMutex sync.Mutex
+var activeHTTPServer *http.Server
 
 type httpServerHandler struct {
 }
@@ -103,6 +106,8 @@ func CreateListener(addrStr string) (net.Listener, error) {
 }
 
 func StartServer() {
+	serverMutex.Lock()
+	defer serverMutex.Unlock()
 	if Server_Status {
 		return
 	}
@@ -146,14 +151,20 @@ func StartServer() {
 
 	// Server 的超时配置仅在启动监听时设置, 避免与 Serve 并发修改.
 	timeout := time.Duration(ConfigSnapshot().Timeout) * time.Second
-	httpServer.ReadTimeout, httpServer.WriteTimeout = timeout, timeout
+	server := &http.Server{
+		Handler:      httpServer.Handler,
+		ConnState:    httpServer.ConnState,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+	}
+	activeHTTPServer = server
 	Server_Status = true
-	httpServer.SetKeepAlivesEnabled(false)
+	server.SetKeepAlivesEnabled(false)
 
 	for _, l := range Server_Listeners {
 		ln := l
 		GoWithCrashLog("httpServer.Serve", func() {
-			if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				LogError("StartServer", GetLangText("Error-StartServer_Serve"), true, ln.Addr().String(), err.Error())
 			}
 		})
@@ -161,11 +172,13 @@ func StartServer() {
 }
 
 func StopServer() {
+	serverMutex.Lock()
+	defer serverMutex.Unlock()
 	if !Server_Status {
 		return
 	}
 
-	if err := httpServer.Shutdown(context.Background()); err != nil {
+	if err := activeHTTPServer.Shutdown(context.Background()); err != nil {
 		LogError("StopServer", GetLangText("Error-StopServer"), true, err.Error())
 	}
 
@@ -173,5 +186,6 @@ func StopServer() {
 		l.Close()
 	}
 	Server_Listeners = nil
+	activeHTTPServer = nil
 	Server_Status = false
 }
